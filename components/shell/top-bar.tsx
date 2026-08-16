@@ -3,11 +3,12 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
-import { Gear, MagnifyingGlass } from "@phosphor-icons/react";
+import { Gear, MagnifyingGlass, Plus } from "@phosphor-icons/react";
 import { Wordmark } from "@/components/brand";
 import { BandSwitch } from "@/components/shell/band-switch";
 import { MobileMenu } from "@/components/shell/mobile-menu";
 import { CommandBar } from "@/components/shell/command-bar";
+import { NewCoChannelDialog } from "@/components/co-channel/new-co-channel";
 import { Button } from "@/components/ui/button";
 import { HintTooltip } from "@/components/ui/overlays";
 import { useRadio } from "@/lib/store";
@@ -31,9 +32,10 @@ export const NAV = [
 export function TopBar() {
   const pathname = usePathname();
   const [search, setSearch] = useState(false);
+  const [create, setCreate] = useState(false);
   const seenOnAirHint = useRadio((s) => s.seenOnAirHint);
   const dismissOnAirHint = useRadio((s) => s.dismissOnAirHint);
-  const inAStation = useRadio((s) => s.tunedTo) != null;
+  const inAStation = useRadio((s) => s.session?.coChannelId) != null;
   /* The tooltip portals to the body, so it escapes the `hidden md:flex` on
      the nav and would otherwise float in the top-left corner of a phone,
      pointing at nothing and with no way to dismiss it: the link it is
@@ -121,9 +123,38 @@ export function TopBar() {
               </Link>
             </Button>
 
-            {/* No "Start a station". Hosting one means being somebody in it,
-                and there is no identity in this build to be. */}
-            <MobileMenu onSearch={() => setSearch(true)} />
+            {/* Chrome, not the page's action. Kept secondary so the one yellow
+                control on any screen is whatever that screen is actually for:
+                Join in a room, Open this Co-Channel on the scanner.
+
+                Icon-only below sm, where the label will not fit. Starting a
+                station is the point of the product, so it stays on the top
+                bar at every width rather than moving into the menu. */}
+            <Button
+              size="icon-sm"
+              variant="secondary"
+              aria-label="Start a station"
+              onClick={() => setCreate(true)}
+              className="sm:hidden"
+            >
+              <Plus size={15} />
+            </Button>
+
+            <Button
+              size="sm"
+              variant="secondary"
+              onClick={() => setCreate(true)}
+              className="hidden sm:inline-flex"
+            >
+              <Plus size={15} />
+              <span className="hidden lg:inline">Start a station</span>
+              <span className="lg:hidden">Open</span>
+            </Button>
+
+            <MobileMenu
+              onSearch={() => setSearch(true)}
+              onCreate={() => setCreate(true)}
+            />
           </div>
         </div>
       </header>
@@ -131,6 +162,7 @@ export function TopBar() {
       {/* Both overlays live here rather than inside the menu, which unmounts
           when it closes and would take them with it. */}
       <CommandBar open={search} onOpenChange={setSearch} />
+      <NewCoChannelDialog open={create} onOpenChange={setCreate} />
     </>
   );
 }

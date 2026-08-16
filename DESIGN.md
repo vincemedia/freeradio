@@ -290,9 +290,8 @@ The brand speaks in **radio verbs and plain nouns**. Nothing is a "space", nothi
 
 - **Frequency** — the unique address of a station within one ecosystem, written `98.7`. Released when the last occupant leaves.
 - **Band** — the frequency spectrum of one ecosystem. You scan a band, you do not "search the network".
-- **Ecosystem** — the wallet authority a handle belongs to, per BRC-169: `@crumbs@nexus`. Nexus is selected by default.
-- **Occupant** — anyone currently speaking-capable in a Co-Channel. Every occupant is named, so nobody holds the floor anonymously and there is no "audience" on the stage.
-- **Listener** — somebody with a receiver pointed at a station. Not an occupant, not in the room, and not in the list. This build has no signed-in identity, so a reader is always a listener and never an occupant.
+- **Ecosystem** — the wallet authority a handle belongs to, per BRC-169: `@johngalt@twetch`. Nexus is the band selected by default; the signed-in identity lives on Twetch, so their own handle carries its suffix like everybody else's.
+- **Occupant** — anyone currently in a Co-Channel. There are no anonymous listeners, so there is no "audience".
 - **Host** — the occupant who opened the Co-Channel. **Speaker** — an occupant who is unmuted. There is no separate listener role.
 - **Nest** — the pinned links panel above the occupant grid.
 - **Transcript** — the running record of who said what, below the occupant grid.

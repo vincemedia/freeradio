@@ -6,10 +6,11 @@ import { DEFAULT_ECOSYSTEM, DEFAULT_FOLLOWED } from "@/data/ecosystems";
 import type {
   CoChannelView,
   EcosystemId,
+  Person,
   TranscriptLineView,
 } from "@/data/schema";
 import { STATION_AUDIO } from "@/data/audio";
-import { apiFetch, apiPost } from "@/lib/api";
+import { ApiError, apiFetch, apiPost } from "@/lib/api";
 import * as player from "@/lib/player";
 
 /**
@@ -20,6 +21,12 @@ import * as player from "@/lib/player";
  * of things that are genuinely about this browser: which band you are looking
  * at and who is speaking right now.
  */
+
+interface Session {
+  me: Person;
+  coChannelId: string | null;
+  muted: boolean;
+}
 
 /**
  * A room you were in.
@@ -70,14 +77,7 @@ interface RadioState {
   listening: boolean;
 
   /* ---- live state ---- */
-  /**
-   * The station you are listening to, if any.
-   *
-   * Not a membership. Nobody is signed in, so there is no occupant of yours
-   * in the room and nothing of yours is broadcast: this is a receiver tuned
-   * to a frequency, and it is the only thing the word means here.
-   */
-  tunedTo: string | null;
+  session: Session | null;
   room: CoChannelView | null;
   transcript: TranscriptLineView[];
   speakingId: string | null;
@@ -102,10 +102,13 @@ interface RadioState {
   setOnboarded: (v: boolean) => void;
   dismissOnAirHint: () => void;
 
+  refreshSession: () => Promise<void>;
   openRoom: (id: string) => Promise<void>;
-  /** start listening to a station; resolves false if it has closed */
-  tuneIn: (id: string) => Promise<boolean>;
-  tuneOut: () => void;
+  join: (id: string) => Promise<{ ok: boolean; error?: string; reasons?: string[] }>;
+  leave: () => Promise<void>;
+  toggleMute: () => Promise<void>;
+  toggleRecording: () => Promise<void>;
+  postNestLink: (url: string, title: string) => Promise<boolean>;
   refreshRoom: () => Promise<void>;
 }
 
@@ -121,7 +124,7 @@ export const useRadio = create<RadioState>()(
       recent: [],
       listening: true,
 
-      tunedTo: null,
+      session: null,
       room: null,
       transcript: [],
       speakingId: null,
@@ -160,6 +163,14 @@ export const useRadio = create<RadioState>()(
       setOnboarded: (onboarded) => set({ onboarded }),
       dismissOnAirHint: () => set({ seenOnAirHint: true }),
 
+      refreshSession: async () => {
+        const session = await apiFetch<Session>("/api/session");
+        set({ session });
+        if (session.coChannelId && !get().room) {
+          await get().openRoom(session.coChannelId);
+        }
+      },
+
       openRoom: async (id) => {
         const [room, transcript] = await Promise.all([
           apiFetch<CoChannelView>(`/api/co-channels/${id}`),
@@ -179,50 +190,77 @@ export const useRadio = create<RadioState>()(
         }
       },
 
-      /**
-       * Start listening to a station.
-       *
-       * Local, and honest about it: nothing is sent anywhere, nobody in the
-       * room learns you are there, and the occupant list does not change.
-       * What it does is point the receiver at a frequency and start the
-       * transcript following what is said on it.
-       */
-      tuneIn: async (id) => {
+      join: async (id) => {
+        set({ joining: true });
         try {
+          await apiPost(`/api/co-channels/${id}/join`);
+          await get().refreshSession();
           await get().openRoom(id);
+          const room = get().room;
+          if (room) {
+            /* Newest first, deduped, capped. A recent list that grows without
+               limit is an archive nobody asked for. */
+            set((s) => ({
+              recent: [
+                {
+                  id: room.id,
+                  title: room.title,
+                  frequency: room.frequency,
+                  ecosystem: room.ecosystem,
+                  at: new Date().toISOString(),
+                },
+                ...s.recent.filter((r) => r.id !== room.id),
+              ].slice(0, 6),
+            }));
+          }
+          return { ok: true };
+        } catch (e) {
+          if (e instanceof ApiError) {
+            return { ok: false, error: e.message, reasons: e.reasons };
+          }
+          return { ok: false, error: "Could not join." };
+        } finally {
+          set({ joining: false });
+        }
+      },
+
+      leave: async () => {
+        await apiFetch("/api/session", { method: "DELETE" });
+        set({ room: null, transcript: [], speakingId: null });
+        await get().refreshSession();
+      },
+
+      toggleMute: async () => {
+        const { session, room } = get();
+        if (!session || !room) return;
+        const muted = !session.muted;
+        set({ session: { ...session, muted } });
+        await apiPost(`/api/co-channels/${room.id}/mute`, { muted });
+        await get().refreshRoom();
+      },
+
+      toggleRecording: async () => {
+        const { room } = get();
+        if (!room) return;
+        await apiPost(`/api/co-channels/${room.id}/recording`, {
+          recording: !room.recording,
+        });
+        await get().refreshRoom();
+      },
+
+      postNestLink: async (url, title) => {
+        const { room } = get();
+        if (!room) return false;
+        try {
+          const updated = await apiPost<CoChannelView>(
+            `/api/co-channels/${room.id}/nest`,
+            { url, title },
+          );
+          set({ room: updated });
+          return true;
         } catch {
           return false;
         }
-        const room = get().room;
-        if (!room) return false;
-
-        set({ tunedTo: id });
-        /* Newest first, deduped, capped. A recent list that grows without
-           limit is an archive nobody asked for. */
-        set((s) => ({
-          recent: [
-            {
-              id: room.id,
-              title: room.title,
-              frequency: room.frequency,
-              ecosystem: room.ecosystem,
-              at: new Date().toISOString(),
-            },
-            ...s.recent.filter((r) => r.id !== room.id),
-          ].slice(0, 6),
-        }));
-        return true;
-      },
-
-      tuneOut: () => {
-        set({
-          tunedTo: null,
-          room: null,
-          transcript: [],
-          speakingId: null,
-          speakingAt: null,
-          audioBlocked: false,
-        });
       },
     }),
     {

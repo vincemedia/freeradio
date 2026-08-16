@@ -10,14 +10,12 @@
  * The rules that live here rather than in a component, because they are facts
  * about the system and not about a screen:
  *
- *   1. A Co-Channel with nobody in it does not exist. Its frequency returns
- *      to the pool.
- *   2. A frequency and a title are each unique within one ecosystem, and only
+ *   1. You can be in exactly one Co-Channel at a time. Joining a second one
+ *      leaves the first.
+ *   2. A Co-Channel with nobody in it does not exist. The last occupant to
+ *      leave deletes it, and its frequency returns to the pool.
+ *   3. A frequency and a title are each unique within one ecosystem, and only
  *      within one ecosystem.
- *
- * Nobody is signed in, so there is nothing here that joins, mutes, pins or
- * records. Everything below is read, plus the one write that keeps a live
- * room talking.
  */
 import {
   coChannels as seedChannels,
@@ -25,15 +23,17 @@ import {
   occupants as seedOccupants,
 } from "@/data/co-channels";
 import { BAND, FREQUENCY_STEP } from "@/data/ecosystems";
-import { people } from "@/data/people";
+import { people, ME_ID } from "@/data/people";
 import { heldFrequencies } from "@/data/pricing";
 import { recordings as seedRecordings } from "@/data/recordings";
 import { SCRIPTS, lineTiming, seedTranscript } from "@/data/transcripts";
+import { MY_HOLDINGS } from "@/data/session";
 import type { HeldFrequency } from "@/data/pricing";
 import type {
   CoChannel,
   CoChannelView,
   EcosystemId,
+  Gates,
   NestLink,
   Occupant,
   Person,
@@ -41,7 +41,7 @@ import type {
   TranscriptLine,
   TranscriptLineView,
 } from "@/data/schema";
-import { primaryGate } from "@/lib/gates";
+import { anyGateOn, evaluateGates, primaryGate, validateGates } from "@/lib/gates";
 
 /* Next dev reloads modules; hanging the state off globalThis keeps a demo
    from resetting itself every time a file is saved. */
@@ -63,7 +63,7 @@ interface State {
  * and the first thing to read it throws. Versioning the key makes a shape
  * change reseed instead of half-applying.
  */
-const STATE_VERSION = 5;
+const STATE_VERSION = 4;
 
 const globalRef = globalThis as unknown as {
   __freeRadio?: { version: number; state: State };
@@ -98,6 +98,12 @@ export function getPerson(id: string): Person | undefined {
 
 export function listPeople(): Person[] {
   return people;
+}
+
+/** `@handle`, for naming somebody inside a sentence. */
+function shortName(id: string): string {
+  const p = peopleById.get(id);
+  return p ? `@${p.handle}` : id;
 }
 
 /* ------------------------------------------------------------ co-channels */
@@ -223,14 +229,15 @@ export function nextFreeFrequency(ecosystem: EcosystemId): number | null {
 /**
  * Whether a frequency can be taken.
  *
- * Free means nothing is on air there and nobody is paying to keep it. There
- * is no signed-in holder to make an exception for any more, so a hold blocks
- * the frequency for everyone who is not its owner — which, from here, is
- * everyone.
+ * Free means nothing is on air there *and* nobody is paying to keep it. The
+ * holder is the exception: a hold exists precisely so its owner can come back
+ * to the same address, and a hold that locked out its own holder would be a
+ * subscription to nothing.
  */
 export function isFrequencyFree(
   ecosystem: EcosystemId,
   frequency: number,
+  forPersonId = ME_ID,
 ): boolean {
   const onAir = state.channels.some(
     (c) =>
@@ -238,7 +245,8 @@ export function isFrequencyFree(
       c.frequency.toFixed(1) === frequency.toFixed(1),
   );
   if (onAir) return false;
-  return !activeHold(ecosystem, frequency);
+  const hold = activeHold(ecosystem, frequency);
+  return !hold || hold.holderId === forPersonId;
 }
 
 export function isTitleFree(ecosystem: EcosystemId, title: string): boolean {
@@ -250,18 +258,212 @@ export function isTitleFree(ecosystem: EcosystemId, title: string): boolean {
 
 /* -------------------------------------------------------------- occupancy */
 
-/**
- * The room somebody is in, if any.
- *
- * Still needed with nobody signed in: it answers "where is this person" for
- * a hover card, which is the whole reason a handle is worth clicking.
- */
-export function currentCoChannelId(personId: string): string | null {
+export function currentCoChannelId(personId = ME_ID): string | null {
   return state.occupants.find((o) => o.personId === personId)?.coChannelId ?? null;
 }
 
-/* Nothing creates a Co-Channel from here any more. Starting a station makes
-   you its host, and there is no identity in this build to be one. */
+/**
+ * Remove somebody from whatever room they are in.
+ *
+ * Returns the id of a room that was deleted because they were the last one in
+ * it, so the caller can say so rather than the room silently vanishing.
+ */
+export function leave(personId = ME_ID): { closed: string | null } {
+  const at = state.occupants.find((o) => o.personId === personId);
+  if (!at) return { closed: null };
+
+  state.occupants = state.occupants.filter((o) => o.personId !== personId);
+
+  const remaining = state.occupants.filter(
+    (o) => o.coChannelId === at.coChannelId,
+  );
+  if (remaining.length > 0) return { closed: null };
+
+  /* Last one out. The room stops existing and the frequency is free again. */
+  state.channels = state.channels.filter((c) => c.id !== at.coChannelId);
+  state.nest = state.nest.filter((n) => n.coChannelId !== at.coChannelId);
+  state.transcripts = state.transcripts.filter(
+    (t) => t.coChannelId !== at.coChannelId,
+  );
+  return { closed: at.coChannelId };
+}
+
+export type JoinResult =
+  | { ok: true; coChannel: CoChannelView; left: string | null; closed: string | null }
+  | { ok: false; error: string; reasons?: string[] };
+
+export function join(coChannelId: string, personId = ME_ID): JoinResult {
+  const channel = state.channels.find((c) => c.id === coChannelId);
+  if (!channel) return { ok: false, error: "That station has closed." };
+
+  const already = state.occupants.find((o) => o.personId === personId);
+  if (already?.coChannelId === coChannelId) {
+    return { ok: true, coChannel: toView(channel), left: null, closed: null };
+  }
+
+  /* The host is exempt from their own door, so a room cannot lock out the
+     person holding it. Everyone else is evaluated. */
+  if (personId !== channel.hostId) {
+    const verdict = evaluateGates(channel.gates, MY_HOLDINGS, shortName);
+    if (!verdict.passes) {
+      return {
+        ok: false,
+        error: "You do not meet this Co-Channel's terms.",
+        reasons: verdict.reasons,
+      };
+    }
+  }
+
+  const left = already?.coChannelId ?? null;
+  const { closed } = leave(personId);
+
+  state.occupants.push({
+    id: nextId("occ"),
+    coChannelId,
+    personId,
+    role: channel.hostId === personId ? "host" : "speaker",
+    /* You arrive muted. Joining a live conversation with an open microphone
+       is a mistake the room hears before you do. */
+    muted: true,
+    joinedAt: new Date().toISOString(),
+  });
+
+  /* Re-read: leaving may have deleted a different room, never this one. */
+  const fresh = state.channels.find((c) => c.id === coChannelId)!;
+  return { ok: true, coChannel: toView(fresh), left, closed };
+}
+
+export function setMuted(muted: boolean, personId = ME_ID): boolean {
+  const at = state.occupants.find((o) => o.personId === personId);
+  if (!at) return false;
+  at.muted = muted;
+  return true;
+}
+
+export function setRecording(coChannelId: string, recording: boolean): boolean {
+  const channel = state.channels.find((c) => c.id === coChannelId);
+  if (!channel) return false;
+  channel.recording = recording;
+  return true;
+}
+
+export interface CreateInput {
+  title: string;
+  ecosystem: EcosystemId;
+  frequency?: number;
+  topic?: string;
+  gates?: Gates;
+}
+
+export type CreateResult =
+  | { ok: true; coChannel: CoChannelView }
+  | { ok: false; error: string; field?: "title" | "frequency" | "gates" };
+
+export function createCoChannel(
+  input: CreateInput,
+  personId = ME_ID,
+): CreateResult {
+  const title = input.title.trim();
+  if (title.length < 3) {
+    return { ok: false, error: "Give the station a name.", field: "title" };
+  }
+
+  /* Refuse a half-configured door rather than storing one. An `on` gate with
+     nothing in it admits nobody, and the host is exempt from their own door,
+     so they would never notice the room was sealed. */
+  const gateProblem = validateGates(input.gates);
+  if (gateProblem) {
+    return { ok: false, error: gateProblem, field: "gates" };
+  }
+  if (!isTitleFree(input.ecosystem, title)) {
+    return {
+      ok: false,
+      error: "That name is taken on this band. Pick another.",
+      field: "title",
+    };
+  }
+
+  const frequency = input.frequency ?? nextFreeFrequency(input.ecosystem);
+  if (frequency === null) {
+    return { ok: false, error: "The band is full.", field: "frequency" };
+  }
+  if (!isFrequencyFree(input.ecosystem, frequency, personId)) {
+    /* Occupied and held are different problems with different fixes, so they
+       get different sentences: one clears on its own, the other does not. */
+    const hold = activeHold(input.ecosystem, frequency);
+    const onAir = state.channels.some(
+      (c) =>
+        c.ecosystem === input.ecosystem &&
+        c.frequency.toFixed(1) === frequency.toFixed(1),
+    );
+    return {
+      ok: false,
+      error: onAir
+        ? `${frequency.toFixed(1)} is on air. Pick another.`
+        : `${frequency.toFixed(1)} is held by ${shortName(hold!.holderId)} until ${new Date(hold!.until).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}.`,
+      field: "frequency",
+    };
+  }
+
+  /* Opening a room leaves the one you were in, same as joining. */
+  leave(personId);
+
+  const id = nextId("cc");
+  state.channels.push({
+    id,
+    title,
+    frequency: Number(frequency.toFixed(1)),
+    ecosystem: input.ecosystem,
+    hostId: personId,
+    startedAt: new Date().toISOString(),
+    recording: false,
+    /* Only the seeded station has a file behind it; anything opened here is
+       live voice, which in this prototype means no audio at all. */
+    hasAudio: false,
+    topic: input.topic?.trim() || undefined,
+    ...(anyGateOn(input.gates) ? { gates: input.gates! } : {}),
+  });
+
+  state.occupants.push({
+    id: nextId("occ"),
+    coChannelId: id,
+    personId,
+    role: "host",
+    /* The host opens unmuted. They called the room; somebody has to talk. */
+    muted: false,
+    joinedAt: new Date().toISOString(),
+  });
+
+  return { ok: true, coChannel: getCoChannel(id)! };
+}
+
+/* ----------------------------------------------------------------- nest */
+
+export function addNestLink(
+  coChannelId: string,
+  url: string,
+  title: string,
+  personId = ME_ID,
+): NestLink | null {
+  if (!state.channels.some((c) => c.id === coChannelId)) return null;
+  let site: string;
+  try {
+    site = new URL(url).hostname.replace(/^www\./, "");
+  } catch {
+    return null;
+  }
+  const link: NestLink = {
+    id: nextId("nest"),
+    coChannelId,
+    postedById: personId,
+    url,
+    title: title.trim() || site,
+    site,
+    postedAt: new Date().toISOString(),
+  };
+  state.nest.push(link);
+  return link;
+}
 
 /* ----------------------------------------------------------- transcripts */
 
@@ -373,4 +575,22 @@ export function listContacts(): {
       if (!!a.coChannel !== !!b.coChannel) return a.coChannel ? -1 : 1;
       return a.person.name.localeCompare(b.person.name);
     });
+}
+
+/* --------------------------------------------------------------- session */
+
+export function getSession() {
+  const at = currentCoChannelId();
+  const occupant = state.occupants.find((o) => o.personId === ME_ID);
+  return {
+    me: peopleById.get(ME_ID)!,
+    coChannelId: at,
+    muted: occupant?.muted ?? true,
+    holdings: MY_HOLDINGS,
+  };
+}
+
+/** Whether the signed-in user may open a given room's door. */
+export function gateCheck(channel: CoChannel) {
+  return evaluateGates(channel.gates, MY_HOLDINGS, shortName);
 }

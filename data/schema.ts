@@ -7,7 +7,7 @@
  * database means changing the route bodies and nothing in the UI.
  *
  * Identity, ecosystems and gates are deliberately the same shapes the Nexus
- * app already uses. A handle that means `@crumbs@nexus` there has to mean the
+ * app already uses. A handle that means `@johngalt@twetch` there has to mean the
  * same thing here, or the two apps are describing different people.
  */
 
@@ -187,13 +187,9 @@ export type OccupantRole = "host" | "speaker";
  * Co-Channel at a time and that constraint belongs to the relationship rather
  * than to either side of it.
  *
- * There is no listener role. An occupant is somebody who can speak, and every
- * one of them is visible as `@handle@ecosystem` with their avatar — nobody
- * holds the floor anonymously, which is the main way this differs from
- * Twitter Spaces.
- *
- * Nobody is signed in in this build, so a reader is never an occupant. They
- * are outside the room with a receiver pointed at it.
+ * There is no listener role and no anonymous occupancy: everybody in the room
+ * is visible as `@handle@ecosystem` with their avatar, which is the main way
+ * this differs from Twitter Spaces.
  */
 export interface Occupant {
   id: string;

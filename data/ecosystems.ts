@@ -31,11 +31,10 @@ export const ecosystems: Ecosystem[] = [
     id: "nexus",
     name: "Nexus",
     description:
-      "The hub you are signed into. Its handles need no suffix, since they are local to you.",
+      "The hub the rest of the suite is built around, and the busiest band here.",
     alias: "nexus",
     domain: "nexus.free",
     icon: "/icons/nexus.png",
-    local: true,
     band: BAND,
   },
   {
@@ -46,6 +45,10 @@ export const ecosystems: Ecosystem[] = [
     alias: "twetch",
     domain: "twetch.com",
     icon: "/ecosystems/twetch.svg",
+    /* Where the signed-in identity lives, which is what `local` means. It is
+       deliberately not the default band: you are on Twetch and looking at
+       Nexus, which is the normal case this product exists to make legible. */
+    local: true,
     numericHandles: true,
     iconPlate: "#0f1021",
     band: BAND,

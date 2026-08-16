@@ -6,6 +6,7 @@ import { Broadcast, CaretLeft, CaretRight, LockKey, Shuffle } from "@phosphor-ic
 import { toast } from "sonner";
 import useFetch from "@/lib/use-fetch";
 import { CoChannelCard } from "@/components/co-channel/card";
+import { NewCoChannelDialog } from "@/components/co-channel/new-co-channel";
 import { Price } from "@/components/price";
 import { PageHeader } from "@/components/shell/page-header";
 import { Panel } from "@/components/instrument/parts";
@@ -51,8 +52,9 @@ type BandResponse = {
 export default function ScanPage() {
   const router = useRouter();
   const ecosystem = useRadio((s) => s.ecosystem);
-  const tuneIn = useRadio((s) => s.tuneIn);
-  const currentRoomId = useRadio((s) => s.tunedTo);
+  const join = useRadio((s) => s.join);
+  const joining = useRadio((s) => s.joining);
+  const currentRoomId = useRadio((s) => s.session?.coChannelId);
 
   /* Where the needle sits is derived, not stored, until somebody moves it.
      Switching band would otherwise leave it in a gap on the new band, and
@@ -108,14 +110,15 @@ export default function ScanPage() {
     const pick = pickable[Math.floor(Math.random() * pickable.length)];
     setFrequency(pick.frequency);
 
-    if (!(await tuneIn(pick.id))) {
-      toast.error(`${formatFrequency(pick.frequency)} has closed`, {
-        description: "Its last occupant left, so the frequency is free again.",
+    const result = await join(pick.id);
+    if (!result.ok) {
+      toast.error(`${formatFrequency(pick.frequency)} would not let you in`, {
+        description: result.reasons?.join(" ") ?? result.error,
       });
       return;
     }
     toast.success(`Tuned in to ${formatFrequency(pick.frequency)}`, {
-      description: pick.title,
+      description: `${pick.title}. You joined muted.`,
     });
     router.push(`/co-channel/${pick.id}`);
   };
@@ -162,11 +165,11 @@ export default function ScanPage() {
             variant="primary"
             size="sm"
             onClick={() => void surpriseMe()}
-            disabled={pickable.length === 0}
+            disabled={joining || pickable.length === 0}
             aria-label="Join a station at random on this band"
           >
             <Shuffle size={14} />
-            Surprise me
+            {joining ? "Tuning in" : "Surprise me"}
           </Button>
 
           <Button
@@ -220,9 +223,16 @@ export default function ScanPage() {
         <EmptyState
           title={`${formatFrequency(frequency)} is empty`}
           icon={<Broadcast size={28} />}
+          action={
+            <NewCoChannelDialog>
+              <Button variant="primary" size="sm">
+                Start a station here
+              </Button>
+            </NewCoChannelDialog>
+          }
         >
-          Nothing is broadcasting here. Scan to the next station, or drag the
-          needle to find one.
+          Nothing is broadcasting here. Scan to the next station, or take this
+          frequency for yourself.
         </EmptyState>
       )}
     </div>

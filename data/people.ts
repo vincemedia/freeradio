@@ -7,14 +7,36 @@
  */
 import type { Person } from "./schema";
 
-/*
- * There is no signed-in user.
+/**
+ * The signed-in user.
  *
- * Free Radio is a receiver here: you tune a band and hear what is on it, and
- * there is no identity of yours in the product to speak, pin, record or
- * appear in a room. Everybody in this table is somebody else.
+ * On Twetch rather than Nexus, which means their own handle carries a suffix
+ * like everybody else's: `@johngalt@twetch`. That is worth having in the
+ * demo — with a local identity you never see your own address written in
+ * full, and the whole point of BRC-169 is that the authority is part of the
+ * name. Twetch numbers its accounts, so `1957` is the handle and `johngalt`
+ * is the named form; both address the same identity and the UI shows the
+ * name.
  */
+export const ME_ID = "me-johngalt";
+
 export const people: Person[] = [
+  {
+    id: ME_ID,
+    name: "John Galt",
+    handle: "1957",
+    username: "johngalt",
+    ecosystem: "twetch",
+    role: "Engineer",
+    bio: "Builds things that work and says who built them.",
+    organization: null,
+    city: "Unlisted",
+    photo: null,
+    avatarColors: ["#eab300", "#dc2626", "#4353ff"],
+    registeredAt: "2021-03-04T09:00:00.000Z",
+    expertise: ["Engineering", "First principles"],
+    attestations: 11,
+  },
   {
     id: "rhea-mensah",
     name: "Rhea Mensah",

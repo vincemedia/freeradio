@@ -95,18 +95,18 @@ function pickSweep(rooms: CoChannelView[]): CoChannelView[] {
 const RULES = [
   {
     icon: UsersThree,
-    title: "Everyone talking is named",
-    body: "Anyone speaking in a Co-Channel shows their handle and avatar. Nobody holds the floor anonymously.",
+    title: "Nobody listens quietly",
+    body: "Everyone in a Co-Channel shows their handle and avatar. There is no anonymous audience.",
   },
   {
     icon: Microphone,
-    title: "You listen, you do not talk",
-    body: "Nothing is signed in, so you tune a station and hear it. Mute state shows on every occupant, so you can see who is about to speak.",
+    title: "You arrive muted",
+    body: "Mute state is visible on every occupant, always, so you can see who is about to speak.",
   },
   {
     icon: Broadcast,
-    title: "One station at a time",
-    body: "Tuning to a Co-Channel leaves the one you were on. When its last occupant leaves, the room closes and its frequency is freed.",
+    title: "One room at a time",
+    body: "Joining a Co-Channel leaves the one you were in. When the last person leaves, the room closes and its frequency is freed.",
   },
   {
     icon: Record,
@@ -159,15 +159,15 @@ export default function WelcomePage() {
 
   const next = () => setStep(STEPS[Math.min(index + 1, STEPS.length - 1)]);
   const back = () => setStep(STEPS[Math.max(index - 1, 0)]);
-  const tuneIn = useRadio((s) => s.tuneIn);
+  const join = useRadio((s) => s.join);
 
   /**
-   * Finish tuned to a station rather than in front of a list.
+   * Finish by putting them in a station rather than in front of a list.
    *
    * The product is people talking; a directory is not that. So the last step
-   * points the receiver at one and the hint on "On air" is what tells them
-   * there is a whole band behind it. If that station has closed, this falls
-   * back to the list rather than stranding them.
+   * tunes them in, muted, and the hint on "On air" is what tells them there is
+   * a whole band behind it. If the station has closed, or its door refuses
+   * them, this falls back to the list rather than stranding them.
    */
   const finish = async () => {
     if (!followed.includes(useRadio.getState().ecosystem)) {
@@ -175,7 +175,8 @@ export default function WelcomePage() {
     }
     setOnboarded(true);
 
-    if (!(await tuneIn(FIRST_RUN_STATION))) {
+    const landed = await join(FIRST_RUN_STATION);
+    if (!landed.ok) {
       router.replace("/");
       return;
     }

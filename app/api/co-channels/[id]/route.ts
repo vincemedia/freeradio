@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getCoChannel } from "@/lib/server/store";
+import { gateCheck, getCoChannel } from "@/lib/server/store";
 
 export async function GET(
   _request: Request,
@@ -13,8 +13,8 @@ export async function GET(
       { status: 404 },
     );
   }
-  /* No signed-in holdings to check a gate against, so a room's terms are
-     reported rather than judged: the badge says what the door asks for and
-     stops short of claiming you would get through it. */
-  return NextResponse.json(coChannel);
+  /* The card and the door use the same verdict, so a room can never offer a
+     Join button it will then refuse. */
+  const verdict = gateCheck(coChannel);
+  return NextResponse.json({ ...coChannel, gateCheck: verdict });
 }

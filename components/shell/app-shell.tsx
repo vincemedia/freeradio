@@ -15,7 +15,8 @@ import { startSpeaking, useRadio } from "@/lib/store";
  */
 export function AppShell({ children }: { children: React.ReactNode }) {
   const router = useRouter();
-  const tunedTo = useRadio((s) => s.tunedTo);
+  const refreshSession = useRadio((s) => s.refreshSession);
+  const inRoom = useRadio((s) => s.session?.coChannelId);
 
   /* First run goes to the welcome flow.
      The check reads live state rather than a render-scoped value: this runs
@@ -29,14 +30,18 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     return useRadio.persist.onFinishHydration(check);
   }, [router]);
 
-  /* The receiver runs here rather than on the room page, so the station keeps
-     playing and its transcript keeps advancing while you look at something
-     else. That is what makes the dock at the bottom true: it says what you
-     are listening to, and you still are. */
   useEffect(() => {
-    if (!tunedTo) return;
-    return startSpeaking(tunedTo);
-  }, [tunedTo]);
+    void refreshSession();
+  }, [refreshSession]);
+
+  /* The room runs from here rather than from its own page, so the station
+     keeps talking and its audio keeps playing while you look at something
+     else. That is what makes the dock at the bottom true: it says you are
+     still in a room, and you still are. */
+  useEffect(() => {
+    if (!inRoom) return;
+    return startSpeaking(inRoom);
+  }, [inRoom]);
 
   return (
     <div className="flex min-h-dvh flex-col bg-background">

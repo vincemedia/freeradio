@@ -17,7 +17,7 @@ import { useRadio } from "@/lib/store";
  */
 export function RecentCoChannels() {
   const recent = useRadio((s) => s.recent);
-  const currentId = useRadio((s) => s.tunedTo);
+  const currentId = useRadio((s) => s.session?.coChannelId);
 
   /* One request for the whole list rather than one per row. */
   const { data: live } = useFetch<CoChannelView[]>(recent.length > 0 ? "/api/co-channels" : null);
@@ -85,12 +85,12 @@ export function RecentCoChannels() {
               </h3>
 
               <div className="mt-auto flex items-center justify-between gap-3 border-t border-border pt-2.5 text-[11px] text-muted-foreground">
-                <span>{isHere ? "Listening now" : `Last tuned ${formatAgo(r.at)}`}</span>
+                <span>{isHere ? "You are here" : `Last in ${formatAgo(r.at)}`}</span>
                 <span
                   aria-hidden
                   className="inline-flex shrink-0 items-center gap-1 rounded-md bg-primary px-2.5 py-1 font-medium text-primary-foreground shadow-[var(--shadow-clay-primary)] transition-transform duration-150 ease-[var(--ease-out-quint)] group-active:scale-[0.98]"
                 >
-                  {isHere ? "Listening" : "Tune in"}
+                  {isHere ? "Back in" : "Tune in"}
                 </span>
               </div>
             </Link>

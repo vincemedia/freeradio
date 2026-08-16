@@ -1,7 +1,7 @@
 "use client";
 
 import { usePathname, useRouter } from "next/navigation";
-import { CornersOut, SpeakerHigh, SpeakerSlash, X } from "@phosphor-icons/react";
+import { CornersOut, Microphone, MicrophoneSlash, X } from "@phosphor-icons/react";
 import { Facepile } from "@/components/identity";
 import { Lamp } from "@/components/instrument/parts";
 import { useRadio } from "@/lib/store";
@@ -17,8 +17,8 @@ import {
  *
  * Docks bottom right on desktop and full width above the safe area on mobile,
  * where a floating pill would sit under the home indicator. It carries the
- * three things you need while your attention is elsewhere: that the station
- * is still on air, who is in it, and the volume.
+ * three things you need while your attention is elsewhere: that you are still
+ * on air, who is in there, and your own microphone.
  *
  * Hidden on the room's own page, where it would be a duplicate of the header.
  */
@@ -26,16 +26,16 @@ export function MinimisedBar() {
   const router = useRouter();
   const pathname = usePathname();
   const room = useRadio((s) => s.room);
-  const tunedTo = useRadio((s) => s.tunedTo);
-  const listening = useRadio((s) => s.listening);
-  const setListening = useRadio((s) => s.setListening);
-  const tuneOut = useRadio((s) => s.tuneOut);
+  const session = useRadio((s) => s.session);
+  const toggleMute = useRadio((s) => s.toggleMute);
+  const leave = useRadio((s) => s.leave);
 
-  if (!room || !tunedTo) return null;
+  if (!room || !session?.coChannelId) return null;
   if (pathname === `/co-channel/${room.id}`) return null;
 
-  /* Everybody in it, since none of them is you. */
-  const others = room.occupants.map((o) => o.person);
+  const others = room.occupants
+    .filter((o) => o.personId !== session.me.id)
+    .map((o) => o.person);
 
   const href = `/co-channel/${room.id}`;
   const open = () => navigateWithTransition(() => router.push(href), href);
@@ -80,22 +80,19 @@ export function MinimisedBar() {
         </button>
 
         <div className="flex shrink-0 items-center gap-1">
-          {/* The volume, not a microphone. Nothing of yours is going out, so
-              the only sound control that means anything here is whether you
-              can hear them. */}
           <button
             type="button"
-            onClick={() => setListening(!listening)}
-            aria-label={listening ? "Turn the sound off" : "Turn the sound on"}
-            aria-pressed={listening}
+            onClick={() => void toggleMute()}
+            aria-label={session.muted ? "Unmute" : "Mute"}
+            aria-pressed={!session.muted}
             className={cn(
               "flex size-9 items-center justify-center rounded-md transition-colors",
-              listening
-                ? "bg-primary text-primary-foreground"
-                : "text-muted-foreground hover:bg-muted",
+              session.muted
+                ? "text-muted-foreground hover:bg-muted"
+                : "bg-primary text-primary-foreground",
             )}
           >
-            {listening ? <SpeakerHigh /> : <SpeakerSlash />}
+            {session.muted ? <MicrophoneSlash /> : <Microphone />}
           </button>
           <button
             type="button"
@@ -107,8 +104,8 @@ export function MinimisedBar() {
           </button>
           <button
             type="button"
-            onClick={tuneOut}
-            aria-label="Tune out"
+            onClick={() => void leave()}
+            aria-label="Leave the Co-Channel"
             className="flex size-9 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
           >
             <X />

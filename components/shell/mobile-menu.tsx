@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
-import { CaretLeft, CaretRight, Check, MagnifyingGlass } from "@phosphor-icons/react";
+import { CaretLeft, CaretRight, Check, MagnifyingGlass, Plus } from "@phosphor-icons/react";
 import useFetch from "@/lib/use-fetch";
 import { EcosystemMark } from "@/components/identity";
 import { NAV } from "@/components/shell/top-bar";
@@ -26,10 +26,12 @@ type Band = Ecosystem & { coChannelCount: number; occupantCount: number };
  */
 export function MobileMenu({
   onSearch,
+  onCreate,
 }: {
-  /* The menu asks the top bar to open this, because it is an overlay that
+  /* The menu asks the top bar to open these, because both are overlays that
      must outlive the menu closing. */
   onSearch: () => void;
+  onCreate: () => void;
 }) {
   const [open, setOpen] = useState(false);
   const [panel, setPanel] = useState<"root" | "bands">("root");
@@ -146,6 +148,18 @@ export function MobileMenu({
               >
                 <MagnifyingGlass size={15} />
                 Search everything
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  close();
+                  onCreate();
+                }}
+                className="mt-1 inline-flex items-center gap-2 rounded-md px-3 py-2.5 text-sm font-medium text-muted-foreground"
+              >
+                <Plus size={15} />
+                Start a station
               </button>
             </nav>
 
