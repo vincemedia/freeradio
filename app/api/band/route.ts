@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import { BAND, DEFAULT_ECOSYSTEM, FREQUENCY_STEP } from "@/data/ecosystems";
 import type { EcosystemId } from "@/data/schema";
-import { bandOccupancy, nextFreeFrequency } from "@/lib/server/store";
+import { HOLD_PRICE_USD } from "@/data/pricing";
+import { bandOccupancy, listHolds, nextFreeFrequency } from "@/lib/server/store";
 
 /**
  * Everything the tuning scale needs, in one call.
@@ -21,6 +22,10 @@ export async function GET(request: Request) {
     max: BAND.max,
     step: FREQUENCY_STEP,
     stations: bandOccupancy(ecosystem),
+    /* Reserved gaps. A frequency nobody is broadcasting on is not necessarily
+       free, and the scale should not imply otherwise. */
+    holds: listHolds(ecosystem),
+    holdPriceUsd: HOLD_PRICE_USD[ecosystem],
     nextFree: nextFreeFrequency(ecosystem),
   });
 }

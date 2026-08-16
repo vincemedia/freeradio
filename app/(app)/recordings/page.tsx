@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { Pause, Play, Record } from "@phosphor-icons/react";
+import { LockKey, Pause, Play, Record } from "@phosphor-icons/react";
+import { toast } from "sonner";
 import useFetch from "@/lib/use-fetch";
 import { Facepile, Identity } from "@/components/identity";
 import { PageHeader } from "@/components/shell/page-header";
@@ -12,7 +13,12 @@ import type { Person, Recording } from "@/data/schema";
 import { formatAgo, formatCount, formatDuration, formatFrequency } from "@/lib/format";
 import { useRadio } from "@/lib/store";
 
-type Row = Recording & { host: Person; occupantsResolved: Person[] };
+type Row = Recording & {
+  host: Person;
+  occupantsResolved: Person[];
+  priceUsd: number;
+  platformFee: number;
+};
 
 /**
  * Recordings.
@@ -28,6 +34,8 @@ type Row = Recording & { host: Person; occupantsResolved: Person[] };
 export default function RecordingsPage() {
   const ecosystem = useRadio((s) => s.ecosystem);
   const [playing, setPlaying] = useState<string | null>(null);
+  /* Unlocks are per session, like the rest of the mock money in this app. */
+  const [bought, setBought] = useState<Set<string>>(new Set());
 
   const { data, loading } = useFetch<Row[]>(
     `/api/recordings?ecosystem=${ecosystem}`,
@@ -58,21 +66,41 @@ export default function RecordingsPage() {
         <ul className="space-y-2">
           {data!.map((r) => {
             const isPlaying = playing === r.id;
+            const locked = r.priceUsd > 0 && !bought.has(r.id);
             return (
               <li
                 key={r.id}
                 id={r.id}
                 className="flex items-center gap-3 rounded-lg border border-border bg-card p-3 sm:p-4"
               >
-                <Button
-                  variant={isPlaying ? "primary" : "secondary"}
-                  size="icon"
-                  aria-label={isPlaying ? `Pause ${r.title}` : `Play ${r.title}`}
-                  onClick={() => setPlaying(isPlaying ? null : r.id)}
-                  className="shrink-0"
-                >
-                  {isPlaying ? <Pause weight="fill" /> : <Play weight="fill" />}
-                </Button>
+                {locked ? (
+                  /* The price is the button. A play control that refuses when
+                     pressed would be the dishonest version of this. */
+                  <Button
+                    variant="secondary"
+                    size="icon"
+                    aria-label={`Unlock ${r.title} for $${r.priceUsd}`}
+                    onClick={() => {
+                      setBought((b) => new Set(b).add(r.id));
+                      toast.success("Unlocked", {
+                        description: `$${r.priceUsd} to @${r.host.handle}, less a ${Math.round(r.platformFee * 100)}% platform fee.`,
+                      });
+                    }}
+                    className="shrink-0"
+                  >
+                    <LockKey />
+                  </Button>
+                ) : (
+                  <Button
+                    variant={isPlaying ? "primary" : "secondary"}
+                    size="icon"
+                    aria-label={isPlaying ? `Pause ${r.title}` : `Play ${r.title}`}
+                    onClick={() => setPlaying(isPlaying ? null : r.id)}
+                    className="shrink-0"
+                  >
+                    {isPlaying ? <Pause weight="fill" /> : <Play weight="fill" />}
+                  </Button>
+                )}
 
                 <div className="min-w-0 flex-1">
                   <div className="flex items-baseline gap-2">
@@ -88,6 +116,11 @@ export default function RecordingsPage() {
                     <span className="readout">{formatDuration(r.duration)}</span>
                     <span>{formatAgo(r.recordedAt)}</span>
                     <span>{formatCount(r.plays)} plays</span>
+                    {r.priceUsd > 0 && (
+                      <span className={locked ? "text-foreground" : undefined}>
+                        {locked ? `$${r.priceUsd} to listen` : "Unlocked"}
+                      </span>
+                    )}
                   </div>
                 </div>
 

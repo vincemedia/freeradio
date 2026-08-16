@@ -34,12 +34,19 @@ export interface Station {
  * A percentage translate is relative to the element's own width, which is why
  * the rail spans the whole track.
  */
+export interface Hold {
+  id: string;
+  frequency: number;
+  label: string;
+}
+
 export function TuningScale({
   min,
   max,
   step,
   value,
   stations,
+  holds = [],
   onChange,
   onCommit,
   className,
@@ -49,6 +56,8 @@ export function TuningScale({
   step: number;
   value: number;
   stations: Station[];
+  /** reserved but silent frequencies, drawn as outlines rather than marks */
+  holds?: Hold[];
   onChange: (frequency: number) => void;
   /** fired when the needle settles, so scanning does not spam the server */
   onCommit?: (frequency: number) => void;
@@ -135,6 +144,9 @@ export function TuningScale({
   const tuned = stations.find(
     (s) => Math.abs(s.frequency - value) < step / 2,
   );
+  const heldHere = holds.find(
+    (h) => Math.abs(h.frequency - value) < step / 2,
+  );
 
   return (
     <div className={cn("select-none", className)}>
@@ -147,7 +159,11 @@ export function TuningScale({
           <span className="text-xs font-medium text-muted-foreground">MHz</span>
         </div>
         <span className="truncate text-right text-xs text-muted-foreground">
-          {tuned ? tuned.title : "No Co-Channel on this frequency"}
+          {tuned
+            ? tuned.title
+            : heldHere
+              ? `Held for ${heldHere.label}`
+              : "No Co-Channel on this frequency"}
         </span>
       </div>
 
@@ -202,6 +218,29 @@ export function TuningScale({
               </div>
             );
           })}
+        </div>
+
+        {/* Reserved gaps: held but silent. Drawn as a hollow stub so it reads
+            as "spoken for" rather than as a quiet station. A dial that showed
+            these as free would send people to a frequency they cannot take. */}
+        <div aria-hidden className="absolute bottom-0 left-3 right-3 h-11">
+          {holds
+            .filter((h) => !stations.some((s) => Math.abs(s.frequency - h.frequency) < step / 2))
+            .map((h) => {
+              const p = ((h.frequency - min) / (max - min)) * 100;
+              return (
+                <div
+                  key={h.id}
+                  className="absolute inset-y-0 w-full"
+                  style={{ transform: `translateX(${p}%)` }}
+                >
+                  <div
+                    className="absolute bottom-2 left-0 h-2.5 w-[3px] -translate-x-1/2 rounded-[1px] border border-dashed"
+                    style={{ borderColor: "var(--tick)", opacity: 0.8 }}
+                  />
+                </div>
+              );
+            })}
         </div>
 
         {/* Stations. Height carries occupancy, so a busy room is a taller mark. */}

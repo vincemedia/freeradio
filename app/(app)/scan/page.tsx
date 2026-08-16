@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { CaretLeft, CaretRight, Broadcast } from "@phosphor-icons/react";
+import { Broadcast, CaretLeft, CaretRight, LockKey } from "@phosphor-icons/react";
 import useFetch from "@/lib/use-fetch";
 import { CoChannelCard } from "@/components/co-channel/card";
 import { NewCoChannelDialog } from "@/components/co-channel/new-co-channel";
@@ -21,11 +21,21 @@ import type { CoChannelView } from "@/data/schema";
 import { formatFrequency } from "@/lib/format";
 import { useRadio } from "@/lib/store";
 
+type Hold = {
+  id: string;
+  frequency: number;
+  label: string;
+  until: string;
+  holder?: { name: string; handle: string };
+};
+
 type BandResponse = {
   min: number;
   max: number;
   step: number;
   stations: Station[];
+  holds: Hold[];
+  holdPriceUsd: number;
   nextFree: number | null;
 };
 
@@ -50,6 +60,9 @@ export default function ScanPage() {
   const stations = band?.stations ?? [];
   const tuned = stations.find(
     (s) => Math.abs(s.frequency - frequency) < (band?.step ?? 0.1) / 2,
+  );
+  const heldHere = (band?.holds ?? []).find(
+    (h) => Math.abs(h.frequency - frequency) < (band?.step ?? 0.1) / 2,
   );
 
   /* Switching band lands you on its busiest room rather than wherever the
@@ -88,6 +101,7 @@ export default function ScanPage() {
           step={band?.step ?? 0.1}
           value={frequency}
           stations={stations}
+          holds={band?.holds ?? []}
           onChange={setFrequency}
         />
 
@@ -136,6 +150,23 @@ export default function ScanPage() {
             Open this Co-Channel
           </Button>
         </section>
+      ) : heldHere ? (
+        /* Silent but spoken for. Saying who holds it and until when is the
+           honest version of a gap, and it is also the clearest advertisement
+           the feature has. */
+        <EmptyState
+          title={`${formatFrequency(frequency)} is held`}
+          icon={<LockKey size={28} />}
+        >
+          {heldHere.holder?.name ?? "Someone"} keeps this frequency for{" "}
+          {heldHere.label}, until{" "}
+          {new Date(heldHere.until).toLocaleDateString("en-GB", {
+            day: "numeric",
+            month: "long",
+          })}
+          . Holding a frequency costs ${band?.holdPriceUsd ?? 0} a month on this
+          band, and means an address that survives the room closing.
+        </EmptyState>
       ) : (
         <EmptyState
           title={`${formatFrequency(frequency)} is empty`}

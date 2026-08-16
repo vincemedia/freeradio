@@ -24,9 +24,11 @@ import {
 } from "@/data/co-channels";
 import { BAND, FREQUENCY_STEP } from "@/data/ecosystems";
 import { people, ME_ID } from "@/data/people";
+import { heldFrequencies } from "@/data/pricing";
 import { recordings as seedRecordings } from "@/data/recordings";
 import { SCRIPTS, seedTranscript } from "@/data/transcripts";
 import { MY_HOLDINGS } from "@/data/session";
+import type { HeldFrequency } from "@/data/pricing";
 import type {
   CoChannel,
   CoChannelView,
@@ -49,10 +51,23 @@ interface State {
   nest: NestLink[];
   transcripts: TranscriptLine[];
   recordings: Recording[];
+  holds: HeldFrequency[];
   seq: number;
 }
 
-const globalRef = globalThis as unknown as { __freeRadio?: State };
+/**
+ * Bump when the shape of `State` changes.
+ *
+ * The cache below survives a dev reload on purpose, which means it also
+ * survives adding a field: the old object stays, the new field is `undefined`,
+ * and the first thing to read it throws. Versioning the key makes a shape
+ * change reseed instead of half-applying.
+ */
+const STATE_VERSION = 2;
+
+const globalRef = globalThis as unknown as {
+  __freeRadio?: { version: number; state: State };
+};
 
 function seed(): State {
   return {
@@ -61,11 +76,15 @@ function seed(): State {
     nest: [...seedNest],
     transcripts: seedChannels.flatMap((c) => seedTranscript(c.id, c.startedAt)),
     recordings: [...seedRecordings],
+    holds: [...heldFrequencies],
     seq: 0,
   };
 }
 
-const state: State = (globalRef.__freeRadio ??= seed());
+if (globalRef.__freeRadio?.version !== STATE_VERSION) {
+  globalRef.__freeRadio = { version: STATE_VERSION, state: seed() };
+}
+const state: State = globalRef.__freeRadio.state;
 
 const nextId = (prefix: string) => `${prefix}-${++state.seq}-${Date.now()}`;
 
@@ -189,27 +208,66 @@ export function bandOccupancy(ecosystem: EcosystemId) {
   }));
 }
 
+/**
+ * A hold that has not lapsed.
+ *
+ * Checked by date rather than removed on expiry, so a demo left running does
+ * not need a sweeper to stay correct.
+ */
+function activeHold(ecosystem: EcosystemId, frequency: number) {
+  const now = Date.now();
+  return state.holds.find(
+    (h) =>
+      h.ecosystem === ecosystem &&
+      h.frequency.toFixed(1) === frequency.toFixed(1) &&
+      new Date(h.until).getTime() > now,
+  );
+}
+
+export function holdOn(ecosystem: EcosystemId, frequency: number) {
+  const hold = activeHold(ecosystem, frequency);
+  if (!hold) return null;
+  return { ...hold, holder: peopleById.get(hold.holderId) };
+}
+
+/** Every live hold on a band, so the scale can show reserved gaps. */
+export function listHolds(ecosystem: EcosystemId) {
+  const now = Date.now();
+  return state.holds
+    .filter((h) => h.ecosystem === ecosystem && new Date(h.until).getTime() > now)
+    .map((h) => ({ ...h, holder: peopleById.get(h.holderId) }));
+}
+
 /** The lowest free tenth on a band, for a new room that did not pick one. */
 export function nextFreeFrequency(ecosystem: EcosystemId): number | null {
-  const taken = new Set(
-    state.channels
-      .filter((c) => c.ecosystem === ecosystem)
-      .map((c) => c.frequency.toFixed(1)),
-  );
   for (let f = BAND.min; f <= BAND.max + 1e-9; f += FREQUENCY_STEP) {
-    const key = f.toFixed(1);
-    if (!taken.has(key)) return Number(key);
+    const key = Number(f.toFixed(1));
+    if (isFrequencyFree(ecosystem, key)) return key;
   }
   return null;
 }
 
+/**
+ * Whether a frequency can be taken.
+ *
+ * Free means nothing is on air there *and* nobody is paying to keep it. The
+ * holder is the exception: a hold exists precisely so its owner can come back
+ * to the same address, and a hold that locked out its own holder would be a
+ * subscription to nothing.
+ */
 export function isFrequencyFree(
   ecosystem: EcosystemId,
   frequency: number,
+  forPersonId = ME_ID,
 ): boolean {
-  return !state.channels.some(
-    (c) => c.ecosystem === ecosystem && c.frequency.toFixed(1) === frequency.toFixed(1),
+  const onAir = state.channels.some(
+    (c) =>
+      c.ecosystem === ecosystem &&
+      c.frequency.toFixed(1) === frequency.toFixed(1),
   );
+  if (onAir) return false;
+  const hold = activeHold(ecosystem, frequency);
+  return !hold || hold.holderId === forPersonId;
 }
 
 export function isTitleFree(ecosystem: EcosystemId, title: string): boolean {
@@ -342,10 +400,20 @@ export function createCoChannel(
   if (frequency === null) {
     return { ok: false, error: "The band is full.", field: "frequency" };
   }
-  if (!isFrequencyFree(input.ecosystem, frequency)) {
+  if (!isFrequencyFree(input.ecosystem, frequency, personId)) {
+    /* Occupied and held are different problems with different fixes, so they
+       get different sentences: one clears on its own, the other does not. */
+    const hold = activeHold(input.ecosystem, frequency);
+    const onAir = state.channels.some(
+      (c) =>
+        c.ecosystem === input.ecosystem &&
+        c.frequency.toFixed(1) === frequency.toFixed(1),
+    );
     return {
       ok: false,
-      error: `${frequency.toFixed(1)} is taken on this band.`,
+      error: onAir
+        ? `${frequency.toFixed(1)} is on air. Pick another.`
+        : `${frequency.toFixed(1)} is held by ${shortName(hold!.holderId)} until ${new Date(hold!.until).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}.`,
       field: "frequency",
     };
   }
