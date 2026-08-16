@@ -30,6 +30,7 @@ import type { Person } from "@/data/schema";
 
 const COOKIE = "fr_identity";
 const NAME_COOKIE = "fr_username";
+const AVATAR_COOKIE = "fr_avatar";
 
 export function identityCookieName() {
   return COOKIE;
@@ -37,6 +38,10 @@ export function identityCookieName() {
 
 export function usernameCookieName() {
   return NAME_COOKIE;
+}
+
+export function avatarCookieName() {
+  return AVATAR_COOKIE;
 }
 
 /** A compressed secp256k1 public key: 33 bytes, hex, 02 or 03 prefixed. */
@@ -74,7 +79,11 @@ export function normaliseUsername(input: string): string | null {
  * sessions and unique across people, which is what both the occupant list and
  * RealtimeKit need of it.
  */
-export function personFromKey(publicKey: string, username: string | null): Person {
+export function personFromKey(
+  publicKey: string,
+  username: string | null,
+  photo: string | null = null,
+): Person {
   const short = truncateKey(publicKey);
   return {
     id: `wallet-${publicKey.slice(0, 16)}`,
@@ -90,7 +99,7 @@ export function personFromKey(publicKey: string, username: string | null): Perso
     bio: "",
     organization: null,
     city: "",
-    photo: null,
+    photo,
     /* Derived from the key, so the same person is the same colours every
        time without storing anything. */
     avatarColors: colorsFor(publicKey),
@@ -115,6 +124,7 @@ export interface Connected {
   person: Person;
   publicKey: string;
   username: string | null;
+  photo: string | null;
 }
 
 /**
@@ -128,7 +138,13 @@ export async function connectedPerson(): Promise<Connected | null> {
   const key = store.get(COOKIE)?.value;
   if (!isIdentityKey(key)) return null;
   const username = store.get(NAME_COOKIE)?.value ?? null;
-  return { person: personFromKey(key, username), publicKey: key, username };
+  const photo = store.get(AVATAR_COOKIE)?.value ?? null;
+  return {
+    person: personFromKey(key, username, photo),
+    publicKey: key,
+    username,
+    photo,
+  };
 }
 
 /**

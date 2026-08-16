@@ -3,7 +3,8 @@
 import { useSyncExternalStore } from "react";
 import { useTheme } from "next-themes";
 import { Check, Monitor, Moon, Sun } from "@phosphor-icons/react";
-import { Avatar, EcosystemMark, Identity } from "@/components/identity";
+import { EcosystemMark } from "@/components/identity";
+import { AvatarPicker } from "@/components/shell/avatar-picker";
 import { PageHeader } from "@/components/shell/page-header";
 import { Help } from "@/components/ui/overlays";
 import { Skeleton } from "@/components/ui/primitives";
@@ -57,13 +58,7 @@ export default function SettingsPage() {
         {!session ? (
           <Skeleton className="h-[4.75rem] w-full rounded-lg" />
         ) : session.me ? (
-          <div className="flex items-center gap-3 rounded-lg border border-border bg-card p-4">
-            <Avatar person={session.me} size={44} />
-            <div className="min-w-0">
-              <p className="text-sm font-medium">{session.me.name}</p>
-              <Identity person={session.me} className="text-[11px]" />
-            </div>
-          </div>
+          <AvatarPicker person={session.me} />
         ) : (
           <p className="rounded-lg border border-dashed border-border p-4 text-sm text-muted-foreground">
             Nothing is connected. Connect a wallet from the top bar to join a

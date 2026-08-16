@@ -197,6 +197,52 @@ export function listParticipants(config: RealtimeConfig, meetingId: string) {
   );
 }
 
+/** Rename a meeting. Ending a station is a rename; see `lib/server/lifecycle`. */
+export function renameMeeting(
+  config: RealtimeConfig,
+  meetingId: string,
+  title: string,
+) {
+  return call<Meeting>(config, `/meetings/${meetingId}`, {
+    method: "PUT",
+    body: JSON.stringify({ title }),
+  });
+}
+
+export interface ActiveSession {
+  id: string;
+  live_participants?: number;
+  created_at?: string;
+}
+
+/**
+ * The session going on in a meeting, or null when there is none.
+ *
+ * The endpoint 404s rather than returning empty, which is a fact about a
+ * room and not an error, so it is translated here instead of at every call.
+ */
+export async function activeSession(
+  config: RealtimeConfig,
+  meetingId: string,
+): Promise<ActiveSession | null> {
+  try {
+    return await call<ActiveSession>(
+      config,
+      `/meetings/${meetingId}/active-session`,
+    );
+  } catch (e) {
+    if (e instanceof RealtimeError && e.status === 404) return null;
+    throw e;
+  }
+}
+
+/** Remove everybody. Used when a station ends under them. */
+export function kickAll(config: RealtimeConfig, meetingId: string) {
+  return call<unknown>(config, `/meetings/${meetingId}/active-session/kick-all`, {
+    method: "POST",
+  });
+}
+
 /* ------------------------------------------------------------- recordings */
 
 /**

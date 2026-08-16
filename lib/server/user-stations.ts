@@ -1,5 +1,6 @@
 import "server-only";
 
+import { withinLifespan } from "@/lib/server/lifecycle";
 import type { CoChannel, EcosystemId } from "@/data/schema";
 import {
   createMeeting,
@@ -93,7 +94,13 @@ export async function userStations(): Promise<CoChannel[]> {
   const rows: CoChannel[] = [];
   for (const meeting of meetings) {
     const value = decode(meeting.title ?? "");
-    if (value) rows.push(toStation(value, meeting.created_at));
+    if (!value) continue;
+    const station = toStation(value, meeting.created_at);
+    /* Past its two hours it is over, whether or not the sweep has reached it
+       yet. Reads must not show a station that a write would refuse to let
+       anybody into. */
+    if (!withinLifespan(station.startedAt)) continue;
+    rows.push(station);
   }
   return rows.sort((a, b) => b.startedAt.localeCompare(a.startedAt));
 }

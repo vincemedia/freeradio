@@ -17,7 +17,7 @@ import { useRadio } from "@/lib/store";
 import { cn } from "@/lib/utils";
 
 const TABS = [
-  { id: "browse", label: "Browse the band" },
+  { id: "browse", label: "On air now" },
   { id: "recent", label: "You were in" },
 ] as const;
 
@@ -39,7 +39,13 @@ export default function OnAirPage() {
      browse at read time, not on a second render. */
   const active: Tab = tab === "recent" && !hasRecent ? "browse" : tab;
 
-  const { data, loading } = useFetch<CoChannelView[]>(`/api/co-channels?ecosystem=${ecosystem}${q ? `&q=${encodeURIComponent(q)}` : ""}`);
+  const { data: all, loading } = useFetch<CoChannelView[]>(`/api/co-channels?ecosystem=${ecosystem}${q ? `&q=${encodeURIComponent(q)}` : ""}`);
+
+  /* Only stations you can walk into and speak in. A recorded broadcast is not
+     on air — it happened — and listing the two together invites somebody to
+     press Join on a conversation that finished last Tuesday. They live on
+     Recordings, which is what that page is for. */
+  const data = all?.filter((c) => c.kind === "live");
 
   const band = getEcosystem(ecosystem);
 
@@ -111,7 +117,7 @@ export default function OnAirPage() {
           </div>
         ) : (data?.length ?? 0) === 0 ? (
           <EmptyState
-            title={q ? "Nothing matches that" : "This band is quiet"}
+            title={q ? "Nothing matches that" : "Nothing on air here"}
             icon={<Broadcast size={28} />}
             action={
               q ? (

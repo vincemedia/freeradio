@@ -32,6 +32,17 @@ import type { Recording } from "@/data/schema";
 /** RealtimeKit's own states; anything else is still in progress. */
 const READY = new Set(["UPLOADED", "COMPLETED"]);
 
+/**
+ * How long a broadcast stays listed after it happened.
+ *
+ * A recording is the one thing that outlives a Co-Channel, and "outlives" was
+ * always meant to have an end. Thirty days is long enough that somebody who
+ * was told about a conversation can still hear it, and short enough that the
+ * archive is not the product. Rows past it are dropped from the listing
+ * rather than deleted — the file's own signed URL expires on Cloudflare's
+ * schedule, and pretending we control that would be worse than saying so. */
+const RETAIN_MS = 30 * 24 * 60 * 60 * 1000;
+
 export async function liveRecordings(): Promise<Recording[]> {
   const config = realtimeConfig();
   if (!config) return [];
@@ -50,10 +61,14 @@ export async function liveRecordings(): Promise<Recording[]> {
 
   const rows: Recording[] = [];
 
+  const cutoff = Date.now() - RETAIN_MS;
+
   for (const r of recordings) {
     if (!READY.has(r.status) || !r.download_url) continue;
     const station = stationOf.get(r.meeting_id);
     if (!station) continue;
+    /* Past its thirty days it stops being listed. */
+    if (r.started_time && Date.parse(r.started_time) < cutoff) continue;
 
     const started = r.started_time ? Date.parse(r.started_time) : null;
     const stopped = r.stopped_time ? Date.parse(r.stopped_time) : null;
