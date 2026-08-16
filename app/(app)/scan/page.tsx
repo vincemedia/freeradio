@@ -199,13 +199,6 @@ export default function ScanPage() {
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             <CoChannelCard coChannel={detail} />
           </div>
-          <Button
-            variant="primary"
-            size="sm"
-            onClick={() => router.push(`/co-channel/${detail.id}`)}
-          >
-            Tune in
-          </Button>
         </section>
       ) : heldHere ? (
         /* Silent but spoken for. Saying who holds it and until when is the

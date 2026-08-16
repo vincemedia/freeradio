@@ -295,6 +295,46 @@
     box-shadow: var(--panel-highlight), var(--panel-shadow);
   }
 
+  /* The panel, mounted proud of the surface behind it rather than flush with
+     it. For the one panel on a screen that is the subject of the screen: the
+     room header is the object you came for, and sitting it in the same warm
+     grey as the page made it read as background. White, and standing up. */
+  .panel-raised {
+    background-color: var(--card);
+    border-color: transparent;
+    box-shadow: var(--shadow-clay-surface);
+  }
+
+  /* A surface that stands up when you point at it.
+
+     One definition rather than a class list repeated on every card, because
+     the whole point is that every card in the product answers a finger the
+     same way. Same clay as the buttons, untinted: no colour change, just
+     depth. */
+  .lift {
+    transition:
+      transform 150ms var(--ease-out-quint),
+      box-shadow 150ms var(--ease-out-quint),
+      border-color 150ms var(--ease-out-quint);
+  }
+  .lift:hover {
+    transform: translateY(-2px);
+    border-color: transparent;
+    box-shadow: var(--shadow-clay-surface);
+  }
+  .lift:active {
+    transform: translateY(0) scale(0.995);
+    box-shadow: var(--shadow-clay-surface-pressed);
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .lift,
+    .lift:hover,
+    .lift:active {
+      transition: none;
+      transform: none;
+    }
+  }
+
   /* The operating system's scrollbar is its design, not ours. Hidden only
      where something in the product's own language replaces it. */
   .no-native-scrollbar {

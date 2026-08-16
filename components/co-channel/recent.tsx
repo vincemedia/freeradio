@@ -27,48 +27,76 @@ export function RecentCoChannels() {
 
   return (
     /* No heading of its own: this sits behind a tab now, and the tab is the
-       heading. Two names for one list is one too many. */
-    <div>
-      <ul className="flex flex-wrap gap-2">
-        {recent.map((r) => {
-          const stillOn = liveIds.has(r.id);
-          const isHere = currentId === r.id;
+       heading. Two names for one list is one too many.
 
-          if (!stillOn && live) {
-            return (
-              <li
-                key={r.id}
-                className="flex items-center gap-2 rounded-md border border-dashed border-border px-2.5 py-1.5 text-[11px] text-muted-foreground"
-                title={`Closed. ${formatFrequency(r.frequency)} is back in the pool.`}
-              >
-                <span className="readout line-through">
+       Laid out on the same grid and built from the same card as Browse the
+       band, because these are the same object seen a second time. A history
+       drawn as a strip of chips looked like a different kind of thing, which
+       it is not. */
+    <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+      {recent.map((r) => {
+        const stillOn = liveIds.has(r.id);
+        const isHere = currentId === r.id;
+
+        /* Most of these will be gone, and a closed one is not a broken link:
+           it is the rule working. Dashed, struck through, not clickable. */
+        if (!stillOn && live) {
+          return (
+            <li
+              key={r.id}
+              className="flex flex-col gap-3 rounded-lg border border-dashed border-border p-4 text-muted-foreground"
+              title={`${formatFrequency(r.frequency)} is back in the pool.`}
+            >
+              <div className="flex items-baseline gap-1.5">
+                <span className="readout text-lg leading-none tracking-tight line-through">
                   {formatFrequency(r.frequency)}
                 </span>
-                <span className="max-w-[10rem] truncate line-through">
-                  {r.title}
-                </span>
-                <span className="shrink-0">closed</span>
-              </li>
-            );
-          }
-
-          return (
-            <li key={r.id}>
-              <Link
-                href={`/co-channel/${r.id}`}
-                className="flex items-center gap-2 rounded-md border border-border bg-card px-2.5 py-1.5 text-[11px] transition-colors hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-              >
-                <EcosystemMark ecosystem={r.ecosystem} size={12} />
-                <span className="readout">{formatFrequency(r.frequency)}</span>
-                <span className="max-w-[10rem] truncate">{r.title}</span>
-                <span className="shrink-0 text-muted-foreground">
-                  {isHere ? "you are here" : formatAgo(r.at)}
-                </span>
-              </Link>
+                <span className="text-[11px]">MHz</span>
+              </div>
+              <h3 className="line-clamp-2 font-display text-[15px] font-semibold leading-snug tracking-tight line-through">
+                {r.title}
+              </h3>
+              <p className="mt-auto border-t border-border pt-2.5 text-[11px]">
+                Closed. The last person left, so the frequency went back into
+                the pool.
+              </p>
             </li>
           );
-        })}
-      </ul>
-    </div>
+        }
+
+        return (
+          <li key={r.id}>
+            <Link
+              href={`/co-channel/${r.id}`}
+              className="lift flex h-full flex-col gap-3 rounded-lg border border-border bg-card p-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+            >
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex items-baseline gap-1.5">
+                  <span className="readout text-lg leading-none tracking-tight">
+                    {formatFrequency(r.frequency)}
+                  </span>
+                  <span className="text-[11px] text-muted-foreground">MHz</span>
+                </div>
+                <EcosystemMark ecosystem={r.ecosystem} size={16} />
+              </div>
+
+              <h3 className="line-clamp-2 font-display text-[15px] font-semibold leading-snug tracking-tight text-balance">
+                {r.title}
+              </h3>
+
+              <div className="mt-auto flex items-center justify-between gap-3 border-t border-border pt-2.5 text-[11px] text-muted-foreground">
+                <span>{isHere ? "You are here" : `Last in ${formatAgo(r.at)}`}</span>
+                <span
+                  aria-hidden
+                  className="inline-flex shrink-0 items-center gap-1 rounded-md bg-primary px-2.5 py-1 font-medium text-primary-foreground shadow-[var(--shadow-clay-primary)] transition-transform duration-150 ease-[var(--ease-out-quint)] group-active:scale-[0.98]"
+                >
+                  {isHere ? "Back in" : "Tune in"}
+                </span>
+              </div>
+            </Link>
+          </li>
+        );
+      })}
+    </ul>
   );
 }

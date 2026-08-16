@@ -172,12 +172,11 @@ export function CoChannelCard({
            Braun front panel is one surface with things standing proud of it,
            and it answers a finger with depth, not with colour.
 
-           Made of the same clay as the buttons — same three-shadow
-           construction, same squash on press — only untinted. A card that
-           rose with a plain drop shadow while the Join inside it was moulded
-           read as two different materials in one component. The radius stays
-           the surface radius: clay is a finish, not a shape. */
-        "group relative flex flex-col gap-3 rounded-lg border border-border bg-card p-4 transition-[transform,box-shadow,border-color] duration-150 ease-[var(--ease-out-quint)] hover:-translate-y-0.5 hover:border-transparent hover:shadow-[var(--shadow-clay-surface)] active:translate-y-0 active:scale-[0.995] active:shadow-[var(--shadow-clay-surface-pressed)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background motion-reduce:transition-none motion-reduce:hover:translate-y-0",
+           `lift` is that rule, defined once in globals.css so every card in
+           the product rises the same way. Same clay as the buttons, untinted;
+           the radius stays the surface radius, because clay is a finish and
+           not a shape. */
+        "lift group relative flex flex-col gap-3 rounded-lg border border-border bg-card p-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
         className,
       )}
     >
@@ -248,7 +247,7 @@ export function CoChannelCard({
           aria-hidden
           className="inline-flex shrink-0 items-center gap-1 rounded-md bg-primary px-2.5 py-1 text-[11px] font-medium text-primary-foreground shadow-[var(--shadow-clay-primary)] transition-transform duration-150 ease-[var(--ease-out-quint)] group-active:scale-[0.98] group-active:shadow-[var(--shadow-clay-primary-pressed)]"
         >
-          {inThisRoom ? "Back in" : "Join"}
+          {inThisRoom ? "Back in" : "Tune in"}
         </span>
       </div>
     </Link>

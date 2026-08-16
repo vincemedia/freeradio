@@ -156,7 +156,7 @@ export default function CoChannelPage() {
         {/* Claims the same name the card or dock had, so the room does not
             replace them: it is what they turn into. */}
         <Panel
-          className="p-4 sm:p-5"
+          className="panel-raised p-4 sm:p-5"
           style={
             { viewTransitionName: coChannelTransitionName(view.id) } as React.CSSProperties
           }

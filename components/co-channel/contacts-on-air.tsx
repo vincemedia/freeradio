@@ -58,7 +58,7 @@ export function ContactsOnAir() {
             <li key={person.id}>
               <Link
                 href={`/co-channel/${coChannel!.id}`}
-                className="flex w-[15rem] items-center gap-2.5 rounded-lg border border-border bg-card p-2.5 transition-colors hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                className="lift flex w-[15rem] items-center gap-2.5 rounded-lg border border-border bg-card p-2.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               >
                 <Avatar person={person} size={36} />
                 <span className="min-w-0 flex-1">

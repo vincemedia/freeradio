@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import useFetch from "@/lib/use-fetch";
 import { Facepile, Identity } from "@/components/identity";
 import { PlayButton } from "@/components/co-channel/play-button";
+import { RecordingActions } from "@/components/co-channel/recording-actions";
 import { Price, usePriceLabel } from "@/components/price";
 import { PageHeader } from "@/components/shell/page-header";
 import { Button } from "@/components/ui/button";
@@ -138,12 +139,19 @@ export default function RecordingsPage() {
                   </div>
                 </div>
 
-                <Facepile
-                  people={r.occupantsResolved}
-                  max={3}
-                  size={24}
-                  className="hidden shrink-0 sm:inline-flex"
-                />
+                {/* Who was in it, then what you can do with it, both hard
+                    right. The facepile is a fact about the row; the controls
+                    are actions on it, and mixing them into the metadata line
+                    on the left buried them under four other numbers. */}
+                <div className="flex shrink-0 items-center gap-2">
+                  <Facepile
+                    people={r.occupantsResolved}
+                    max={3}
+                    size={24}
+                    className="hidden sm:inline-flex"
+                  />
+                  <RecordingActions recording={r} />
+                </div>
               </li>
             );
           })}
