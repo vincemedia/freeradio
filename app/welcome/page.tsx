@@ -500,8 +500,14 @@ export default function WelcomePage() {
 
               {/* The name comes first, because it is the only thing here
                   that is theirs to decide. It attaches to whichever key
-                  connects — or to none, and waits. */}
-              <div className="w-full space-y-2 text-left">
+                  connects — or to none, and waits.
+
+                  Narrower than the buttons and centred under the logo, so the
+                  step reads as one column with a single decision in it rather
+                  than as a form that has appeared beneath a splash screen. A
+                  full-width field for a one-word answer also invites a
+                  sentence. */}
+              <div className="mx-auto mt-3 w-full max-w-[17rem] space-y-2 text-center">
                 <label
                   htmlFor="fr-username"
                   className="block text-[11px] font-medium uppercase tracking-[0.06em] text-muted-foreground"
@@ -523,7 +529,7 @@ export default function WelcomePage() {
                   autoComplete="off"
                   spellCheck={false}
                   aria-describedby="fr-username-help"
-                  className="h-11"
+                  className="h-11 text-center"
                 />
                 <p id="fr-username-help" className="text-xs text-muted-foreground">
                   {nameError ??
@@ -534,7 +540,7 @@ export default function WelcomePage() {
                     than buried under a button. Both documents are one tap
                     away and open in their own tab, so reading them does not
                     cost somebody their place in first run. */}
-                <label className="mt-4 flex cursor-pointer items-start gap-2.5 text-xs leading-relaxed text-muted-foreground">
+                <label className="mt-6 flex cursor-pointer items-start gap-2.5 text-left text-xs leading-relaxed text-muted-foreground">
                   <input
                     type="checkbox"
                     checked={agreed}
@@ -568,8 +574,12 @@ export default function WelcomePage() {
                   because it is the one that opens the rest of the product.
                   Skipping is not a lesser path: the band and the recorded
                   broadcasts all work without an identity, and pretending
-                  otherwise would be a gate with nothing behind it. */}
-              <div className="space-y-2">
+                  otherwise would be a gate with nothing behind it.
+
+                  Set well clear of the agreement above it. A checkbox that
+                  sits against the button it unlocks reads as part of the
+                  button, and gets ticked the way a button gets pressed. */}
+              <div className="mt-9 space-y-2">
                 <Button
                   variant="primary"
                   className="w-full"
