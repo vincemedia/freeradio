@@ -37,6 +37,7 @@ export function MobileMenu({
   const [panel, setPanel] = useState<"root" | "bands">("root");
   const ecosystem = useRadio((s) => s.ecosystem);
   const setEcosystem = useRadio((s) => s.setEcosystem);
+  const dismissOnAirHint = useRadio((s) => s.dismissOnAirHint);
   const { data: bands } = useFetch<Band[]>(open ? "/api/ecosystems" : null);
 
   /* Locking the page behind the overlay is a real external effect, so it
@@ -103,7 +104,14 @@ export function MobileMenu({
                 <Link
                   key={item.href}
                   href={item.href}
-                  onClick={close}
+                  /* On air is the way back out of a station, and dismissing
+                     the hint is what using it means. The tooltip itself only
+                     shows beside the wide-screen nav, but the flag is one
+                     thing: taking the door here has to close it there too. */
+                  onClick={() => {
+                    if (item.href === "/") dismissOnAirHint();
+                    close();
+                  }}
                   className="py-3 font-display text-2xl font-semibold tracking-tight text-foreground"
                 >
                   {item.label}

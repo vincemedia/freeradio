@@ -12,6 +12,7 @@ import { NewCoChannelDialog } from "@/components/co-channel/new-co-channel";
 import { Button } from "@/components/ui/button";
 import { HintTooltip } from "@/components/ui/overlays";
 import { useRadio } from "@/lib/store";
+import { MD, useMediaQuery } from "@/lib/use-media-query";
 import { cn } from "@/lib/utils";
 
 /**
@@ -35,9 +36,16 @@ export function TopBar() {
   const seenOnAirHint = useRadio((s) => s.seenOnAirHint);
   const dismissOnAirHint = useRadio((s) => s.dismissOnAirHint);
   const inAStation = useRadio((s) => s.session?.coChannelId) != null;
+  /* The tooltip portals to the body, so it escapes the `hidden md:flex` on
+     the nav and would otherwise float in the top-left corner of a phone,
+     pointing at nothing and with no way to dismiss it: the link it is
+     attached to is not on screen to be clicked. Gate it on the nav actually
+     being visible rather than on the viewport alone. */
+  const navVisible = useMediaQuery(MD);
   /* Only worth showing while they are somewhere else, which after first run
      means inside the station they were dropped into. */
-  const showOnAirHint = !seenOnAirHint && inAStation && pathname !== "/";
+  const showOnAirHint =
+    !seenOnAirHint && inAStation && pathname !== "/" && navVisible;
   const isActive = (href: string) =>
     href === "/" ? pathname === "/" : pathname.startsWith(href);
 

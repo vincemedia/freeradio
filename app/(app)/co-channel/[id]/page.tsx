@@ -12,6 +12,8 @@ import {
   Record,
   SignOut,
   Sliders,
+  SpeakerHigh,
+  SpeakerSlash,
 } from "@phosphor-icons/react";
 import useFetch from "@/lib/use-fetch";
 import { Nest, OccupantGrid, RoomStatus, Transcript } from "@/components/co-channel/room";
@@ -44,6 +46,10 @@ export default function CoChannelPage() {
   const toggleMute = useRadio((s) => s.toggleMute);
   const toggleRecording = useRadio((s) => s.toggleRecording);
   const joining = useRadio((s) => s.joining);
+  const listening = useRadio((s) => s.listening);
+  const audioBlocked = useRadio((s) => s.audioBlocked);
+  const setListening = useRadio((s) => s.setListening);
+  const resumeAudio = useRadio((s) => s.resumeAudio);
 
   const { data: preview, loading, error } = useFetch<RoomResponse>(`/api/co-channels/${id}`);
 
@@ -156,7 +162,13 @@ export default function CoChannelPage() {
           }
         >
           <div className="flex flex-wrap items-start justify-between gap-4">
-            <div className="min-w-0 flex-1">
+            {/* A real basis, not `flex-1` alone. With `flex: 1 1 0%` this
+                column never contributes enough width to push the controls
+                onto a line of their own, so on a phone the shrink-0 controls
+                keep the row and squeeze the text down to its longest word.
+                Asking for 18rem makes the row overflow first, which is what
+                flex-wrap is here to catch. */}
+            <div className="min-w-0 flex-1 basis-72">
               <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
                 <RoomStatus room={view} />
                 <GateBadge gate={view.primaryGate} />
@@ -217,6 +229,37 @@ export default function CoChannelPage() {
                       </>
                     )}
                   </Button>
+
+                  {/* Sound, which is not the same switch as your microphone.
+                      When the browser has refused to start audio the control
+                      says so and is the gesture that unblocks it, because a
+                      silent room with no explanation reads as broken. */}
+                  {view.hasAudio && (
+                    <Button
+                      variant={audioBlocked ? "primary" : "secondary"}
+                      size={audioBlocked ? "sm" : "icon-sm"}
+                      aria-label={listening ? "Turn the sound off" : "Turn the sound on"}
+                      aria-pressed={listening && !audioBlocked}
+                      onClick={() => {
+                        if (audioBlocked) {
+                          void resumeAudio();
+                          return;
+                        }
+                        setListening(!listening);
+                      }}
+                    >
+                      {audioBlocked ? (
+                        <>
+                          <SpeakerHigh size={15} />
+                          Listen
+                        </>
+                      ) : listening ? (
+                        <SpeakerHigh />
+                      ) : (
+                        <SpeakerSlash />
+                      )}
+                    </Button>
+                  )}
 
                   {isHost && (
                     <Button
