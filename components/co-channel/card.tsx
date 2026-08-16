@@ -1,13 +1,19 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Coins, LockKey, Prohibit, ShieldCheck } from "@phosphor-icons/react";
 import { Facepile, Identity } from "@/components/identity";
 import { Badge } from "@/components/ui/primitives";
 import type { CoChannelView, GateKind } from "@/data/schema";
 import { GATE_LABEL } from "@/lib/gates";
 import { formatFrequency } from "@/lib/format";
+import { useRadio } from "@/lib/store";
 import { cn } from "@/lib/utils";
+import {
+  coChannelTransitionName,
+  navigateWithTransition,
+} from "@/lib/view-transition";
 
 const GATE_ICON: Record<Exclude<GateKind, "open">, React.ComponentType<{ size?: number }>> = {
   token: Coins,
@@ -44,11 +50,31 @@ export function CoChannelCard({
   coChannel: CoChannelView;
   className?: string;
 }) {
+  const router = useRouter();
   const people = coChannel.occupants.map((o) => o.person);
+  const inThisRoom = useRadio((s) => s.session?.coChannelId) === coChannel.id;
+  const href = `/co-channel/${coChannel.id}`;
 
   return (
     <Link
-      href={`/co-channel/${coChannel.id}`}
+      href={href}
+      onClick={(e) => {
+        /* Let the browser handle modified clicks: a new tab has nothing to
+           transition to. */
+        if (e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return;
+        e.preventDefault();
+        navigateWithTransition(() => router.push(href), href);
+      }}
+      /* The dock owns the name while you are in the room, since it is the
+         thing on screen that represents it. Two elements claiming one name
+         makes the browser abandon the transition entirely. */
+      style={
+        inThisRoom
+          ? undefined
+          : ({
+              viewTransitionName: coChannelTransitionName(coChannel.id),
+            } as React.CSSProperties)
+      }
       className={cn(
         "group relative flex flex-col gap-3 rounded-lg border border-border bg-card p-4 transition-[transform,background-color] duration-150 ease-[var(--ease-out-quint)] hover:bg-muted/40 active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
         className,

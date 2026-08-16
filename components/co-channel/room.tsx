@@ -149,23 +149,42 @@ export function Nest({
  * The ring around whoever is speaking thickens rather than changing colour, so
  * the signal survives for somebody who cannot separate yellow from grey.
  */
-export function OccupantGrid({ room }: { room: CoChannelView }) {
+export function OccupantGrid({
+  room,
+  leaving = false,
+}: {
+  room: CoChannelView;
+  /** reverses the stagger and runs it faster, on the way out */
+  leaving?: boolean;
+}) {
   const speakingId = useRadio((s) => s.speakingId);
   const me = useRadio((s) => s.session?.me.id);
+  const count = room.occupants.length;
 
   return (
     <section className="relative overflow-hidden rounded-lg border border-border bg-card">
       <Grille className="absolute inset-0 opacity-70" />
       <ul className="relative grid grid-cols-3 gap-x-2 gap-y-5 p-5 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6">
-        {room.occupants.map((o) => {
+        {room.occupants.map((o, i) => {
           const speaking = speakingId === o.personId;
+          /* The room fills in reading order and empties in reverse, so
+             arriving reads as the room assembling and leaving as it packing
+             up. Exits are quicker than entrances, per DESIGN.md: going should
+             feel lighter than coming. */
+          const delay = leaving ? (count - 1 - i) * 18 : i * 28;
           return (
             /* min-w-0: a grid item defaults to min-width:auto, so without it
                the identity line sets the track width and the columns collide
                instead of truncating. */
             <li
               key={o.id}
-              className="flex min-w-0 flex-col items-center gap-1.5 text-center"
+              style={{ animationDelay: `${delay}ms` }}
+              className={cn(
+                "flex min-w-0 flex-col items-center gap-1.5 text-center fill-mode-both ease-out-quint",
+                leaving
+                  ? "animate-out fade-out zoom-out-95 duration-200"
+                  : "animate-in fade-in zoom-in-95 duration-300",
+              )}
             >
               <span className="relative">
                 <SpeakingRing speaking={speaking}>

@@ -232,6 +232,23 @@
   }
 }
 
+/* ============================================================
+   View transitions.
+
+   The browser's default is a 250ms cross-fade on its own curve, which is not
+   ours. These pull it onto the system tokens so a Co-Channel morphing from a
+   card into a room moves like everything else in the product.
+   ============================================================ */
+::view-transition-group(*) {
+  animation-duration: 300ms;
+  animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation-duration: 200ms;
+}
+
 /* The recording lamp is one of only three animations allowed to run at
    rest, and it stops the moment recording does. */
 @keyframes lamp-pulse {
@@ -249,6 +266,15 @@
   .lamp-pulse {
     animation: none;
     opacity: 1;
+  }
+
+  /* Belt and braces: navigation already skips the transition entirely under
+     reduced motion, but a transition started any other way is stopped here
+     too rather than cross-fading the whole page. */
+  ::view-transition-group(*),
+  ::view-transition-old(*),
+  ::view-transition-new(*) {
+    animation: none !important;
   }
 
   *,

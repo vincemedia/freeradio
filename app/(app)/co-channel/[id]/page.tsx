@@ -28,6 +28,7 @@ import type { GateResult } from "@/lib/gates";
 import { GATE_HELP } from "@/lib/gates";
 import { elapsedSince, formatDuration, formatFrequency } from "@/lib/format";
 import { startSpeaking, useRadio } from "@/lib/store";
+import { coChannelTransitionName } from "@/lib/view-transition";
 
 type RoomResponse = CoChannelView & { gateCheck: GateResult };
 
@@ -56,6 +57,9 @@ export default function CoChannelPage() {
     return startSpeaking(id);
   }, [inThisRoom, id]);
 
+  /* The room empties before the route changes, so leaving is something you
+     watch happen rather than a page that vanishes. */
+  const [leaving, setLeaving] = useState(false);
   const [elapsed, setElapsed] = useState(0);
   useEffect(() => {
     if (!view) return;
@@ -74,11 +78,17 @@ export default function CoChannelPage() {
       return;
     }
     toast.success("You are in", {
-      description: "You joined muted. Unmute when you want to talk.",
+      description: "Unmute when you want to talk.",
     });
   };
 
+  const LEAVE_MS = 260;
   const handleLeave = async () => {
+    const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (!reduced) {
+      setLeaving(true);
+      await new Promise((r) => setTimeout(r, LEAVE_MS));
+    }
     await leave();
     toast("You left the Co-Channel");
     router.push("/");
@@ -137,7 +147,14 @@ export default function CoChannelPage() {
         </Button>
 
         {/* ---- header ---- */}
-        <Panel className="p-4 sm:p-5">
+        {/* Claims the same name the card or dock had, so the room does not
+            replace them: it is what they turn into. */}
+        <Panel
+          className="p-4 sm:p-5"
+          style={
+            { viewTransitionName: coChannelTransitionName(view.id) } as React.CSSProperties
+          }
+        >
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div className="min-w-0 flex-1">
               <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
@@ -305,13 +322,15 @@ export default function CoChannelPage() {
                 max={4}
                 size={22}
               />
-              Everyone can see your handle and avatar when you join.
+              {/* Both consequences of pressing Join, said before you press it
+                  rather than in a toast afterwards. */}
+              Everyone can see your handle and avatar. You join muted.
             </p>
           )}
         </Panel>
 
         <Nest room={view} canPost={inThisRoom} />
-        <OccupantGrid room={view} />
+        <OccupantGrid room={view} leaving={leaving} />
         {inThisRoom && <Transcript lines={transcript} />}
         {!inThisRoom && (
           <p className="rounded-lg border border-dashed border-border px-4 py-6 text-center text-sm text-muted-foreground">
