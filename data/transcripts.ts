@@ -8,20 +8,66 @@
  * words never appear, which is the tell that a demo is faking two things
  * separately.
  *
- * There is no audio. `SPEAKING_MS` is how long a line is treated as being
- * spoken for, and the ring around that person's avatar thickens for exactly
- * that long.
+ * How long a line takes is part of the script, not a constant. On the three
+ * stations with a recording behind them it is measured: the turn's real start
+ * and end in the file. Everywhere else it is estimated from the words, which
+ * is still closer to the truth than giving "Just kidding." and a two-sentence
+ * argument the same four seconds each.
  */
 import { STATION_AUDIO } from "./audio";
 import type { TranscriptLine } from "./schema";
-
-/** How long one line is "spoken" for, in milliseconds. */
-export const SPEAKING_MS = 4200;
 
 /** How many lines of a script are already in the past when you arrive. */
 const SEEDED = 4;
 
 type Script = [personId: string, text: string][];
+
+/**
+ * Speech, in words per second.
+ *
+ * Measured off the three transcribed files rather than guessed: they come out
+ * at 2.6, 2.9 and 3.0, which is also where the usual figure for unhurried
+ * speech sits.
+ */
+const WORDS_PER_SECOND = 2.8;
+
+/** The shortest a line can be held, so a two-word aside is still readable. */
+const MIN_LINE_MS = 900;
+
+/**
+ * How long line `index` is spoken for, and the silence after it.
+ *
+ * Transcribed stations answer from the file. Everything else is estimated
+ * from the word count, with a fixed beat between turns: people do not begin
+ * speaking the instant the last person stops, and a room where they do reads
+ * as a machine reading a list.
+ */
+export function lineTiming(
+  coChannelId: string,
+  index: number,
+): { holdMs: number; gapMs: number; audioAtMs?: number } {
+  const audio = STATION_AUDIO[coChannelId];
+  if (audio) {
+    const line = audio.lines[index % audio.lines.length];
+    const next = audio.lines[(index + 1) % audio.lines.length];
+    /* Wrapping back to the top of the file gives a negative gap, so the loop
+       gets the same beat as an authored room rather than a jump. */
+    const gap = next.at - line.until;
+    return {
+      holdMs: Math.max(MIN_LINE_MS, (line.until - line.at) * 1000),
+      gapMs: gap > 0 ? gap * 1000 : 700,
+      audioAtMs: line.at * 1000,
+    };
+  }
+
+  const script = SCRIPTS[coChannelId];
+  const text = script?.[index % script.length]?.[1] ?? "";
+  const words = text.trim().split(/\s+/).length;
+  return {
+    holdMs: Math.max(MIN_LINE_MS, (words / WORDS_PER_SECOND) * 1000),
+    gapMs: 700,
+  };
+}
 
 /**
  * The stations with a recording behind them do not get a script written here.
@@ -265,14 +311,19 @@ export function seedTranscript(
 ): TranscriptLine[] {
   const script = SCRIPTS[coChannelId] ?? [];
   const start = new Date(startedAt).getTime();
-  return script.slice(0, SEEDED).map(([personId, text], i) => ({
-    id: `tr-${coChannelId}-${i}`,
-    coChannelId,
-    personId,
-    text,
-    at: new Date(start + i * SPEAKING_MS * 2).toISOString(),
-  }));
+  /* Walked forward with each line's own timing rather than spaced evenly, so
+     the history has the rhythm the room actually had. */
+  let offset = 0;
+  return script.slice(0, SEEDED).map(([personId, text], i) => {
+    const at = new Date(start + offset).toISOString();
+    const { holdMs, gapMs } = lineTiming(coChannelId, i);
+    offset += holdMs + gapMs;
+    return { id: `tr-${coChannelId}-${i}`, coChannelId, personId, text, at };
+  });
 }
+
+/** Where in a room's script the live lines pick up. */
+export const SEEDED_LINES = SEEDED;
 
 /**
  * The lines still to come, in order.

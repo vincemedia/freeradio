@@ -3,14 +3,15 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { DEFAULT_ECOSYSTEM } from "@/data/ecosystems";
-import { SPEAKING_MS } from "@/data/transcripts";
 import type {
   CoChannelView,
   EcosystemId,
   Person,
   TranscriptLineView,
 } from "@/data/schema";
+import { STATION_AUDIO } from "@/data/audio";
 import { ApiError, apiFetch, apiPost } from "@/lib/api";
+import * as player from "@/lib/player";
 
 /**
  * Client state, deliberately thin.
@@ -65,14 +66,36 @@ interface RadioState {
    */
   seenOnAirHint: boolean;
   recent: RecentRoom[];
+  /**
+   * Whether to play the sound of a station you are in.
+   *
+   * Distinct from `muted`, which is your microphone. Muting yourself and
+   * turning the room down are different acts and a radio has a control for
+   * each; collapsing them into one is how you end up unable to listen
+   * without also being heard.
+   */
+  listening: boolean;
 
   /* ---- live state ---- */
   session: Session | null;
   room: CoChannelView | null;
   transcript: TranscriptLineView[];
   speakingId: string | null;
+  /**
+   * Where the current turn sits in its recording, in seconds.
+   *
+   * Only set in a room with a file behind it. It is what lets the level meter
+   * read the envelope at the part of the file being spoken rather than
+   * replaying the opening on every turn.
+   */
+  speakingAt: number | null;
+  /** the browser refused to start audio and is waiting for a gesture */
+  audioBlocked: boolean;
   joining: boolean;
 
+  setListening: (v: boolean) => void;
+  /** try again after a gesture; resolves to whether sound is now playing */
+  resumeAudio: () => Promise<boolean>;
   setEcosystem: (id: EcosystemId) => void;
   /** follow or unfollow a band; refuses to leave the list empty */
   toggleFollowed: (id: EcosystemId) => void;
@@ -99,12 +122,29 @@ export const useRadio = create<RadioState>()(
       onboarded: false,
       seenOnAirHint: false,
       recent: [],
+      listening: true,
 
       session: null,
       room: null,
       transcript: [],
       speakingId: null,
+      speakingAt: null,
+      audioBlocked: false,
       joining: false,
+
+      setListening: (listening) => {
+        set({ listening });
+        player.setMuted(!listening);
+        /* Turning the sound on is a gesture, so it is also the moment a
+           blocked player is allowed to start. */
+        if (listening) void get().resumeAudio();
+      },
+
+      resumeAudio: async () => {
+        const ok = await player.resume();
+        set({ audioBlocked: !ok });
+        return ok;
+      },
 
       setEcosystem: (ecosystem) => set({ ecosystem }),
 
@@ -232,17 +272,23 @@ export const useRadio = create<RadioState>()(
         onboarded: s.onboarded,
         seenOnAirHint: s.seenOnAirHint,
         recent: s.recent,
+        listening: s.listening,
       }),
     },
   ),
 );
 
 /**
- * Drives the mock speaking.
+ * Drives the room: who is speaking, for how long, and the sound of it.
  *
- * There is no audio, so "somebody is speaking" means the server advanced the
- * room's script by one line. One call gives back both the speaker and the
- * line, which is what keeps the ring and the transcript from disagreeing.
+ * "Somebody is speaking" means the server advanced the room's script by one
+ * line. One call gives back the speaker, the line and its timing, which is
+ * what keeps the ring, the words and the clock from disagreeing.
+ *
+ * On the three stations with a file behind them that call also says where the
+ * turn sits in the recording, so the player is seeked there and the sound is
+ * the thing you are reading. The audio is not a second timeline running
+ * alongside the transcript; it is the same one, playing.
  *
  * Call this once, from the component that owns the room.
  */
@@ -250,31 +296,51 @@ export function startSpeaking(coChannelId: string): () => void {
   let cancelled = false;
   let timer: ReturnType<typeof setTimeout>;
 
+  const src = STATION_AUDIO[coChannelId]?.src;
+  /* Somebody else took the player. Nothing to undo: the next line claims it
+     back if this room is still the one on screen. */
+  const onLost = () => {};
+
   const tick = async () => {
     if (cancelled) return;
     try {
       const spoken = await apiPost<{
         personId: string;
         line: TranscriptLineView;
+        holdMs: number;
+        gapMs: number;
+        audioAtMs?: number;
       }>(`/api/co-channels/${coChannelId}/transcript`);
       if (cancelled) return;
 
+      const at = spoken.audioAtMs != null ? spoken.audioAtMs / 1000 : null;
+
       useRadio.setState((s) => ({
         speakingId: spoken.personId,
+        speakingAt: at,
         transcript: [...s.transcript, spoken.line],
       }));
 
-      /* The ring is lit for exactly as long as the line lasts, then goes out.
-         A ring that stays on between lines says the room is louder than it is. */
+      if (src && at != null) {
+        const { listening } = useRadio.getState();
+        player.setMuted(!listening);
+        void player.claim(src, at, onLost).then((started) => {
+          if (!cancelled) useRadio.setState({ audioBlocked: !started });
+        });
+      }
+
+      /* The ring is lit for exactly as long as the line lasts, then goes out
+         for the silence after it. A ring that stays on between turns says the
+         room is louder than it is. */
       setTimeout(() => {
-        if (!cancelled) useRadio.setState({ speakingId: null });
-      }, SPEAKING_MS - 600);
+        if (!cancelled) useRadio.setState({ speakingId: null, speakingAt: null });
+      }, spoken.holdMs);
+
+      timer = setTimeout(tick, spoken.holdMs + spoken.gapMs);
     } catch {
       /* Room closed. Stop rather than retrying into a hole. */
       cancelled = true;
-      return;
     }
-    timer = setTimeout(tick, SPEAKING_MS);
   };
 
   timer = setTimeout(tick, 900);
@@ -282,6 +348,7 @@ export function startSpeaking(coChannelId: string): () => void {
   return () => {
     cancelled = true;
     clearTimeout(timer);
-    useRadio.setState({ speakingId: null });
+    if (src) player.release(onLost);
+    useRadio.setState({ speakingId: null, speakingAt: null, audioBlocked: false });
   };
 }

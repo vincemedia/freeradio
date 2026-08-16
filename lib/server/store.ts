@@ -26,7 +26,7 @@ import { BAND, FREQUENCY_STEP } from "@/data/ecosystems";
 import { people, ME_ID } from "@/data/people";
 import { heldFrequencies } from "@/data/pricing";
 import { recordings as seedRecordings } from "@/data/recordings";
-import { SCRIPTS, seedTranscript } from "@/data/transcripts";
+import { SCRIPTS, lineTiming, seedTranscript } from "@/data/transcripts";
 import { MY_HOLDINGS } from "@/data/session";
 import type { HeldFrequency } from "@/data/pricing";
 import type {
@@ -63,7 +63,7 @@ interface State {
  * and the first thing to read it throws. Versioning the key makes a shape
  * change reseed instead of half-applying.
  */
-const STATE_VERSION = 3;
+const STATE_VERSION = 4;
 
 const globalRef = globalThis as unknown as {
   __freeRadio?: { version: number; state: State };
@@ -481,15 +481,25 @@ export function listTranscript(coChannelId: string): TranscriptLineView[] {
  * The line that comes back is both what the transcript gains and who the
  * speaking ring should light up, so the two can never drift apart. Loops when
  * the script runs out: a room that falls permanently silent reads as broken.
+ *
+ * The timing comes back with it, because how long a turn lasts is a property
+ * of the turn and not of the client's timer. On the transcribed stations it
+ * is the real one, `audioAtMs` included, which is what lets the room seek its
+ * recording to the line it is about to show.
  */
-export function speakNext(
-  coChannelId: string,
-): { personId: string; line: TranscriptLineView } | null {
+export function speakNext(coChannelId: string): {
+  personId: string;
+  line: TranscriptLineView;
+  holdMs: number;
+  gapMs: number;
+  audioAtMs?: number;
+} | null {
   const script = SCRIPTS[coChannelId];
   if (!script || script.length === 0) return null;
 
   const said = state.transcripts.filter((t) => t.coChannelId === coChannelId);
-  const [personId, text] = script[said.length % script.length];
+  const index = said.length % script.length;
+  const [personId, text] = script[index];
 
   /* Only somebody actually in the room can speak in it. If the scripted
      speaker has left, hand the line to whoever is unmuted instead. */
@@ -510,6 +520,7 @@ export function speakNext(
   return {
     personId: speaker,
     line: { ...row, person: peopleById.get(speaker)! },
+    ...lineTiming(coChannelId, index),
   };
 }
 

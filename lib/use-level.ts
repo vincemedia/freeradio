@@ -22,13 +22,13 @@ const FRAME_MS = 90;
 
 export function useSpeakingLevel(
   active: boolean,
-  opts: { stationId?: string; startedAt?: number } = {},
+  opts: { stationId?: string; atSeconds?: number | null } = {},
 ): number {
   const [level, setLevel] = useState(0);
   const started = useRef<number>(0);
   const reduced = usePrefersReducedMotion();
 
-  const { stationId, startedAt } = opts;
+  const { stationId, atSeconds } = opts;
   /* Undefined for every station without a file, which is most of them. */
   const envelope = stationId ? STATION_AUDIO[stationId]?.envelope : undefined;
 
@@ -38,13 +38,17 @@ export function useSpeakingLevel(
        a value that was already known. */
     if (!active || reduced) return;
 
-    started.current = startedAt ?? performance.now();
+    started.current = performance.now();
 
     const timer = setInterval(() => {
       const elapsed = performance.now() - started.current;
 
       if (envelope) {
-        const i = Math.floor(elapsed / ENVELOPE_WINDOW_MS);
+        /* Offset by where this turn begins in the file. Reading from zero
+           every time a turn starts would replay the opening few seconds on
+           every line and never match the words on screen. */
+        const offset = (atSeconds ?? 0) * 1000;
+        const i = Math.floor((offset + elapsed) / ENVELOPE_WINDOW_MS);
         const value = envelope[i % envelope.length] ?? 0;
         setLevel(value / 100);
         return;
@@ -61,7 +65,7 @@ export function useSpeakingLevel(
     }, FRAME_MS);
 
     return () => clearInterval(timer);
-  }, [active, reduced, envelope, startedAt]);
+  }, [active, reduced, envelope, atSeconds]);
 
   if (!active) return 0;
   /* One steady reading rather than none: the meter still says somebody is
