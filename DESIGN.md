@@ -134,6 +134,7 @@ rounded:
   md: 4px            # the workhorse radius: inputs, buttons, keys
   lg: 6px            # cards, dialogs, popovers, sheets
   xl: 10px           # the instrument shell, hero panels
+  clay: 14px         # primary and destructive buttons only, see Elevation
   full: 9999px       # pills, avatars, indicator lamps
 
 breakpoints:
@@ -157,16 +158,13 @@ components:
     backgroundColor: "{colors.light.primary}"
     textColor: "{colors.light.on-primary}"
     typography: "{typography.label-md}"
-    rounded: "{rounded.md}"
     padding: 12px
     height: 44px
-    # The one built control on a screen: a hard border and a hard offset with
-    # no blur, so the key stands off the panel rather than sitting printed on
-    # it. Pressing moves the key onto its own shadow.
-    borderWidth: 2px
-    borderColor: "{colors.light.on-surface}"
-    shadow: "{shadows.key}"
-    pressTranslate: 3px
+    # The one control made of a material: clay, with its own larger radius.
+    # Pressing squashes it rather than sliding it.
+    rounded: "{rounded.clay}"
+    shadow: "{shadows.clay-primary}"
+    shadowPressed: "{shadows.clay-primary-pressed}"
   button-primary-hover:
     backgroundColor: "{colors.light.primary-hover}"
   button-secondary:
@@ -285,8 +283,12 @@ The brand speaks in **radio verbs and plain nouns**. Nothing is a "space", nothi
 
 **Vocabulary for this project** (agents: use these exact terms in all UI copy):
 
-- **Co-Channel** — the live voice room. Never "channel", "space", "room", or "call". Plural "Co-Channels".
-- **Frequency** — the unique address of a Co-Channel within one ecosystem, written `98.7`. Released when the last occupant leaves.
+- **Station** — a Co-Channel seen from outside: a mark on the dial, a row in the band, something you tune to. Opening one is starting a temporary radio station, and that is the word for it right up until you are inside.
+- **Co-Channel** — the same object seen from inside: where people are talking together. Never "channel", "space", "room", or "call". Plural "Co-Channels".
+
+  These are not two things. They are one thing named for your relationship to it, and that is the only test needed when choosing between them: **a station is what you find, a Co-Channel is what you are in.** So you scan a band for stations, a station holds a frequency, and the gaps between stations are what make scanning worth doing. But you join a Co-Channel, you are an occupant of a Co-Channel, and everybody in a Co-Channel is visible. In radio engineering "co-channel" means two transmitters sharing one frequency, which is normally a fault; here it is the entire point.
+
+- **Frequency** — the unique address of a station within one ecosystem, written `98.7`. Released when the last occupant leaves.
 - **Band** — the frequency spectrum of one ecosystem. You scan a band, you do not "search the network".
 - **Ecosystem** — the wallet authority a handle belongs to, per BRC-169: `@crumbs@nexus`. Nexus is selected by default.
 - **Occupant** — anyone currently in a Co-Channel. There are no anonymous listeners, so there is no "audience".
@@ -343,11 +345,13 @@ Depth is **tonal layering plus one inset highlight**, never shadow drama. The pa
 
 - **Raised** (cards on hover, dropdowns): `0 1px 2px oklch(0.22 0.004 85 / 0.06), 0 2px 8px oklch(0.22 0.004 85 / 0.05)`
 - **Overlay** (dialogs, sheets, popovers, command menu): `0 8px 30px oklch(0.22 0.004 85 / 0.12)`
-- **Key** (`--shadow-key`, primary and destructive buttons only): `3px 3px 0 0 {colors.light.on-surface}`
+- **Clay** (`--shadow-clay-*`, primary and destructive buttons only): a tinted drop shadow, an inner shadow along the bottom edge, and an inner highlight along the top.
 
-The key is the one deliberate exception to the restraint above, and it is not a shadow in the lighting sense: no blur, no opacity, drawn in the ink colour. It reads as the depth of a moulded key standing off the panel rather than as light falling on a card, which is why it belongs to a control and to nothing else. Pressing translates the key 3px onto its own shadow and removes it; that is the entire effect, and the reason the offset has to be a real distance rather than a soft edge. It is confined to the one call to action on a screen. A second element wearing it turns a control into a style, and the restraint everywhere else is what makes it read as a button at all.
+Clay is the one deliberate exception to the restraint above, and it is the only place in the product where something is made of a material rather than drawn as a rectangle. The three shadows do three different jobs, which is what separates clay from a coloured box with a blur behind it: the drop shadow lifts the piece off the panel and is tinted with the piece's own colour rather than with black, the bottom inset gives it thickness, and the top inset is where the light lands. Pressing swaps in the pressed set, pulling the drop shadow in and deepening the bottom inset, so the piece squashes rather than slides.
 
-Nothing else casts a shadow. No gloss, no bevels, no gradients standing in for plastic, no drop shadows under text. In dark mode, shadows are replaced by lighter surface tones, except the key, which is drawn in the foreground colour and so inverts with the theme.
+It carries its own radius, `{rounded.clay}` (14px), because clay with a 4px corner is not clay. This is the single exception to the small-radius rule, and it holds only for these two variants: a second element wearing clay turns a control into a style, and the flatness of everything else is what leaves this reading as the thing to press.
+
+Nothing else casts a shadow. No gloss, no bevels, no gradients standing in for plastic, no drop shadows under text. In dark mode the drop shadow lightens and the top highlight weakens, because a bright rim on a dark panel reads as glass rather than clay.
 
 ## Shapes
 

@@ -19,24 +19,25 @@ const buttonVariants = cva(
   {
     variants: {
       variant: {
-        /* The one call to action on a screen, and the only control that is
-           built rather than drawn: a hard border and a hard offset shadow with
-           no blur, so it reads as a physical key sitting proud of the panel.
-           Pressing it moves the key onto the shadow, which is the whole trick
-           and the reason the offset has to be a real distance rather than a
-           soft edge. Everything else in the system stays flat. */
+        /* The one call to action on a screen, and the only control made of a
+           material rather than drawn as a rectangle. Clay: a tinted drop
+           shadow lifting it off the panel, an inner shadow along the bottom
+           for thickness, and an inner highlight along the top where the light
+           lands. Pressing swaps in the pressed set so the piece squashes
+           rather than slides. Everything else in the system stays flat, which
+           is what leaves this reading as the thing to press. */
         primary:
-          "border-2 border-foreground bg-primary text-primary-foreground shadow-[var(--shadow-key)] hover:bg-[var(--primary-hover)] active:translate-x-[3px] active:translate-y-[3px] active:shadow-none motion-reduce:active:translate-x-0 motion-reduce:active:translate-y-0",
+          "rounded-[var(--radius-clay)] bg-primary text-primary-foreground shadow-[var(--shadow-clay-primary)] hover:bg-[var(--primary-hover)] active:scale-[0.98] active:shadow-[var(--shadow-clay-primary-pressed)]",
         secondary:
           "border border-border bg-card text-foreground hover:bg-muted active:scale-[0.98]",
         ghost:
           "text-muted-foreground hover:bg-muted hover:text-foreground active:scale-[0.98]",
         /* Destructive is a red one step darker than the on-air lamp, so a
-           confirmation never reads as a recording indicator. It takes the same
-           built treatment as primary, because stopping a recording is as much
-           a call to action as starting one. */
+           confirmation never reads as a recording indicator. Same clay as
+           primary, because stopping a recording is as much a call to action as
+           starting one, and the two are the same kind of control. */
         destructive:
-          "border-2 border-foreground bg-destructive text-destructive-foreground shadow-[var(--shadow-key)] hover:brightness-110 active:translate-x-[3px] active:translate-y-[3px] active:shadow-none motion-reduce:active:translate-x-0 motion-reduce:active:translate-y-0",
+          "rounded-[var(--radius-clay)] bg-destructive text-destructive-foreground shadow-[var(--shadow-clay-destructive)] hover:brightness-110 active:scale-[0.98] active:shadow-[var(--shadow-clay-destructive-pressed)]",
       },
       size: {
         default: "h-11 px-4",
