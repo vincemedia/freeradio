@@ -3,10 +3,9 @@
 import { useSyncExternalStore } from "react";
 import { useTheme } from "next-themes";
 import { Check, Monitor, Moon, Sun } from "@phosphor-icons/react";
-import { Avatar, EcosystemMark, Identity } from "@/components/identity";
+import { EcosystemMark } from "@/components/identity";
 import { PageHeader } from "@/components/shell/page-header";
 import { Help } from "@/components/ui/overlays";
-import { Skeleton } from "@/components/ui/primitives";
 import { ecosystems } from "@/data/ecosystems";
 import type { EcosystemId } from "@/data/schema";
 import { useRadio } from "@/lib/store";
@@ -31,7 +30,6 @@ export default function SettingsPage() {
   const ecosystem = useRadio((s) => s.ecosystem);
   const followed = useRadio((s) => s.followed);
   const toggleFollowed = useRadio((s) => s.toggleFollowed);
-  const session = useRadio((s) => s.session);
 
   /* next-themes only knows the resolved theme on the client, so the controls
      stay inert until hydration rather than briefly showing the wrong one.
@@ -49,27 +47,8 @@ export default function SettingsPage() {
         subtitle="How Free Radio looks, and which band it opens on."
       />
 
-      {/* ---- identity ---- */}
-      <section className="space-y-3">
-        <h2 className="text-[11px] font-medium uppercase tracking-[0.06em] text-muted-foreground">
-          You
-        </h2>
-        {session ? (
-          <div className="flex items-center gap-3 rounded-lg border border-border bg-card p-4">
-            <Avatar person={session.me} size={44} />
-            <div className="min-w-0">
-              <p className="truncate text-sm font-medium">{session.me.name}</p>
-              <Identity person={session.me} className="text-[11px]" />
-            </div>
-          </div>
-        ) : (
-          <Skeleton className="h-[4.75rem] w-full rounded-lg" />
-        )}
-        <p className="text-xs text-muted-foreground">
-          Your handle comes from your wallet, so it is changed there rather than
-          here.
-        </p>
-      </section>
+      {/* No identity section. Nobody is signed in, and a panel headed "You"
+          with nothing under it would be worse than not asking the question. */}
 
       {/* ---- appearance ---- */}
       <section className="space-y-3">

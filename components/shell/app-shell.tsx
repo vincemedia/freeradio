@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 import { MinimisedBar } from "@/components/co-channel/minimised-bar";
 import { TopBar } from "@/components/shell/top-bar";
-import { useRadio } from "@/lib/store";
+import { startSpeaking, useRadio } from "@/lib/store";
 
 /**
  * The shell: a top bar, a variable-width content area, and nothing else.
@@ -15,7 +15,7 @@ import { useRadio } from "@/lib/store";
  */
 export function AppShell({ children }: { children: React.ReactNode }) {
   const router = useRouter();
-  const refreshSession = useRadio((s) => s.refreshSession);
+  const tunedTo = useRadio((s) => s.tunedTo);
 
   /* First run goes to the welcome flow.
      The check reads live state rather than a render-scoped value: this runs
@@ -29,9 +29,14 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     return useRadio.persist.onFinishHydration(check);
   }, [router]);
 
+  /* The receiver runs here rather than on the room page, so the station keeps
+     playing and its transcript keeps advancing while you look at something
+     else. That is what makes the dock at the bottom true: it says what you
+     are listening to, and you still are. */
   useEffect(() => {
-    void refreshSession();
-  }, [refreshSession]);
+    if (!tunedTo) return;
+    return startSpeaking(tunedTo);
+  }, [tunedTo]);
 
   return (
     <div className="flex min-h-dvh flex-col bg-background">

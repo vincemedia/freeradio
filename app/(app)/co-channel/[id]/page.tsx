@@ -6,10 +6,6 @@ import { toast } from "sonner";
 import {
   CaretLeft,
   Copy,
-  CornersIn,
-  Microphone,
-  MicrophoneSlash,
-  Record,
   SignOut,
   Sliders,
   SpeakerHigh,
@@ -26,26 +22,22 @@ import { Help } from "@/components/ui/overlays";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Skeleton } from "@/components/ui/primitives";
 import type { CoChannelView } from "@/data/schema";
-import type { GateResult } from "@/lib/gates";
 import { GATE_HELP } from "@/lib/gates";
 import { elapsedSince, formatDuration, formatFrequency } from "@/lib/format";
-import { startSpeaking, useRadio } from "@/lib/store";
+import { useRadio } from "@/lib/store";
 import { coChannelTransitionName } from "@/lib/view-transition";
 
-type RoomResponse = CoChannelView & { gateCheck: GateResult };
+type RoomResponse = CoChannelView;
 
 export default function CoChannelPage() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
 
-  const session = useRadio((s) => s.session);
+  const tunedTo = useRadio((s) => s.tunedTo);
   const room = useRadio((s) => s.room);
   const transcript = useRadio((s) => s.transcript);
-  const join = useRadio((s) => s.join);
-  const leave = useRadio((s) => s.leave);
-  const toggleMute = useRadio((s) => s.toggleMute);
-  const toggleRecording = useRadio((s) => s.toggleRecording);
-  const joining = useRadio((s) => s.joining);
+  const tuneIn = useRadio((s) => s.tuneIn);
+  const tuneOut = useRadio((s) => s.tuneOut);
   const listening = useRadio((s) => s.listening);
   const audioBlocked = useRadio((s) => s.audioBlocked);
   const setListening = useRadio((s) => s.setListening);
@@ -53,17 +45,12 @@ export default function CoChannelPage() {
 
   const { data: preview, loading, error } = useFetch<RoomResponse>(`/api/co-channels/${id}`);
 
-  const inThisRoom = session?.coChannelId === id;
-  const view = inThisRoom && room ? room : preview;
+  /* Tuned to this one, not in it. The receiver itself runs in the app shell
+     so the station keeps playing when you look at something else. */
+  const listeningHere = tunedTo === id;
+  const view = listeningHere && room ? room : preview;
 
-  /* Mock speaking runs only while you are actually in the room. Watching a
-     room you have not joined should not put words in anybody's mouth. */
-  useEffect(() => {
-    if (!inThisRoom) return;
-    return startSpeaking(id);
-  }, [inThisRoom, id]);
-
-  /* The room empties before the route changes, so leaving is something you
+  /* The room empties before the route changes, so tuning out is something you
      watch happen rather than a page that vanishes. */
   const [leaving, setLeaving] = useState(false);
   const [elapsed, setElapsed] = useState(0);
@@ -75,29 +62,26 @@ export default function CoChannelPage() {
     return () => clearInterval(t);
   }, [view]);
 
-  const handleJoin = async () => {
-    const result = await join(id);
-    if (!result.ok) {
-      toast.error(result.error ?? "Could not join", {
-        description: result.reasons?.join(" "),
+  const handleTuneIn = async () => {
+    if (!(await tuneIn(id))) {
+      toast.error("That station has closed", {
+        description: "Its last occupant left, so the frequency is free again.",
       });
       return;
     }
-    toast.success("You are in", {
-      description: "Unmute when you want to talk.",
-    });
+    toast.success("Tuned in", { description: "You are listening, not talking." });
   };
 
   const LEAVE_MS = 260;
-  const handleLeave = async () => {
+  const handleTuneOut = async () => {
     const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     if (!reduced) {
       setLeaving(true);
       await new Promise((r) => setTimeout(r, LEAVE_MS));
     }
-    await leave();
-    toast("You left the Co-Channel");
-    router.push("/");
+    tuneOut();
+    setLeaving(false);
+    toast("Tuned out");
   };
 
   const copyLink = async () => {
@@ -136,8 +120,6 @@ export default function CoChannelPage() {
 
   if (!view) return null;
 
-  const isHost = view.host.id === session?.me.id;
-  const locked = !inThisRoom && preview && !preview.gateCheck.passes;
 
   return (
     <div className="flex gap-6">
@@ -208,37 +190,19 @@ export default function CoChannelPage() {
             </div>
 
             {/* ---- controls ---- */}
+            {/* Nobody is signed in, so there is no microphone to mute and no
+                recording to start: what is left is the receiver. Tune in,
+                turn the sound down, take the link. */}
             <div className="flex shrink-0 flex-wrap items-center gap-1.5">
-              {inThisRoom ? (
+              {listeningHere ? (
                 <>
-                  <Button
-                    variant={session?.muted ? "secondary" : "primary"}
-                    size="sm"
-                    onClick={() => void toggleMute()}
-                    aria-pressed={!session?.muted}
-                  >
-                    {session?.muted ? (
-                      <>
-                        <MicrophoneSlash size={15} />
-                        Unmute
-                      </>
-                    ) : (
-                      <>
-                        <Microphone size={15} />
-                        Mute
-                      </>
-                    )}
-                  </Button>
-
-                  {/* Sound, which is not the same switch as your microphone.
-                      When the browser has refused to start audio the control
+                  {/* When the browser has refused to start audio the control
                       says so and is the gesture that unblocks it, because a
                       silent room with no explanation reads as broken. */}
                   {view.hasAudio && (
                     <Button
                       variant={audioBlocked ? "primary" : "secondary"}
-                      size={audioBlocked ? "sm" : "icon-sm"}
-                      aria-label={listening ? "Turn the sound off" : "Turn the sound on"}
+                      size="sm"
                       aria-pressed={listening && !audioBlocked}
                       onClick={() => {
                         if (audioBlocked) {
@@ -254,40 +218,23 @@ export default function CoChannelPage() {
                           Listen
                         </>
                       ) : listening ? (
-                        <SpeakerHigh />
+                        <>
+                          <SpeakerHigh size={15} />
+                          Sound on
+                        </>
                       ) : (
-                        <SpeakerSlash />
+                        <>
+                          <SpeakerSlash size={15} />
+                          Sound off
+                        </>
                       )}
                     </Button>
                   )}
 
-                  {isHost && (
-                    <Button
-                      variant={view.recording ? "destructive" : "secondary"}
-                      size="sm"
-                      onClick={() => void toggleRecording()}
-                      aria-pressed={view.recording}
-                    >
-                      <Record size={15} weight={view.recording ? "fill" : "regular"} />
-                      {view.recording ? "Stop" : "Record"}
-                    </Button>
-                  )}
-
                   <Button
                     variant="ghost"
                     size="icon-sm"
-                    aria-label="Minimise the Co-Channel"
-                    onClick={() => {
-                      router.push("/");
-                    }}
-                  >
-                    <CornersIn />
-                  </Button>
-
-                  <Button
-                    variant="ghost"
-                    size="icon-sm"
-                    aria-label="Copy Co-Channel link"
+                    aria-label="Copy a link to this Co-Channel"
                     onClick={copyLink}
                   >
                     <Copy />
@@ -296,8 +243,8 @@ export default function CoChannelPage() {
                   <Button
                     variant="ghost"
                     size="icon-sm"
-                    aria-label="Leave the Co-Channel"
-                    onClick={() => void handleLeave()}
+                    aria-label="Tune out"
+                    onClick={() => void handleTuneOut()}
                   >
                     <SignOut />
                   </Button>
@@ -307,15 +254,14 @@ export default function CoChannelPage() {
                   <Button
                     variant="primary"
                     size="sm"
-                    onClick={() => void handleJoin()}
-                    disabled={joining || Boolean(locked)}
+                    onClick={() => void handleTuneIn()}
                   >
-                    {joining ? "Joining" : locked ? "Locked" : "Join"}
+                    Tune in
                   </Button>
                   <Button
                     variant="ghost"
                     size="icon-sm"
-                    aria-label="Copy Co-Channel link"
+                    aria-label="Copy a link to this Co-Channel"
                     onClick={copyLink}
                   >
                     <Copy />
@@ -346,28 +292,17 @@ export default function CoChannelPage() {
             </div>
           </div>
 
-          {/* Why the door is shut, stated rather than implied. */}
-          {locked && preview && (
-            <div className="mt-4 rounded-md border border-border bg-background p-3">
-              <p className="text-sm font-medium">You cannot join this one</p>
-              <ul className="mt-1.5 space-y-1 text-[13px] text-muted-foreground">
-                {preview.gateCheck.reasons.map((r) => (
-                  <li key={r}>{r}</li>
-                ))}
-              </ul>
-            </div>
-          )}
-
-          {!inThisRoom && !locked && (
+          {!listeningHere && (
             <p className="mt-4 flex items-center gap-2 text-xs text-muted-foreground">
               <Facepile
                 people={view.occupants.map((o) => o.person)}
                 max={4}
                 size={22}
               />
-              {/* Both consequences of pressing Join, said before you press it
+              {/* What tuning in does and does not do, said before you press it
                   rather than in a toast afterwards. */}
-              Everyone can see your handle and avatar. You join muted.
+              You will hear the room. Nobody in it will hear you, and you do
+              not appear in the list.
             </p>
           )}
         </Panel>
@@ -379,17 +314,17 @@ export default function CoChannelPage() {
             Timing lives in globals.css so it cannot drift from the view
             transition's own duration. */}
         <div data-settle style={{ "--settle-index": 0 } as React.CSSProperties}>
-          <Nest room={view} canPost={inThisRoom} />
+          <Nest room={view} />
         </div>
         <div data-settle style={{ "--settle-index": 1 } as React.CSSProperties}>
           <OccupantGrid room={view} leaving={leaving} />
         </div>
         <div data-settle style={{ "--settle-index": 2 } as React.CSSProperties}>
-          {inThisRoom ? (
+          {listeningHere ? (
             <Transcript lines={transcript} />
           ) : (
             <p className="rounded-lg border border-dashed border-border px-4 py-6 text-center text-sm text-muted-foreground">
-              Join to follow the transcript as people talk.
+              Tune in to follow the transcript as people talk.
             </p>
           )}
         </div>

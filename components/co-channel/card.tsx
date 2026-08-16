@@ -144,7 +144,7 @@ export function CoChannelCard({
 }) {
   const router = useRouter();
   const people = coChannel.occupants.map((o) => o.person);
-  const inThisRoom = useRadio((s) => s.session?.coChannelId) === coChannel.id;
+  const inThisRoom = useRadio((s) => s.tunedTo) === coChannel.id;
   const href = `/co-channel/${coChannel.id}`;
 
   return (
@@ -247,7 +247,7 @@ export function CoChannelCard({
           aria-hidden
           className="inline-flex shrink-0 items-center gap-1 rounded-md bg-primary px-2.5 py-1 text-[11px] font-medium text-primary-foreground shadow-[var(--shadow-clay-primary)] transition-transform duration-150 ease-[var(--ease-out-quint)] group-active:scale-[0.98] group-active:shadow-[var(--shadow-clay-primary-pressed)]"
         >
-          {inThisRoom ? "Back in" : "Tune in"}
+          {inThisRoom ? "Listening" : "Tune in"}
         </span>
       </div>
     </Link>

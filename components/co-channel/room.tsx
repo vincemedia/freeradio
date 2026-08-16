@@ -1,22 +1,19 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import { toast } from "sonner";
+import { useEffect, useRef } from "react";
 import {
   ArrowSquareOut,
   Crown,
   LinkSimple,
   Microphone,
   MicrophoneSlash,
-  Plus,
 } from "@phosphor-icons/react";
 import { Avatar, Identity } from "@/components/identity";
 import { PersonCard } from "@/components/person-card";
 import { Grille, Lamp, SpeakingRing } from "@/components/instrument/parts";
 import { LevelMeter } from "@/components/instrument/level-meter";
-import { Button } from "@/components/ui/button";
 import { Help } from "@/components/ui/overlays";
-import { Badge, Input } from "@/components/ui/primitives";
+import { Badge } from "@/components/ui/primitives";
 import type { CoChannelView, TranscriptLineView } from "@/data/schema";
 import { formatClock } from "@/lib/format";
 import { useSpeakingLevel } from "@/lib/use-level";
@@ -30,32 +27,11 @@ import { cn } from "@/lib/utils";
  * mentioned out loud is useless unless it is somewhere you can reach without
  * interrupting. Newest first: the one just mentioned is the one you want.
  */
-export function Nest({
-  room,
-  canPost,
-}: {
-  room: CoChannelView;
-  canPost: boolean;
-}) {
-  const postNestLink = useRadio((s) => s.postNestLink);
-  const [adding, setAdding] = useState(false);
-  const [url, setUrl] = useState("");
-  const [title, setTitle] = useState("");
-
-  const submit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const ok = await postNestLink(url, title);
-    if (ok) {
-      toast.success("Pinned to the nest");
-      setUrl("");
-      setTitle("");
-      setAdding(false);
-    } else {
-      toast.error("That is not a link this room can open");
-    }
-  };
-
-  if (room.nest.length === 0 && !canPost) return null;
+export function Nest({ room }: { room: CoChannelView }) {
+  /* Read-only. Pinning a link means being somebody in the room, and there is
+     no identity in this build to be one, so the nest is something you can
+     follow rather than add to. */
+  if (room.nest.length === 0) return null;
 
   return (
     <section className="space-y-2">
@@ -64,45 +40,7 @@ export function Nest({
           Nest
           <Help>Links anyone in the room pinned while talking</Help>
         </h2>
-        {canPost && (
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => setAdding((v) => !v)}
-            aria-expanded={adding}
-          >
-            <Plus size={14} />
-            Pin a link
-          </Button>
-        )}
       </div>
-
-      {adding && (
-        <form
-          onSubmit={submit}
-          className="flex flex-col gap-2 rounded-lg border border-border bg-card p-3 sm:flex-row"
-        >
-          <Input
-            value={url}
-            onChange={(e) => setUrl(e.target.value)}
-            placeholder="https://"
-            aria-label="Link address"
-            type="url"
-            required
-            className="h-10 sm:flex-1"
-          />
-          <Input
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            placeholder="What is it?"
-            aria-label="Link title"
-            className="h-10 sm:flex-1"
-          />
-          <Button type="submit" variant="primary" size="sm" className="shrink-0">
-            Pin
-          </Button>
-        </form>
-      )}
 
       {room.nest.length > 0 && (
         <ul className="grid gap-2 sm:grid-cols-2">
@@ -145,7 +83,7 @@ export function Nest({
  * The occupant grid.
  *
  * Everybody in the room, all the time, with their mute state showing whether
- * you hover or not. There is no anonymous listening in this product, so this
+ * you hover or not. Nobody speaks here anonymously, so this
  * grid is the complete membership and not a sample of it.
  *
  * The ring around whoever is speaking thickens rather than changing colour, so
@@ -161,7 +99,6 @@ export function OccupantGrid({
 }) {
   const speakingId = useRadio((s) => s.speakingId);
   const speakingAt = useRadio((s) => s.speakingAt);
-  const me = useRadio((s) => s.session?.me.id);
   const count = room.occupants.length;
   /* One meter reading for the grid: exactly one person speaks at a time, so
      six hooks would be five of them idling. */
@@ -241,7 +178,7 @@ export function OccupantGrid({
               <PersonCard person={o.person} className="w-full">
                 <span className="block w-full min-w-0">
                   <span className="block truncate text-[13px] font-medium leading-tight">
-                    {o.personId === me ? "You" : o.person.name}
+                    {o.person.name}
                   </span>
                   <Identity
                     person={o.person}

@@ -1,32 +1,27 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import { toast } from "sonner";
 import {
   Coins,
   Copy,
   LockKey,
-  MagnifyingGlass,
   Prohibit,
   ShieldCheck,
-  UserPlus,
 } from "@phosphor-icons/react";
-import useFetch from "@/lib/use-fetch";
 import { Avatar, BandLine, EcosystemMark, Identity } from "@/components/identity";
 import { Button } from "@/components/ui/button";
 import { Help } from "@/components/ui/overlays";
-import { Badge, Input } from "@/components/ui/primitives";
+import { Badge } from "@/components/ui/primitives";
 import { getEcosystem } from "@/data/ecosystems";
 import { getToken } from "@/data/tokens";
-import type { CoChannelView, Person } from "@/data/schema";
+import type { CoChannelView } from "@/data/schema";
 import { GATE_HELP, GATE_LABEL } from "@/lib/gates";
-import { formatFrequency, formatIdentity } from "@/lib/format";
+import { formatFrequency } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
-type ContactRow = { person: Person; coChannel: { id: string } | null };
-
 /**
- * Co-Channel settings and invites.
+ * What a Co-Channel is, and who is in it.
  *
  * The same pane the suite uses for group-chat settings, carrying the same
  * things in the same order: what this room is, who may get in, and who is
@@ -34,9 +29,6 @@ type ContactRow = { person: Person; coChannel: { id: string } | null };
  * that, which is why it is a plain panel and owns no positioning of its own.
  */
 export function SidePane({ room }: { room: CoChannelView }) {
-  const [q, setQ] = useState("");
-  const { data: contacts } = useFetch<ContactRow[]>("/api/contacts");
-
   const permalink = useMemo(() => {
     if (typeof window === "undefined") return "";
     return `${window.location.origin}/co-channel/${room.id}`;
@@ -58,17 +50,6 @@ export function SidePane({ room }: { room: CoChannelView }) {
       toast.error("Could not copy the link");
     }
   };
-
-  const inRoom = new Set(room.occupants.map((o) => o.personId));
-  const invitable = (contacts ?? [])
-    .map((c) => c.person)
-    .filter((p) => !inRoom.has(p.id))
-    .filter((p) =>
-      q
-        ? p.name.toLowerCase().includes(q.toLowerCase()) ||
-          p.handle.toLowerCase().includes(q.toLowerCase())
-        : true,
-    );
 
   const gates = room.gates;
   const band = getEcosystem(room.ecosystem);
@@ -113,8 +94,8 @@ export function SidePane({ room }: { room: CoChannelView }) {
 
         {room.primaryGate === "open" ? (
           <p className="text-sm text-muted-foreground">
-            Anyone on {band?.name} can join. Everyone in a Co-Channel is
-            visible, so nobody is listening quietly.
+            Anyone on {band?.name} can speak here, and everyone who does is
+            visible in the list above. You can listen without joining them.
           </p>
         ) : (
           <ul className="space-y-2 text-sm">
@@ -195,65 +176,8 @@ export function SidePane({ room }: { room: CoChannelView }) {
         </ul>
       </section>
 
-      {/* ---- invite ---- */}
-      <section className="space-y-3">
-        <h3 className="text-[11px] font-medium uppercase tracking-[0.06em] text-muted-foreground">
-          Invite
-        </h3>
-        <div className="relative">
-          <MagnifyingGlass
-            size={14}
-            className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground"
-          />
-          <Input
-            value={q}
-            onChange={(e) => setQ(e.target.value)}
-            placeholder="Search your contacts"
-            aria-label="Search contacts to invite"
-            className="h-10 pl-9"
-          />
-        </div>
-
-        {invitable.length === 0 ? (
-          <p className="text-sm text-muted-foreground">
-            {q
-              ? "No contact by that name."
-              : "Everyone in your contacts is already here."}
-          </p>
-        ) : (
-          <ul className="space-y-1">
-            {invitable.slice(0, 8).map((p) => (
-              <li key={p.id} className="flex items-center gap-2.5 py-1">
-                <Avatar person={p} size={28} />
-                <span className="min-w-0 flex-1">
-                  <span className="block truncate text-sm">{p.name}</span>
-                  <Identity person={p} className="text-[11px]" />
-                </span>
-                <Button
-                  variant="ghost"
-                  size="icon-sm"
-                  aria-label={`Invite ${p.name}`}
-                  onClick={() =>
-                    toast.success("Invite sent", {
-                      description: (
-                        <span className="flex flex-wrap items-center gap-x-1.5">
-                          <span>{formatIdentity(p)} was asked to join</span>
-                          <BandLine
-                            frequency={room.frequency}
-                            ecosystem={room.ecosystem}
-                          />
-                        </span>
-                      ),
-                    })
-                  }
-                >
-                  <UserPlus size={15} />
-                </Button>
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
+      {/* No invite list. An invitation comes from somebody, and there is
+          nobody signed in to be the somebody. */}
     </div>
   );
 }

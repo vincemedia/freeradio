@@ -7,25 +7,14 @@
  */
 import type { Person } from "./schema";
 
-/** The signed-in user. Nexus is local, so their handle needs no suffix. */
-export const ME_ID = "me-crumbs";
-
+/*
+ * There is no signed-in user.
+ *
+ * Free Radio is a receiver here: you tune a band and hear what is on it, and
+ * there is no identity of yours in the product to speak, pin, record or
+ * appear in a room. Everybody in this table is somebody else.
+ */
 export const people: Person[] = [
-  {
-    id: ME_ID,
-    name: "Vince Olislagers",
-    handle: "crumbs",
-    ecosystem: "nexus",
-    role: "Product design",
-    bio: "Builds interfaces for people who would rather be doing something else.",
-    organization: "BSV Association",
-    city: "Amsterdam",
-    photo: null,
-    avatarColors: ["#eab300", "#4353ff", "#16a34a"],
-    registeredAt: "2022-03-04T09:00:00.000Z",
-    expertise: ["Interface design", "Prototyping"],
-    attestations: 11,
-  },
   {
     id: "rhea-mensah",
     name: "Rhea Mensah",
