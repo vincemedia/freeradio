@@ -102,6 +102,47 @@ export function evaluateGates(
 }
 
 /**
+ * Whether a gate configuration is usable.
+ *
+ * A gate that is on with nothing configured admits nobody, which is the safe
+ * reading when evaluating but a terrible thing to let somebody save. The host
+ * is exempt from their own door, so they would not even notice: the room would
+ * simply never let anyone else in.
+ */
+export function validateGates(gates: Gates | undefined): string | null {
+  if (!gates) return null;
+
+  if (gates.token.on) {
+    if (gates.token.ids.length === 0) return "Pick a token, or turn the token gate off.";
+    const bad = gates.token.ids.find((id) => (gates.token.minimums?.[id] ?? 0) < 0);
+    if (bad) return "A minimum cannot be negative.";
+  }
+  if (gates.timelock.on) {
+    if (!gates.timelock.amount || gates.timelock.amount <= 0) {
+      return "Set how much must be locked, or turn the lock gate off.";
+    }
+    if (!gates.timelock.minBlocks || gates.timelock.minBlocks <= 0) {
+      return "Set how long it must stay locked.";
+    }
+  }
+  if (gates.vouch.on && gates.vouch.entityIds.length === 0) {
+    return "Name at least one handle whose vouch opens the door.";
+  }
+  if (gates.renounce.on && gates.renounce.entityIds.length === 0) {
+    return "Name at least one handle whose renouncement keeps people out.";
+  }
+  return null;
+}
+
+/** Whether any gate is switched on, so an all-off object can be dropped. */
+export function anyGateOn(gates: Gates | undefined): boolean {
+  if (!gates) return false;
+  return (
+    gates.token.on || gates.timelock.on || gates.vouch.on || gates.renounce.on
+  );
+}
+
+/**
  * The one gate to show as a badge.
  *
  * A room can have several on at once, but a card has room for one word. Order

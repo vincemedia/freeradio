@@ -41,7 +41,7 @@ import type {
   TranscriptLine,
   TranscriptLineView,
 } from "@/data/schema";
-import { evaluateGates, primaryGate } from "@/lib/gates";
+import { anyGateOn, evaluateGates, primaryGate, validateGates } from "@/lib/gates";
 
 /* Next dev reloads modules; hanging the state off globalThis keeps a demo
    from resetting itself every time a file is saved. */
@@ -357,7 +357,7 @@ export interface CreateInput {
 
 export type CreateResult =
   | { ok: true; coChannel: CoChannelView }
-  | { ok: false; error: string; field?: "title" | "frequency" };
+  | { ok: false; error: string; field?: "title" | "frequency" | "gates" };
 
 export function createCoChannel(
   input: CreateInput,
@@ -366,6 +366,14 @@ export function createCoChannel(
   const title = input.title.trim();
   if (title.length < 3) {
     return { ok: false, error: "Give the Co-Channel a name.", field: "title" };
+  }
+
+  /* Refuse a half-configured door rather than storing one. An `on` gate with
+     nothing in it admits nobody, and the host is exempt from their own door,
+     so they would never notice the room was sealed. */
+  const gateProblem = validateGates(input.gates);
+  if (gateProblem) {
+    return { ok: false, error: gateProblem, field: "gates" };
   }
   if (!isTitleFree(input.ecosystem, title)) {
     return {
@@ -410,7 +418,7 @@ export function createCoChannel(
     startedAt: new Date().toISOString(),
     recording: false,
     topic: input.topic?.trim() || undefined,
-    ...(input.gates ? { gates: input.gates } : {}),
+    ...(anyGateOn(input.gates) ? { gates: input.gates! } : {}),
   });
 
   state.occupants.push({

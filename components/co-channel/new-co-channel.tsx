@@ -14,7 +14,9 @@ import {
 } from "@/components/ui/overlays";
 import { Button } from "@/components/ui/button";
 import { Input, Label } from "@/components/ui/primitives";
+import { GateEditor, OPEN_GATES } from "@/components/co-channel/gate-editor";
 import type { CoChannelView, EcosystemId, Gates } from "@/data/schema";
+import { validateGates } from "@/lib/gates";
 import { getEcosystem } from "@/data/ecosystems";
 import { apiPost } from "@/lib/api";
 import { ApiError } from "@/lib/api";
@@ -26,13 +28,6 @@ type BandInfo = {
   max: number;
   nextFree: number | null;
   stations: { frequency: number }[];
-};
-
-const OPEN_GATES: Gates = {
-  token: { on: false, ids: [] },
-  timelock: { on: false },
-  vouch: { on: false, entityIds: [] },
-  renounce: { on: false, entityIds: [] },
 };
 
 /**
@@ -68,6 +63,7 @@ export function NewCoChannelDialog({
   const [title, setTitle] = useState("");
   const [topic, setTopic] = useState("");
   const [chosen, setChosen] = useState<number | null>(null);
+  const [gates, setGates] = useState<Gates>(OPEN_GATES);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -86,6 +82,7 @@ export function NewCoChannelDialog({
       setTitle("");
       setTopic("");
       setChosen(null);
+      setGates(OPEN_GATES);
       setError(null);
     }
   };
@@ -114,7 +111,7 @@ export function NewCoChannelDialog({
         topic,
         ecosystem: ecosystem as EcosystemId,
         frequency: frequency ?? undefined,
-        gates: OPEN_GATES,
+        gates,
       });
       await refreshSession();
       onOpenChange(false);
@@ -133,6 +130,9 @@ export function NewCoChannelDialog({
 
   const frequencyTaken =
     frequency !== null && taken.has(frequency.toFixed(1));
+  /* Same check the server runs, so the button is disabled rather than the
+     request refused. One implementation, two call sites. */
+  const gateProblem = validateGates(gates);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -207,6 +207,17 @@ export function NewCoChannelDialog({
             )}
           </div>
 
+          <div className="space-y-1.5">
+            <span className="flex items-center gap-1">
+              <Label>Who may join</Label>
+              <Help>Every gate you switch on has to pass, and you are exempt from your own</Help>
+            </span>
+            <GateEditor gates={gates} onChange={setGates} />
+            {gateProblem && (
+              <p className="text-xs text-destructive">{gateProblem}</p>
+            )}
+          </div>
+
           {error && (
             <p className="rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2 text-xs text-destructive">
               {error}
@@ -223,7 +234,7 @@ export function NewCoChannelDialog({
               type="submit"
               variant="primary"
               size="sm"
-              disabled={busy || title.trim().length < 3 || frequencyTaken}
+              disabled={busy || title.trim().length < 3 || frequencyTaken || gateProblem !== null}
             >
               {busy ? "Opening" : "Go on air"}
             </Button>

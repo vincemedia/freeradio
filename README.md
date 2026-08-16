@@ -84,6 +84,16 @@ ones the Nexus group chats use, so a room's terms read identically in both.
 Gates are additive: every gate that is on must pass. The host is exempt from
 their own door, so a room cannot lock out the person holding it.
 
+You configure these when you open a Co-Channel, as four independent switches
+rather than a mode picker, since a room can ask for a token and a vouch at
+once. Locks are set in months and stored as blocks: blocks are the unit the
+gate is evaluated in, but nobody plans in blocks.
+
+A gate that is on with nothing configured admits nobody, which is the safe
+reading when evaluating and a terrible thing to save. `validateGates` refuses
+it, and the same function disables the submit button, so the rule has one
+implementation and two call sites.
+
 The signed-in user's standing is in `data/session.ts` and is deliberately mixed,
 so some doors open and some do not. A demo where every gate passes has no gates
 in it.
@@ -125,7 +135,11 @@ Co-Channel rather than to the app. There is no left column.
 
 - The sidepane docks beside the room at `xl` and becomes a bottom sheet below.
 - Mobile navigation is a full-screen overlay with drill-down panels, never
-  accordions or fly-outs.
+  accordions or fly-outs. It is portalled to the body: the top bar sets a
+  backdrop blur, and a backdrop-filter ancestor becomes the containing block
+  for fixed-position children, which collapsed the overlay to zero height.
+- Opening a Co-Channel is on the top bar at every width, icon-only below `sm`.
+  Search and Settings sit in the menu on mobile, since there is no ⌘K there.
 - A Co-Channel you are in minimises to a dock: bottom right on desktop, full
   width above the safe area on mobile.
 
