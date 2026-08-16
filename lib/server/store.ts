@@ -141,15 +141,12 @@ export interface ListOptions {
   ecosystem?: EcosystemId;
   /** matches title, topic, host handle, or an exact frequency */
   q?: string;
-  /** only rooms holding at least one of the user's contacts */
-  contactsOnly?: boolean;
 }
 
 export function listCoChannels(opts: ListOptions = {}): CoChannelView[] {
   let rows = state.channels.map(toView);
 
   if (opts.ecosystem) rows = rows.filter((c) => c.ecosystem === opts.ecosystem);
-  if (opts.contactsOnly) rows = rows.filter((c) => c.contactCount > 0);
 
   const q = opts.q?.trim().toLowerCase();
   if (q) {

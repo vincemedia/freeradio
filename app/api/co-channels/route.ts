@@ -7,7 +7,6 @@ export async function GET(request: Request) {
   const rows = listCoChannels({
     ecosystem: (url.searchParams.get("ecosystem") as EcosystemId) || undefined,
     q: url.searchParams.get("q") ?? undefined,
-    contactsOnly: url.searchParams.get("contacts") === "1",
   });
   return NextResponse.json(rows);
 }

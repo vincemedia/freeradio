@@ -18,7 +18,7 @@ import { ApiError, apiFetch, apiPost } from "@/lib/api";
  * This is not a database. Everything that is a fact about the world lives on
  * the server and arrives through `apiFetch`; what is kept here is the handful
  * of things that are genuinely about this browser: which band you are looking
- * at, whether the room is minimised, and who is speaking right now.
+ * at and who is speaking right now.
  */
 
 interface Session {
@@ -46,7 +46,6 @@ interface RadioState {
   /* ---- persisted preferences ---- */
   ecosystem: EcosystemId;
   onboarded: boolean;
-  minimised: boolean;
   recent: RecentRoom[];
 
   /* ---- live state ---- */
@@ -58,7 +57,6 @@ interface RadioState {
 
   setEcosystem: (id: EcosystemId) => void;
   setOnboarded: (v: boolean) => void;
-  setMinimised: (v: boolean) => void;
 
   refreshSession: () => Promise<void>;
   openRoom: (id: string) => Promise<void>;
@@ -75,7 +73,6 @@ export const useRadio = create<RadioState>()(
     (set, get) => ({
       ecosystem: DEFAULT_ECOSYSTEM,
       onboarded: false,
-      minimised: false,
       recent: [],
 
       session: null,
@@ -86,7 +83,6 @@ export const useRadio = create<RadioState>()(
 
       setEcosystem: (ecosystem) => set({ ecosystem }),
       setOnboarded: (onboarded) => set({ onboarded }),
-      setMinimised: (minimised) => set({ minimised }),
 
       refreshSession: async () => {
         const session = await apiFetch<Session>("/api/session");
@@ -126,7 +122,6 @@ export const useRadio = create<RadioState>()(
             /* Newest first, deduped, capped. A recent list that grows without
                limit is an archive nobody asked for. */
             set((s) => ({
-              minimised: false,
               recent: [
                 {
                   id: room.id,
@@ -152,7 +147,7 @@ export const useRadio = create<RadioState>()(
 
       leave: async () => {
         await apiFetch("/api/session", { method: "DELETE" });
-        set({ room: null, transcript: [], speakingId: null, minimised: false });
+        set({ room: null, transcript: [], speakingId: null });
         await get().refreshSession();
       },
 

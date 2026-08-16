@@ -160,9 +160,12 @@ export function OccupantGrid({ room }: { room: CoChannelView }) {
         {room.occupants.map((o) => {
           const speaking = speakingId === o.personId;
           return (
+            /* min-w-0: a grid item defaults to min-width:auto, so without it
+               the identity line sets the track width and the columns collide
+               instead of truncating. */
             <li
               key={o.id}
-              className="flex flex-col items-center gap-1.5 text-center"
+              className="flex min-w-0 flex-col items-center gap-1.5 text-center"
             >
               <span className="relative">
                 <SpeakingRing speaking={speaking}>

@@ -74,7 +74,7 @@ export function EcosystemMark({
   return (
     <span
       className={cn(
-        "inline-flex shrink-0 items-center justify-center overflow-hidden rounded-[2px] align-middle",
+        "inline-flex shrink-0 items-center justify-center overflow-hidden rounded-xs align-middle",
         className,
       )}
       style={{
@@ -116,18 +116,23 @@ export function Identity({
 }) {
   const eco = getEcosystem(person.ecosystem);
   return (
-    <span className={cn("inline-flex min-w-0 items-center gap-1", className)}>
+    <span
+      className={cn("inline-flex min-w-0 max-w-full items-center gap-1", className)}
+    >
       {showName && (
         <span className="truncate font-medium text-foreground">
           {person.name}
         </span>
       )}
-      <span className="inline-flex min-w-0 items-center gap-0.5 text-muted-foreground">
+      <span className="inline-flex min-w-0 max-w-full items-center gap-0.5 text-muted-foreground">
+        {/* The handle truncates and the ecosystem does not: the suffix is what
+            distinguishes two people with the same handle, so losing it would
+            defeat the reason the suffix is always shown. */}
         <span className="truncate">
           @{person.username ?? person.handle}
         </span>
-        <EcosystemMark ecosystem={person.ecosystem} />
-        <span className="truncate">{eco?.alias ?? person.ecosystem}</span>
+        <EcosystemMark ecosystem={person.ecosystem} className="shrink-0" />
+        <span className="shrink-0">{eco?.alias ?? person.ecosystem}</span>
       </span>
     </span>
   );

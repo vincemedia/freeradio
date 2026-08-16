@@ -43,7 +43,6 @@ export default function CoChannelPage() {
   const toggleMute = useRadio((s) => s.toggleMute);
   const toggleRecording = useRadio((s) => s.toggleRecording);
   const joining = useRadio((s) => s.joining);
-  const setMinimised = useRadio((s) => s.setMinimised);
 
   const { data: preview, loading, error } = useFetch<RoomResponse>(`/api/co-channels/${id}`);
 
@@ -219,7 +218,6 @@ export default function CoChannelPage() {
                     size="icon-sm"
                     aria-label="Minimise the Co-Channel"
                     onClick={() => {
-                      setMinimised(true);
                       router.push("/");
                     }}
                   >

@@ -49,7 +49,6 @@ export function TuningScale({
   stations,
   holds = [],
   onChange,
-  onCommit,
   className,
 }: {
   min: number;
@@ -60,8 +59,6 @@ export function TuningScale({
   /** reserved but silent frequencies, drawn as outlines rather than marks */
   holds?: Hold[];
   onChange: (frequency: number) => void;
-  /** fired when the needle settles, so scanning does not spam the server */
-  onCommit?: (frequency: number) => void;
   className?: string;
 }) {
   const trackRef = useRef<HTMLDivElement>(null);
@@ -109,7 +106,6 @@ export function TuningScale({
     if (!dragging.current) return;
     dragging.current = false;
     e.currentTarget.releasePointerCapture(e.pointerId);
-    onCommit?.(fromClientX(e.clientX));
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -123,7 +119,6 @@ export function TuningScale({
     e.preventDefault();
     const v = snap(next);
     onChange(v);
-    onCommit?.(v);
   };
 
   /* Ticks are computed in tenths of a MHz to avoid the float drift you get
