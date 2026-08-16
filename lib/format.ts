@@ -9,6 +9,21 @@
 /** Always one decimal, including at `.0`. The dial does not drop digits. */
 export const formatFrequency = (mhz: number) => mhz.toFixed(1);
 
+/**
+ * `@handle@ecosystem`, for places that can only take a string.
+ *
+ * The rendered form pairs the two halves with the wallet mark between them;
+ * this is the same identity written out where no mark can be drawn, such as a
+ * toast description. Both halves keep their `@`.
+ */
+export function formatIdentity(person: {
+  handle: string;
+  username?: string;
+  ecosystem: string;
+}): string {
+  return `@${person.username ?? person.handle}@${person.ecosystem}`;
+}
+
 /** Running time, as a clock. Tabular figures keep it from jittering. */
 export function formatDuration(seconds: number): string {
   const s = Math.max(0, Math.floor(seconds));

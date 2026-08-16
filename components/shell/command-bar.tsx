@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Broadcast, Record, UsersThree } from "@phosphor-icons/react";
 import useFetch from "@/lib/use-fetch";
-import { Avatar, EcosystemMark } from "@/components/identity";
+import { Avatar, EcosystemMark, Identity } from "@/components/identity";
 import type { CoChannelView, Person, Recording } from "@/data/schema";
 import { formatFrequency } from "@/lib/format";
 import { useRadio } from "@/lib/store";
@@ -166,10 +166,7 @@ export function CommandBar({
                       </span>
                     </span>
                   ) : (
-                    <span className="flex shrink-0 items-center gap-0.5 text-xs text-muted-foreground">
-                      @{p.username ?? p.handle}
-                      <EcosystemMark ecosystem={p.ecosystem} size={12} />
-                    </span>
+                    <Identity person={p} className="shrink-0 text-xs" />
                   )}
                 </Command.Item>
               );

@@ -4,6 +4,7 @@ import BoringAvatar from "boring-avatars";
 import Image from "next/image";
 import { getEcosystem } from "@/data/ecosystems";
 import type { Person } from "@/data/schema";
+import { formatFrequency } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
 /**
@@ -132,8 +133,36 @@ export function Identity({
           @{person.username ?? person.handle}
         </span>
         <EcosystemMark ecosystem={person.ecosystem} className="shrink-0" />
-        <span className="shrink-0">{eco?.alias ?? person.ecosystem}</span>
+        <span className="shrink-0">@{eco?.alias ?? person.ecosystem}</span>
       </span>
+    </span>
+  );
+}
+
+/**
+ * A frequency and the band it is on.
+ *
+ * A frequency alone does not identify a room: 98.7 exists on every band and
+ * means something different on each. Anywhere one is quoted back to somebody,
+ * notably a toast fired the moment they act, the band comes with it.
+ */
+export function BandLine({
+  frequency,
+  ecosystem,
+  className,
+}: {
+  frequency: number;
+  ecosystem: string;
+  className?: string;
+}) {
+  const eco = getEcosystem(ecosystem);
+  return (
+    <span className={cn("inline-flex items-center gap-1.5", className)}>
+      <span className="readout">{formatFrequency(frequency)}</span>
+      <span>MHz</span>
+      <span aria-hidden>·</span>
+      <EcosystemMark ecosystem={ecosystem} size={12} />
+      <span>@{eco?.alias ?? ecosystem}</span>
     </span>
   );
 }

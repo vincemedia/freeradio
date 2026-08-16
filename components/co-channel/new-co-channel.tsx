@@ -5,6 +5,7 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { ArrowsClockwise } from "@phosphor-icons/react";
 import useFetch from "@/lib/use-fetch";
+import { BandLine } from "@/components/identity";
 import {
   Dialog,
   DialogClose,
@@ -116,7 +117,9 @@ export function NewCoChannelDialog({
       await refreshSession();
       onOpenChange(false);
       toast.success("You are on air", {
-        description: `${formatFrequency(created.frequency)} MHz on ${getEcosystem(ecosystem)?.name}`,
+        description: (
+          <BandLine frequency={created.frequency} ecosystem={ecosystem} />
+        ),
       });
       router.push(`/co-channel/${created.id}`);
     } catch (err) {

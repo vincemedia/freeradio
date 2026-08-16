@@ -12,7 +12,7 @@ import {
   UserPlus,
 } from "@phosphor-icons/react";
 import useFetch from "@/lib/use-fetch";
-import { Avatar, EcosystemMark, Identity } from "@/components/identity";
+import { Avatar, BandLine, EcosystemMark, Identity } from "@/components/identity";
 import { Button } from "@/components/ui/button";
 import { Help } from "@/components/ui/overlays";
 import { Badge, Input } from "@/components/ui/primitives";
@@ -20,7 +20,7 @@ import { getEcosystem } from "@/data/ecosystems";
 import { getToken } from "@/data/tokens";
 import type { CoChannelView, Person } from "@/data/schema";
 import { GATE_HELP, GATE_LABEL } from "@/lib/gates";
-import { formatFrequency } from "@/lib/format";
+import { formatFrequency, formatIdentity } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
 type ContactRow = { person: Person; coChannel: { id: string } | null };
@@ -46,7 +46,13 @@ export function SidePane({ room }: { room: CoChannelView }) {
     try {
       await navigator.clipboard.writeText(permalink);
       toast.success("Link copied", {
-        description: `${formatFrequency(room.frequency)} MHz, ${room.title}`,
+        description: (
+          <span className="flex flex-wrap items-center gap-x-1.5">
+            <BandLine frequency={room.frequency} ecosystem={room.ecosystem} />
+            <span aria-hidden>·</span>
+            <span className="truncate">{room.title}</span>
+          </span>
+        ),
       });
     } catch {
       toast.error("Could not copy the link");
@@ -229,7 +235,15 @@ export function SidePane({ room }: { room: CoChannelView }) {
                   aria-label={`Invite ${p.name}`}
                   onClick={() =>
                     toast.success("Invite sent", {
-                      description: `@${p.username ?? p.handle} was asked to join ${formatFrequency(room.frequency)}`,
+                      description: (
+                        <span className="flex flex-wrap items-center gap-x-1.5">
+                          <span>{formatIdentity(p)} was asked to join</span>
+                          <BandLine
+                            frequency={room.frequency}
+                            ecosystem={room.ecosystem}
+                          />
+                        </span>
+                      ),
                     })
                   }
                 >

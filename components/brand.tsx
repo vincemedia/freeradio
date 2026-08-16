@@ -43,7 +43,11 @@ export function Wordmark({
   return (
     <span className={cn("inline-flex items-center gap-2", className)}>
       {showMark && <LogoMark size={markSize} />}
-      <span className="font-display text-[13px] font-semibold uppercase leading-none tracking-[0.14em]">
+      {/* The box is centred, but the glyphs are not: uppercase has no
+          descenders, so the ink sits high in the line box and reads as lifted
+          against the mark. Nudged down by the descender's share, in em so it
+          holds at any size. */}
+      <span className="translate-y-[0.055em] font-display text-[13px] font-semibold uppercase leading-none tracking-[0.14em]">
         Free<span className="text-muted-foreground">Radio</span>
       </span>
     </span>

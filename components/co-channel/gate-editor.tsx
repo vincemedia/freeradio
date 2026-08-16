@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { Coins, LockKey, MagnifyingGlass, Prohibit, ShieldCheck } from "@phosphor-icons/react";
 import useFetch from "@/lib/use-fetch";
-import { Avatar } from "@/components/identity";
+import { Avatar, Identity } from "@/components/identity";
 import { Help } from "@/components/ui/overlays";
 import { Input } from "@/components/ui/primitives";
 import { tokens } from "@/data/tokens";
@@ -310,9 +310,7 @@ function HandlePicker({
               >
                 <Avatar person={p} size={22} />
                 <span className="min-w-0 flex-1 truncate">{p.name}</span>
-                <span className="shrink-0 text-[11px] text-muted-foreground">
-                  @{p.username ?? p.handle}
-                </span>
+                <Identity person={p} className="shrink-0 text-[11px]" />
               </button>
             </li>
           );

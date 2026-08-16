@@ -4,6 +4,7 @@ import Link from "next/link";
 import useFetch from "@/lib/use-fetch";
 import { Avatar, EcosystemMark } from "@/components/identity";
 import { Lamp } from "@/components/instrument/parts";
+import { ScrollRail } from "@/components/ui/scroll-rail";
 import type { EcosystemId, Person } from "@/data/schema";
 import { formatFrequency } from "@/lib/format";
 
@@ -48,9 +49,11 @@ export function ContactsOnAir() {
         </Link>
       </div>
 
-      {/* Scrolls inside itself; the page body never scrolls sideways. */}
-      <div className="-mx-4 overflow-x-auto px-4 pb-1 sm:-mx-6 sm:px-6">
-        <ul className="flex w-max gap-2">
+      {/* Scrolls inside itself; the page body never scrolls sideways. Aligned
+          to the container rather than bleeding past it, so the rail starts and
+          ends exactly where the band listing below does. */}
+      <ScrollRail label="People you know, on air">
+        <ul className="flex w-max gap-2 pb-1">
           {onAir.map(({ person, coChannel }) => (
             <li key={person.id}>
               <Link
@@ -74,7 +77,7 @@ export function ContactsOnAir() {
             </li>
           ))}
         </ul>
-      </div>
+      </ScrollRail>
     </section>
   );
 }

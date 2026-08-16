@@ -220,6 +220,15 @@
     box-shadow: var(--panel-highlight), var(--panel-shadow);
   }
 
+  /* The operating system's scrollbar is its design, not ours. Hidden only
+     where something in the product's own language replaces it. */
+  .no-native-scrollbar {
+    scrollbar-width: none;
+  }
+  .no-native-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+
   /* Speaker perforation, aligned to the 4px spacing base so the
      ornament lines up with the layout rather than floating over it. */
   .grille {

@@ -10,7 +10,13 @@ import { Button } from "@/components/ui/button";
 import { EmptyState, Skeleton } from "@/components/ui/primitives";
 import { getEcosystem } from "@/data/ecosystems";
 import type { Person, Recording } from "@/data/schema";
-import { formatAgo, formatCount, formatDuration, formatFrequency } from "@/lib/format";
+import {
+  formatAgo,
+  formatCount,
+  formatDuration,
+  formatFrequency,
+  formatIdentity,
+} from "@/lib/format";
 import { useRadio } from "@/lib/store";
 
 type Row = Recording & {
@@ -80,7 +86,7 @@ export default function RecordingsPage() {
                     onClick={() => {
                       setBought((b) => new Set(b).add(r.id));
                       toast.success("Unlocked", {
-                        description: `$${r.priceUsd} to @${r.host.handle}, less a ${Math.round(r.platformFee * 100)}% platform fee.`,
+                        description: `${r.priceUsd} to ${formatIdentity(r.host)}, less a ${Math.round(r.platformFee * 100)}% platform fee.`,
                       });
                     }}
                     className="shrink-0"
