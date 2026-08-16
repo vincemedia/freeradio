@@ -53,6 +53,8 @@ interface Spec {
   muted: string[];
   startedMinutesAgo: number;
   recording?: boolean;
+  /** the station whose transcript and level meter come from a real file */
+  hasAudio?: boolean;
   gates?: Gates;
   nest?: { url: string; title: string; site: string; postedById: string }[];
 }
@@ -123,9 +125,37 @@ const SPECS: Spec[] = [
     title: "SDK office hours",
     topic: "Bring a stack trace. Any language.",
     hostId: "austin-rappaport",
-    occupantIds: ["austin-rappaport", "tomasz-wojcik", "grace-adeyemi"],
-    muted: ["grace-adeyemi"],
+    occupantIds: ["austin-rappaport", "tomasz-wojcik"],
+    muted: [],
     startedMinutesAgo: 92,
+  },
+  {
+    /* The one station with real audio behind it. Its transcript and its level
+       meter both come from the file, so what you see and what you hear are
+       the same recording. */
+    id: "cc-ordinals-wallets",
+    frequency: 100.0,
+    ecosystem: "nexus",
+    title: "Mastering ordinals wallets",
+    topic: "Sat selection, safe transfers, and not spending the thing you meant to keep.",
+    hostId: "grace-adeyemi",
+    occupantIds: [
+      "grace-adeyemi",
+      "amara-okonkwo",
+      "fatima-zahra",
+      "tw-dana",
+    ],
+    muted: ["tw-dana"],
+    startedMinutesAgo: 4,
+    hasAudio: true,
+    nest: [
+      {
+        url: "https://1satordinals.com",
+        title: "The 1Sat spec, current draft",
+        site: "1Sat Ordinals",
+        postedById: "amara-okonkwo",
+      },
+    ],
   },
   {
     id: "cc-governance-out-loud",
@@ -192,7 +222,7 @@ const SPECS: Spec[] = [
     title: "Pixels and provenance",
     topic: "Minting, burning, and who actually holds the thing.",
     hostId: "tc-pxl272",
-    occupantIds: ["tc-pxl272", "tc-aoife", "tc-smartwatch", "amara-okonkwo"],
+    occupantIds: ["tc-pxl272", "tc-aoife", "tc-smartwatch"],
     muted: ["tc-smartwatch"],
     startedMinutesAgo: 71,
     gates: gate({
@@ -203,7 +233,7 @@ const SPECS: Spec[] = [
         url: "https://1satordinals.com",
         title: "The 1Sat spec, current draft",
         site: "1Sat Ordinals",
-        postedById: "amara-okonkwo",
+        postedById: "tc-pxl272",
       },
     ],
   },
@@ -214,8 +244,8 @@ const SPECS: Spec[] = [
     title: "Federation and handle resolution",
     topic: "Two hosts, one name, no registry. How it resolves.",
     hostId: "tc-treechad",
-    occupantIds: ["tc-treechad", "tc-ren", "tc-slikmov", "fatima-zahra"],
-    muted: ["fatima-zahra"],
+    occupantIds: ["tc-treechad", "tc-ren", "tc-slikmov"],
+    muted: ["tc-ren"],
     startedMinutesAgo: 14,
     recording: true,
   },
@@ -447,6 +477,7 @@ export const coChannels: CoChannel[] = LIVE.map((s) => ({
   hostId: s.hostId,
   startedAt: minutesAgo(s.startedMinutesAgo),
   recording: s.recording ?? false,
+  hasAudio: s.hasAudio ?? false,
   topic: s.topic,
   ...(s.gates ? { gates: s.gates } : {}),
 }));

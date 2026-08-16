@@ -12,6 +12,7 @@
  * spoken for, and the ring around that person's avatar thickens for exactly
  * that long.
  */
+import { AUDIO_LINES } from "./audio";
 import type { TranscriptLine } from "./schema";
 
 /** How long one line is "spoken" for, in milliseconds. */
@@ -23,6 +24,13 @@ const SEEDED = 4;
 type Script = [personId: string, text: string][];
 
 export const SCRIPTS: Record<string, Script> = {
+  /* The audio station's turns come from the file rather than from here, so
+     there is one set of words: the transcript you read and the level meter
+     beside it are describing the same recording. */
+  "cc-ordinals-wallets": AUDIO_LINES.map(
+    (line) => [line.personId, line.text] as [string, string],
+  ),
+
   "cc-overlay-topics": [
     ["darren-kellenschwiler", "Right, we are on. The question was what an overlay actually stores."],
     ["siggi-oskarsson", "It stores the outputs it was told to care about. That is the whole trick."],
@@ -54,8 +62,8 @@ export const SCRIPTS: Record<string, Script> = {
     ["austin-rappaport", "Classic. You are computing the fee before you have added the change output."],
     ["tomasz-wojcik", "So the size is wrong when it estimates."],
     ["austin-rappaport", "Right. Add change, then estimate, then adjust change. Two passes, not one."],
-    ["grace-adeyemi", "That should be in the docs. I will write it up as an example today."],
-    ["austin-rappaport", "Please do, it comes up every single week."],
+    ["tomasz-wojcik", "That is not in the docs anywhere I looked."],
+    ["austin-rappaport", "It is not, and it comes up every single week. I will write the example."],
     ["tomasz-wojcik", "Rebuilt it, that fixed it. Thanks."],
   ],
   "cc-governance-out-loud": [
@@ -95,23 +103,23 @@ export const SCRIPTS: Record<string, Script> = {
   ],
   "cc-pixels-provenance": [
     ["tc-pxl272", "The question was whether burning actually removes the thing."],
-    ["amara-okonkwo", "It removes the output. The bytes are still on chain, forever."],
+    ["tc-smartwatch", "It cannot. The bytes are on chain, they are there forever."],
     ["tc-pxl272", "So the image survives, the claim does not."],
-    ["amara-okonkwo", "Right. You burned the title, not the painting."],
-    ["tc-aoife", "That is a much better way to explain it than the docs manage."],
-    ["amara-okonkwo", "Steal it, I did not invent it."],
+    ["tc-smartwatch", "You burned the title, not the painting."],
+    ["tc-aoife", "That is a much better way to put it than anything in the docs."],
+    ["tc-smartwatch", "Steal it, I did not invent it."],
     ["tc-pxl272", "Does an indexer show a burned one differently, or does it just vanish?"],
-    ["amara-okonkwo", "Depends on the indexer, which is its own problem."],
+    ["tc-aoife", "Depends whose indexer, which is its own problem."],
   ],
   "cc-federation": [
     ["tc-treechad", "Two hosts, same name. Walk through what resolves."],
     ["tc-ren", "Nothing resolves. They are different people, that is the design."],
     ["tc-treechad", "Correct, and everyone finds it upsetting the first time."],
-    ["fatima-zahra", "It is only upsetting if you expected a registry."],
+    ["tc-slikmov", "It is only upsetting if you expected a registry."],
     ["tc-slikmov", "Email did this for forty years and nobody complained."],
     ["tc-ren", "Email also had spam for forty years."],
     ["tc-treechad", "Different problem. The naming part worked fine."],
-    ["fatima-zahra", "Show the domain when the alias is unverified and most of it goes away."],
+    ["tc-ren", "Show the domain when the alias is unverified and most of it goes away."],
   ],
   "cc-homestead-hours": [
     ["tc-cranker", "Frost took the last of the beans, so that is the season."],

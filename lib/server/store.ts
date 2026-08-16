@@ -294,7 +294,7 @@ export type JoinResult =
 
 export function join(coChannelId: string, personId = ME_ID): JoinResult {
   const channel = state.channels.find((c) => c.id === coChannelId);
-  if (!channel) return { ok: false, error: "That Co-Channel has closed." };
+  if (!channel) return { ok: false, error: "That station has closed." };
 
   const already = state.occupants.find((o) => o.personId === personId);
   if (already?.coChannelId === coChannelId) {
@@ -365,7 +365,7 @@ export function createCoChannel(
 ): CreateResult {
   const title = input.title.trim();
   if (title.length < 3) {
-    return { ok: false, error: "Give the Co-Channel a name.", field: "title" };
+    return { ok: false, error: "Give the station a name.", field: "title" };
   }
 
   /* Refuse a half-configured door rather than storing one. An `on` gate with
@@ -417,6 +417,9 @@ export function createCoChannel(
     hostId: personId,
     startedAt: new Date().toISOString(),
     recording: false,
+    /* Only the seeded station has a file behind it; anything opened here is
+       live voice, which in this prototype means no audio at all. */
+    hasAudio: false,
     topic: input.topic?.trim() || undefined,
     ...(anyGateOn(input.gates) ? { gates: input.gates! } : {}),
   });

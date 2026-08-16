@@ -22,7 +22,7 @@ export async function POST(request: Request) {
 
   if (!body.title || !body.ecosystem) {
     return NextResponse.json(
-      { error: "A Co-Channel needs a name and a band." },
+      { error: "A station needs a name and a band." },
       { status: 400 },
     );
   }
