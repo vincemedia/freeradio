@@ -151,7 +151,7 @@ export function MobileMenu({
                 className="mt-1 inline-flex items-center gap-2 rounded-md px-3 py-2.5 text-sm font-medium text-muted-foreground"
               >
                 <Plus size={15} />
-                Open a Co-Channel
+                Start a station
               </button>
             </nav>
 

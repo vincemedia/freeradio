@@ -124,7 +124,7 @@ export function NewCoChannelDialog({
       router.push(`/co-channel/${created.id}`);
     } catch (err) {
       setError(
-        err instanceof ApiError ? err.message : "Could not open the Co-Channel.",
+        err instanceof ApiError ? err.message : "Could not start the station.",
       );
     } finally {
       setBusy(false);
@@ -141,8 +141,8 @@ export function NewCoChannelDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       {children && <DialogTrigger asChild>{children}</DialogTrigger>}
       <DialogContent
-        title="Open a Co-Channel"
-        description={`It goes live on ${getEcosystem(ecosystem)?.name} the moment you open it, and closes when the last person leaves.`}
+        title="Start a station"
+        description={`It goes live on ${getEcosystem(ecosystem)?.name} the moment you start it, and closes when the last person leaves.`}
       >
         <form onSubmit={submit} className="space-y-4">
           <div className="space-y-1.5">
@@ -175,8 +175,8 @@ export function NewCoChannelDialog({
             <span className="flex items-center gap-1">
               <Label htmlFor="cc-freq">Frequency</Label>
               <Help>
-                No two Co-Channels on a band share a frequency, and it is freed
-                when the room closes
+                No two stations on a band share a frequency, and it is freed when the
+                last person leaves
               </Help>
             </span>
             <div className="flex items-center gap-2">

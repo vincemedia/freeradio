@@ -94,7 +94,7 @@ export default function ScanPage() {
     <div className="space-y-6">
       <PageHeader
         title="Scan the band"
-        subtitle={`Every Co-Channel on ${bandInfo?.name ?? "this band"}, at the frequency it holds. Drag the needle, or use the arrow keys.`}
+        subtitle={`Every station on ${bandInfo?.name ?? "this band"}, at the frequency it holds. Drag the needle, or use the arrow keys.`}
       />
 
       <Panel className="p-4 sm:p-5">
@@ -131,7 +131,7 @@ export default function ScanPage() {
           <span className="ml-auto flex items-center gap-1.5 text-xs text-muted-foreground">
             <span className="readout">{stations.length}</span> on air
             <Help>
-              A frequency is released the moment the last person leaves the room
+              A frequency is released the moment the last person leaves the station
             </Help>
           </span>
         </div>
@@ -150,7 +150,7 @@ export default function ScanPage() {
             size="sm"
             onClick={() => router.push(`/co-channel/${detail.id}`)}
           >
-            Open this Co-Channel
+            Tune in
           </Button>
         </section>
       ) : heldHere ? (
@@ -177,13 +177,13 @@ export default function ScanPage() {
           action={
             <NewCoChannelDialog>
               <Button variant="primary" size="sm">
-                Open a Co-Channel here
+                Start a station here
               </Button>
             </NewCoChannelDialog>
           }
         >
-          Nothing is broadcasting on this frequency. Scan to the next room, or
-          take this one for yourself.
+          Nothing is broadcasting here. Scan to the next station, or take this
+          frequency for yourself.
         </EmptyState>
       )}
     </div>

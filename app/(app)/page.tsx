@@ -31,12 +31,12 @@ export default function OnAirPage() {
 
   return (
     <div className="space-y-8">
-      {/* No action here: "Open a Co-Channel" already sits in the top bar, and
+      {/* No action here: "Start a station" already sits in the top bar, and
           one primary per screen is the rule. A second yellow button would make
           neither of them read as the one thing to do. */}
       <PageHeader
         title="On air"
-        subtitle={`Live Co-Channels on ${band?.name ?? "this band"}. Anyone in a room can hear you, so there is no listening quietly.`}
+        subtitle={`Stations on ${band?.name ?? "this band"} right now. Anyone in a Co-Channel can hear you, so there is no listening quietly.`}
       />
 
       <ContactsOnAir />
@@ -56,8 +56,8 @@ export default function OnAirPage() {
             <Input
               value={q}
               onChange={(e) => setQ(e.target.value)}
-              placeholder="Search rooms, handles, 98.7"
-              aria-label="Search Co-Channels on this band"
+              placeholder="Search stations, handles, 98.7"
+              aria-label="Search stations on this band"
               className="h-10 pl-9"
             />
           </div>
@@ -82,15 +82,15 @@ export default function OnAirPage() {
                 <NewCoChannelDialog>
                   <Button variant="primary" size="sm">
                     <Plus size={15} />
-                    Open the first one
+                    Start the first one
                   </Button>
                 </NewCoChannelDialog>
               )
             }
           >
             {q
-              ? "No Co-Channel on this band has that name, handle or frequency. Try another band from the switch in the top bar."
-              : `Nothing is on air on ${band?.name ?? "this band"} right now. Open a Co-Channel and it goes live on a free frequency straight away.`}
+              ? "No station on this band has that name, handle or frequency. Try another band from the switch in the top bar."
+              : `Nothing is on air on ${band?.name ?? "this band"} right now. Start a station and it goes live on a free frequency straight away.`}
           </EmptyState>
         ) : (
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">

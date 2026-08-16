@@ -73,7 +73,7 @@ export function CommandBar({
       <Command.Input
         value={query}
         onValueChange={setQuery}
-        placeholder="Search Co-Channels, handles, frequencies"
+        placeholder="Search stations, handles, frequencies"
         className="h-12 w-full border-b border-border bg-transparent px-4 text-base outline-none placeholder:text-muted-foreground sm:text-sm"
       />
       <Command.List className="max-h-[min(24rem,60vh)] overflow-y-auto overscroll-contain p-1.5">

@@ -1,39 +1,13 @@
 "use client";
 
-import {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-  useSyncExternalStore,
-} from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { usePrefersReducedMotion } from "@/lib/use-reduced-motion";
 import type { GateKind } from "@/data/schema";
 import { formatFrequency } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
 /** Horizontal padding of the rails inside the track, in pixels. */
 const RAIL_INSET = 12;
-
-const REDUCED_MOTION = "(prefers-reduced-motion: reduce)";
-
-/**
- * The reader's motion preference, as a value rather than an effect.
- *
- * Subscribed so it also responds if they change it while the page is open,
- * which is the case a one-off read at mount silently gets wrong.
- */
-function usePrefersReducedMotion(): boolean {
-  return useSyncExternalStore(
-    (onChange) => {
-      const mq = window.matchMedia(REDUCED_MOTION);
-      mq.addEventListener("change", onChange);
-      return () => mq.removeEventListener("change", onChange);
-    },
-    () => window.matchMedia(REDUCED_MOTION).matches,
-    () => false,
-  );
-}
 
 /**
  * A readout that counts to its value instead of jumping to it.
@@ -231,7 +205,7 @@ export function TuningScale({
             ? tuned.title
             : heldHere
               ? `Held for ${heldHere.label}`
-              : "No Co-Channel on this frequency"}
+              : "No station on this frequency"}
         </span>
       </div>
 
@@ -247,7 +221,7 @@ export function TuningScale({
         aria-valuemin={min}
         aria-valuemax={max}
         aria-valuenow={value}
-        aria-valuetext={`${formatFrequency(value)} megahertz${tuned ? `, ${tuned.title}` : ", no Co-Channel"}`}
+        aria-valuetext={`${formatFrequency(value)} megahertz${tuned ? `, ${tuned.title}` : ", no station"}`}
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
         onPointerUp={endDrag}

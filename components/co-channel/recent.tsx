@@ -8,7 +8,7 @@ import { formatAgo, formatFrequency } from "@/lib/format";
 import { useRadio } from "@/lib/store";
 
 /**
- * Co-Channels you have been in.
+ * Stations you have been in.
  *
  * Most of these will be gone. A Co-Channel closes when the last person leaves,
  * so a history of rooms is mostly a history of things that no longer exist,
