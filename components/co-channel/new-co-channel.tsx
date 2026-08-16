@@ -45,14 +45,26 @@ const OPEN_GATES: Gates = {
  */
 export function NewCoChannelDialog({
   children,
+  open: controlledOpen,
+  onOpenChange: setControlledOpen,
 }: {
-  children: React.ReactNode;
+  /** the trigger; omit when the dialog is controlled from somewhere else */
+  children?: React.ReactNode;
+  open?: boolean;
+  onOpenChange?: (v: boolean) => void;
 }) {
   const router = useRouter();
   const ecosystem = useRadio((s) => s.ecosystem);
   const refreshSession = useRadio((s) => s.refreshSession);
 
-  const [open, setOpen] = useState(false);
+  /* Controllable, because the mobile menu needs to open this and then close
+     itself. A dialog rendered inside the menu would unmount with it. */
+  const [uncontrolledOpen, setUncontrolledOpen] = useState(false);
+  const isControlled = controlledOpen !== undefined;
+  const open = isControlled ? controlledOpen : uncontrolledOpen;
+  const setOpen = isControlled
+    ? (setControlledOpen ?? (() => {}))
+    : setUncontrolledOpen;
   const [title, setTitle] = useState("");
   const [topic, setTopic] = useState("");
   const [chosen, setChosen] = useState<number | null>(null);
@@ -124,7 +136,7 @@ export function NewCoChannelDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogTrigger asChild>{children}</DialogTrigger>
+      {children && <DialogTrigger asChild>{children}</DialogTrigger>}
       <DialogContent
         title="Open a Co-Channel"
         description={`It goes live on ${getEcosystem(ecosystem)?.name} the moment you open it, and closes when the last person leaves.`}

@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { CaretLeft, CaretRight, Check } from "@phosphor-icons/react";
+import { createPortal } from "react-dom";
+import { CaretLeft, CaretRight, Check, MagnifyingGlass, Plus } from "@phosphor-icons/react";
 import useFetch from "@/lib/use-fetch";
 import { EcosystemMark } from "@/components/identity";
 import { NAV } from "@/components/shell/top-bar";
@@ -23,9 +24,20 @@ type Band = Ecosystem & { coChannelCount: number; occupantCount: number };
  * the panel left and shows one level with a back affordance. No accordions,
  * no fly-outs, one level per panel.
  */
-export function MobileMenu() {
+export function MobileMenu({
+  onSearch,
+  onCreate,
+}: {
+  /* The menu asks the top bar to open these, because both are overlays that
+     must outlive the menu closing. */
+  onSearch: () => void;
+  onCreate: () => void;
+}) {
   const [open, setOpen] = useState(false);
   const [panel, setPanel] = useState<"root" | "bands">("root");
+  /* Portals need a document, so nothing is portalled until after mount. */
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
   const ecosystem = useRadio((s) => s.ecosystem);
   const setEcosystem = useRadio((s) => s.setEcosystem);
   const { data: bands } = useFetch<Band[]>(open ? "/api/ecosystems" : null);
@@ -73,7 +85,11 @@ export function MobileMenu() {
         </span>
       </button>
 
-      {open && (
+      {/* Portalled to the body on purpose. The top bar sets `backdrop-blur`,
+          and an ancestor with a backdrop-filter becomes the containing block
+          for position:fixed descendants, so rendering the overlay in place
+          sized it against the 56px header and collapsed it to zero height. */}
+      {open && mounted && createPortal(
         <div className="fixed inset-0 top-14 z-30 bg-background md:hidden">
           <div className="relative h-full overflow-hidden">
             {/* Root panel */}
@@ -94,6 +110,14 @@ export function MobileMenu() {
                 </Link>
               ))}
 
+              <Link
+                href="/settings"
+                onClick={close}
+                className="py-3 font-display text-2xl font-semibold tracking-tight text-foreground"
+              >
+                Settings
+              </Link>
+
               <button
                 type="button"
                 onClick={() => setPanel("bands")}
@@ -102,6 +126,32 @@ export function MobileMenu() {
                 <EcosystemMark ecosystem={ecosystem} size={16} />
                 {current?.name ?? "Band"}
                 <CaretRight size={14} className="text-muted-foreground" />
+              </button>
+
+              {/* Search has no keyboard shortcut on a phone, so it needs a
+                  control of its own or it does not exist here at all. */}
+              <button
+                type="button"
+                onClick={() => {
+                  close();
+                  onSearch();
+                }}
+                className="mt-2 inline-flex items-center gap-2 rounded-md px-3 py-2.5 text-sm font-medium text-muted-foreground"
+              >
+                <MagnifyingGlass size={15} />
+                Search everything
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  close();
+                  onCreate();
+                }}
+                className="mt-1 inline-flex items-center gap-2 rounded-md px-3 py-2.5 text-sm font-medium text-muted-foreground"
+              >
+                <Plus size={15} />
+                Open a Co-Channel
               </button>
             </nav>
 
@@ -146,7 +196,8 @@ export function MobileMenu() {
               </div>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body,
       )}
     </>
   );

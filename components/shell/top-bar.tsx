@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
-import { MagnifyingGlass, Plus } from "@phosphor-icons/react";
+import { Gear, MagnifyingGlass, Plus } from "@phosphor-icons/react";
 import { BandSwitch } from "@/components/shell/band-switch";
 import { MobileMenu } from "@/components/shell/mobile-menu";
 import { CommandBar } from "@/components/shell/command-bar";
@@ -28,6 +28,7 @@ export const NAV = [
 export function TopBar() {
   const pathname = usePathname();
   const [search, setSearch] = useState(false);
+  const [create, setCreate] = useState(false);
   const isActive = (href: string) =>
     href === "/" ? pathname === "/" : pathname.startsWith(href);
 
@@ -76,23 +77,58 @@ export function TopBar() {
               <MagnifyingGlass />
             </Button>
 
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              aria-label="Settings"
+              asChild
+              className="hidden sm:inline-flex"
+            >
+              <Link href="/settings">
+                <Gear />
+              </Link>
+            </Button>
+
             {/* Chrome, not the page's action. Kept secondary so the one yellow
                 control on any screen is whatever that screen is actually for:
-                Join in a room, Open this Co-Channel on the scanner. */}
-            <NewCoChannelDialog>
-              <Button size="sm" variant="secondary" className="hidden sm:inline-flex">
-                <Plus size={15} />
-                <span className="hidden lg:inline">Open a Co-Channel</span>
-                <span className="lg:hidden">Open</span>
-              </Button>
-            </NewCoChannelDialog>
+                Join in a room, Open this Co-Channel on the scanner.
 
-            <MobileMenu />
+                Icon-only below sm, where the label will not fit. Opening a
+                Co-Channel is the point of the product, so it stays on the top
+                bar at every width rather than moving into the menu. */}
+            <Button
+              size="icon-sm"
+              variant="secondary"
+              aria-label="Open a Co-Channel"
+              onClick={() => setCreate(true)}
+              className="sm:hidden"
+            >
+              <Plus size={15} />
+            </Button>
+
+            <Button
+              size="sm"
+              variant="secondary"
+              onClick={() => setCreate(true)}
+              className="hidden sm:inline-flex"
+            >
+              <Plus size={15} />
+              <span className="hidden lg:inline">Open a Co-Channel</span>
+              <span className="lg:hidden">Open</span>
+            </Button>
+
+            <MobileMenu
+              onSearch={() => setSearch(true)}
+              onCreate={() => setCreate(true)}
+            />
           </div>
         </div>
       </header>
 
+      {/* Both overlays live here rather than inside the menu, which unmounts
+          when it closes and would take them with it. */}
       <CommandBar open={search} onOpenChange={setSearch} />
+      <NewCoChannelDialog open={create} onOpenChange={setCreate} />
     </>
   );
 }
