@@ -68,9 +68,46 @@ export function resolveIdentity(
 export async function connectedPerson(): Promise<{
   person: Person;
   adopted: boolean;
+  /** the key actually presented, which is what makes two adopted people two */
+  publicKey: string;
 } | null> {
   const store = await cookies();
   const key = store.get(COOKIE)?.value;
   if (!key) return null;
-  return resolveIdentity(key);
+  const resolved = resolveIdentity(key);
+  return resolved ? { ...resolved, publicKey: key } : null;
+}
+
+/**
+ * The last few characters of a key, for telling two adopted people apart.
+ *
+ * Adoption resolves every unrecognised wallet to the same account, which is
+ * right for browsing and wrong the moment two of them are in a room together
+ * and both are called John Galt. The key is the only thing that differs, so a
+ * few characters of it is the smallest honest distinguisher.
+ */
+export function keyFingerprint(publicKey: string): string {
+  return publicKey.slice(-4);
+}
+
+/**
+ * Who this connection is, as far as the voice network is concerned.
+ *
+ * The wallet key rather than the resolved person id. Two people who both
+ * adopted into the demo account share a person id, and handing RealtimeKit a
+ * shared `custom_participant_id` makes them one participant — the second to
+ * arrive takes over the first's seat. The key is unique per wallet, which is
+ * the entire point of it.
+ */
+export function participantIdentity(connected: {
+  person: Person;
+  adopted: boolean;
+  publicKey: string;
+}) {
+  return {
+    id: connected.publicKey,
+    name: connected.adopted
+      ? `${connected.person.name} (${keyFingerprint(connected.publicKey)})`
+      : connected.person.name,
+  };
 }

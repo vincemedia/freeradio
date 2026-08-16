@@ -147,6 +147,19 @@ export function getMeeting(config: RealtimeConfig, meetingId: string) {
   return call<Meeting>(config, `/meetings/${meetingId}`);
 }
 
+/** Meetings, optionally filtered. `search` matches the id or the title. */
+export function listMeetings(
+  config: RealtimeConfig,
+  opts: { search?: string; perPage?: number; status?: "ACTIVE" | "INACTIVE" } = {},
+) {
+  const query = new URLSearchParams();
+  if (opts.search) query.set("search", opts.search);
+  if (opts.perPage) query.set("per_page", String(opts.perPage));
+  if (opts.status) query.set("status", opts.status);
+  const suffix = query.size > 0 ? `?${query}` : "";
+  return call<Meeting[]>(config, `/meetings${suffix}`);
+}
+
 /**
  * Mint a participant token.
  *
