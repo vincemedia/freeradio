@@ -36,7 +36,15 @@ export interface LiveParticipant {
   name: string;
   /** the wallet key we gave RealtimeKit, or a listener's throwaway id */
   customId: string;
-  speaking: boolean;
+  /**
+   * Whether their microphone is open.
+   *
+   * Not whether they are making a sound — that is measured, in `use-levels`,
+   * off the track itself. This is the SDK's flag and answers a different
+   * question: an open microphone in a pause is still open, and the room
+   * should show that.
+   */
+  micOpen: boolean;
   muted: boolean;
   isSelf: boolean;
 }
@@ -108,7 +116,7 @@ export function useLiveRoom(coChannelId: string | null): LiveRoom {
         id: self.id,
         name: self.name,
         customId: self.customParticipantId ?? self.id,
-        speaking: Boolean(self.audioEnabled),
+        micOpen: Boolean(self.audioEnabled),
         muted: !self.audioEnabled,
         isSelf: true,
       },
@@ -116,7 +124,7 @@ export function useLiveRoom(coChannelId: string | null): LiveRoom {
         id: p.id,
         name: p.name,
         customId: p.customParticipantId ?? p.id,
-        speaking: Boolean(p.audioEnabled),
+        micOpen: Boolean(p.audioEnabled),
         muted: !p.audioEnabled,
         isSelf: false,
       })),

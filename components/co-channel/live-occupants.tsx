@@ -13,6 +13,7 @@ import { Grille } from "@/components/instrument/parts";
 import { Button } from "@/components/ui/button";
 import { LevelMeter } from "@/components/instrument/level-meter";
 import { useContacts, MAX_CONTACTS } from "@/lib/contacts";
+import { useLevels } from "@/lib/use-levels";
 import { isIdentityKey } from "@/lib/identity-key";
 import type { LiveRoom } from "@/lib/use-live-room";
 import { cn } from "@/lib/utils";
@@ -24,9 +25,13 @@ import { cn } from "@/lib/utils";
  * these faces are people whose browsers are connected right now, and the grid
  * empties when they leave because they left.
  *
- * The speaking indicator is the participant's real audio state, not a
- * simulation of one. It is a meter rather than a dot because a room where
- * three people are unmuted needs to show which of them is actually talking.
+ * The meters are real. Each open microphone is measured off its own track, so
+ * the bars move with the voice — including your own, which is the one that
+ * matters most: a new speaker's first question is always whether anybody can
+ * hear them, and a portrait that answers it is worth more than any amount of
+ * reassuring copy. A room where three people are unmuted shows which of the
+ * three is actually talking, which is the entire reason to draw a meter
+ * instead of a lamp.
  *
  * This is also the only place a contact can be made, which is deliberate: you
  * add somebody because you heard them, in the room where you heard them, and
@@ -42,6 +47,7 @@ export function LiveOccupants({
   canModerate: boolean;
 }) {
   const { add, has } = useContacts();
+  const levels = useLevels(live);
   if (live.status !== "live") {
     return (
       <section className="relative overflow-hidden rounded-lg border border-dashed border-border p-8 text-center">
@@ -78,11 +84,22 @@ export function LiveOccupants({
             className="flex min-w-0 flex-col items-center gap-1.5 text-center"
           >
             <span className="relative">
+              {/* The ring's opacity follows the voice rather than switching on
+                  with the microphone, so a room of unmuted people is not a
+                  wall of identical halos. It never reaches zero while the
+                  microphone is open: an open one is a fact worth showing even
+                  during a pause. */}
               <span
                 className={cn(
-                  "block rounded-full transition-shadow",
-                  p.speaking && "ring-2 ring-[var(--ring-speaking)] ring-offset-2 ring-offset-card",
+                  "block rounded-full",
+                  !p.muted &&
+                    "ring-2 ring-[var(--ring-speaking)] ring-offset-2 ring-offset-card",
                 )}
+                style={
+                  p.muted
+                    ? undefined
+                    : { opacity: 0.35 + 0.65 * (levels[p.id] ?? 0) }
+                }
               >
                 <Avatar
                   size={56}
@@ -92,20 +109,25 @@ export function LiveOccupants({
                 />
               </span>
 
+              {/* The badge is the microphone's state, which is a fact; the
+                  meter inside it is the voice, which is a measurement. A
+                  muted person gets the crossed microphone and no meter,
+                  because there is nothing to measure. */}
               <span
                 className={cn(
                   "absolute -bottom-0.5 -right-0.5 z-10 flex items-center justify-center rounded-full border-2 border-card",
-                  p.speaking ? "h-5 w-[26px] bg-card" : "size-5",
-                  !p.speaking && "bg-muted text-muted-foreground",
+                  p.muted ? "size-5 bg-muted text-muted-foreground" : "h-5 w-[26px] bg-card",
                 )}
-                title={p.muted ? "Muted" : "Speaking"}
+                title={p.muted ? "Muted" : "Microphone open"}
               >
-                {p.speaking ? (
-                  <LevelMeter level={0.7} className="h-3.5" />
-                ) : (
+                {p.muted ? (
                   <MicrophoneSlash size={10} weight="fill" />
+                ) : (
+                  <LevelMeter level={levels[p.id] ?? 0} className="h-3.5" />
                 )}
-                <span className="sr-only">{p.muted ? "Muted" : "Speaking"}</span>
+                <span className="sr-only">
+                  {p.muted ? "Muted" : "Microphone open"}
+                </span>
               </span>
             </span>
 
