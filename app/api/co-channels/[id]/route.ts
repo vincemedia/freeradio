@@ -16,7 +16,8 @@ export async function GET(
     if (started) {
       coChannel = {
         ...started,
-        host: null as never,
+        /* Nobody has claimed it yet; the view type says so honestly now. */
+        host: null,
         occupants: [],
         occupantCount: 0,
         nest: [],

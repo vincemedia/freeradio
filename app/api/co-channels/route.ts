@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { MAX_STATIONS_PER_BAND, getEcosystem } from "@/data/ecosystems";
+import { DEFAULT_BED, isBedId, type BedId } from "@/data/beds";
 import type { EcosystemId, Gates } from "@/data/schema";
 import { connectedPerson } from "@/lib/server/identity";
 import { listCoChannels } from "@/lib/server/store";
@@ -62,6 +63,7 @@ export async function POST(request: Request) {
     ecosystem?: EcosystemId;
     frequency?: number;
     topic?: string;
+    bed?: BedId;
     gates?: Gates;
   };
 
@@ -111,6 +113,7 @@ export async function POST(request: Request) {
     ecosystem: body.ecosystem,
     frequency,
     topic: body.topic,
+    bed: isBedId(body.bed) ? body.bed : DEFAULT_BED,
     hostKey: connected.publicKey,
   });
 

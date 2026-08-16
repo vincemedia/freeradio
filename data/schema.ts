@@ -11,6 +11,8 @@
  * same thing here, or the two apps are describing different people.
  */
 
+import type { BedId } from "./beds";
+
 /* ------------------------------------------------------------------ people */
 
 export type EcosystemId =
@@ -189,6 +191,15 @@ export interface CoChannel {
   hostId: string;
   /** ISO; drives the running time in the header */
   startedAt: string;
+  /**
+   * What plays under the room while nobody is talking.
+   *
+   * A property of the station rather than of the listener: the host chose it,
+   * and everybody in the room hears the same thing, the way they would on a
+   * real station. Absent on the seeded rooms, which start silent and can be
+   * given one by whoever claims them.
+   */
+  bed?: BedId;
   /** present only when at least one gate is `on` */
   gates?: Gates;
   /** whether the host has recording switched on right now */

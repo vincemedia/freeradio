@@ -12,6 +12,7 @@ import { Nest, OccupantGrid, RoomStatus, Transcript } from "@/components/co-chan
 import { LiveControls, RecordedControls } from "@/components/co-channel/live-controls";
 import { LiveOccupants } from "@/components/co-channel/live-occupants";
 import { useLive } from "@/components/live-room-provider";
+import { useBed } from "@/lib/use-bed";
 import { SidePane } from "@/components/co-channel/side-pane";
 import { GateBadge } from "@/components/co-channel/card";
 import { EcosystemMark, Identity } from "@/components/identity";
@@ -57,6 +58,10 @@ export default function CoChannelPage() {
   useEffect(() => {
     if (isLive && live.stationId !== id) live.enter(id);
   }, [isLive, id, live]);
+
+  /* What plays under an empty room. The station's own choice to begin with,
+     and the host's to change while it is running. */
+  const bed = useBed(live, preview?.bed);
 
   const view = preview;
 
@@ -189,6 +194,7 @@ export default function CoChannelPage() {
               {isLive ? (
                 <LiveControls
                   live={live}
+                  bed={bed}
                   connected={connected}
                   onConnect={() => {
                     void connect().then((r) => {

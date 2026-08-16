@@ -15,6 +15,7 @@
  * occupant table is effectively keyed by person, and a fixture that breaks
  * that would let the same face appear in two rooms at once.
  */
+import type { BedId } from "./beds";
 import type { CoChannel, Gates, NestLink, Occupant } from "./schema";
 
 /* Start times are stored as offsets and resolved at module load, so a demo
@@ -61,6 +62,8 @@ interface Spec {
   muted: string[];
   startedMinutesAgo: number;
   recording?: boolean;
+  /** what plays under it while nobody is talking; live stations only */
+  bed?: BedId;
   /** the station whose transcript and level meter come from a real file */
   hasAudio?: boolean;
   gates?: Gates;
@@ -554,6 +557,7 @@ const LIVE_SEEDS: Spec[] = [
     title: "Open mic",
     topic: "No subject and no schedule. Whoever is here decides what it is about.",
     hostId: "",
+    bed: "piano",
     occupantIds: [],
     muted: [],
     startedMinutesAgo: 0,
@@ -566,6 +570,7 @@ const LIVE_SEEDS: Spec[] = [
     title: "First contact",
     topic: "Where to find out whether your microphone works. Say anything and somebody usually answers.",
     hostId: "",
+    bed: "hiphop",
     occupantIds: [],
     muted: [],
     startedMinutesAgo: 0,
@@ -578,6 +583,7 @@ const LIVE_SEEDS: Spec[] = [
     title: "The late shift",
     topic: "The small hours. Quieter, slower, and more honest than the daytime band.",
     hostId: "",
+    bed: "piano",
     occupantIds: [],
     muted: [],
     startedMinutesAgo: 0,
@@ -590,6 +596,7 @@ const LIVE_SEEDS: Spec[] = [
     title: "Workshop",
     topic: "Bring a problem you are stuck on. Somebody here has probably had it, and the fastest way to find out is to say it out loud.",
     hostId: "",
+    bed: "hiphop",
     occupantIds: [],
     muted: [],
     startedMinutesAgo: 0,
@@ -602,6 +609,7 @@ const LIVE_SEEDS: Spec[] = [
     topic:
       "Say the thing you believe that your own side would argue with. One rule: you have to defend it.",
     hostId: "",
+    bed: "piano",
     occupantIds: [],
     muted: [],
     startedMinutesAgo: 0,
@@ -615,6 +623,7 @@ const LIVE_SEEDS: Spec[] = [
     topic:
       "Outages, bad deploys, the bug that took three days. Post-mortems out loud, no blame and no polish.",
     hostId: "",
+    bed: "hiphop",
     occupantIds: [],
     muted: [],
     startedMinutesAgo: 0,
@@ -628,6 +637,7 @@ const LIVE_SEEDS: Spec[] = [
     topic:
       "Ten minutes each on whatever you are building. Describe it out loud and the hole in it usually turns up by minute three.",
     hostId: "",
+    bed: "piano",
     occupantIds: [],
     muted: [],
     startedMinutesAgo: 0,
@@ -641,6 +651,7 @@ const LIVE_SEEDS: Spec[] = [
     topic:
       "Something you were sure about and no longer are. What actually moved you, rather than the argument you now give for it.",
     hostId: "",
+    bed: "hiphop",
     occupantIds: [],
     muted: [],
     startedMinutesAgo: 0,
@@ -654,6 +665,7 @@ const LIVE_SEEDS: Spec[] = [
     topic:
       "New to any of this and want it explained by a person instead of a document. No question is too basic here, which is the whole point of the room.",
     hostId: "",
+    bed: "piano",
     occupantIds: [],
     muted: [],
     startedMinutesAgo: 0,
@@ -673,6 +685,7 @@ export const coChannels: CoChannel[] = ALL.map((s) => ({
   startedAt: minutesAgo(s.startedMinutesAgo),
   recording: s.recording ?? false,
   hasAudio: s.hasAudio ?? false,
+  ...(s.bed ? { bed: s.bed } : {}),
   topic: s.topic,
   ...(s.gates ? { gates: s.gates } : {}),
 }));

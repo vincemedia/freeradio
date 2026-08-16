@@ -58,6 +58,16 @@ export interface LiveRoom {
   micDenied: boolean;
   recording: boolean;
   error: string | null;
+  /**
+   * The meeting itself, for the few things that need it directly.
+   *
+   * Exposed reluctantly. Everything the room does should have a named method
+   * on this object rather than a caller reaching into the SDK — but the bed
+   * is broadcast between participants, and wrapping a general message channel
+   * in a specific one would be inventing a protocol here instead of where it
+   * is used. Null until the room is live.
+   */
+  meeting: Meeting | null;
   join: () => Promise<void>;
   leave: () => void;
   toggleMic: () => Promise<void>;
@@ -79,6 +89,11 @@ export function useLiveRoom(coChannelId: string | null): LiveRoom {
   const [error, setError] = useState<string | null>(null);
 
   const meetingRef = useRef<Meeting | null>(null);
+  /* Mirrored into state as well as held in a ref. The ref is what the
+     callbacks use, because they must not be rebuilt every time it changes;
+     the state is what the room can render from, because a ref read during
+     render is a value React has not agreed to. */
+  const [meeting, setMeeting] = useState<Meeting | null>(null);
 
   /** Read the room out of the SDK. One place, so every event agrees. */
   const sync = useCallback(() => {
@@ -112,6 +127,7 @@ export function useLiveRoom(coChannelId: string | null): LiveRoom {
   const leave = useCallback(() => {
     const meeting = meetingRef.current;
     meetingRef.current = null;
+    setMeeting(null);
     setStatus("idle");
     setRole(null);
     setParticipants([]);
@@ -143,6 +159,7 @@ export function useLiveRoom(coChannelId: string | null): LiveRoom {
       });
 
       meetingRef.current = meeting;
+      setMeeting(meeting);
       setRole(granted);
 
       for (const event of [
@@ -164,6 +181,7 @@ export function useLiveRoom(coChannelId: string | null): LiveRoom {
       meeting.self.on("roomLeft", ({ state }) => {
         if (meetingRef.current !== meeting) return;
         meetingRef.current = null;
+        setMeeting(null);
         setRole(null);
         setParticipants([]);
         setMicOn(false);
@@ -251,6 +269,7 @@ export function useLiveRoom(coChannelId: string | null): LiveRoom {
     micDenied,
     recording,
     error,
+    meeting,
     join,
     leave,
     toggleMic,

@@ -1,6 +1,7 @@
 import "server-only";
 
 import { withinLifespan } from "@/lib/server/lifecycle";
+import { DEFAULT_BED, isBedId, type BedId } from "@/data/beds";
 import type { CoChannel, EcosystemId } from "@/data/schema";
 import {
   createMeeting,
@@ -45,6 +46,8 @@ interface Encoded {
   t: string;
   /** topic */
   o?: string;
+  /** the bed under the silence; absent means the default */
+  b?: BedId;
 }
 
 export function encodeStation(station: Encoded): string {
@@ -89,6 +92,7 @@ function toStation(value: Encoded, createdAt: string | undefined): CoChannel {
     recording: false,
     hasAudio: false,
     topic: value.o,
+    bed: isBedId(value.b) ? value.b : DEFAULT_BED,
   };
 }
 
@@ -132,6 +136,7 @@ export async function createUserStation(input: {
   ecosystem: EcosystemId;
   frequency: number;
   topic?: string;
+  bed?: BedId;
   hostKey: string;
 }): Promise<CoChannel | null> {
   const config: RealtimeConfig | null = realtimeConfig();
@@ -148,6 +153,7 @@ export async function createUserStation(input: {
     h: input.hostKey,
     t: input.title.slice(0, 60),
     ...(input.topic ? { o: input.topic.slice(0, 80) } : {}),
+    ...(isBedId(input.bed) ? { b: input.bed } : {}),
   };
 
   await createMeeting(config, { title: encodeStation(encoded) });

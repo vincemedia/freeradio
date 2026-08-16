@@ -8,8 +8,10 @@ import {
   SignOut,
   WarningCircle,
 } from "@phosphor-icons/react";
+import { BedPicker } from "@/components/co-channel/bed-picker";
 import { Button } from "@/components/ui/button";
 import { Tooltip } from "@/components/ui/overlays";
+import type { BedControl } from "@/lib/use-bed";
 import type { LiveRoom } from "@/lib/use-live-room";
 import type { CoChannelView } from "@/data/schema";
 import { PlayButton } from "@/components/co-channel/play-button";
@@ -27,11 +29,13 @@ import { PlayButton } from "@/components/co-channel/play-button";
  */
 export function LiveControls({
   live,
+  bed,
   connected,
   onConnect,
   onCopy,
 }: {
   live: LiveRoom;
+  bed: BedControl;
   connected: boolean;
   onConnect: () => void;
   onCopy: () => void;
@@ -118,6 +122,10 @@ export function LiveControls({
           </span>
         </Tooltip>
       )}
+
+      {/* Next to Record, because both are things only the host can do to the
+          room rather than to themselves. */}
+      {live.role === "host" && <BedPicker control={bed} />}
 
       {live.role === "host" && (
         <Button

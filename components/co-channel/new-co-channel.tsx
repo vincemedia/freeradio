@@ -16,6 +16,8 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input, Label } from "@/components/ui/primitives";
 import { GateEditor, OPEN_GATES } from "@/components/co-channel/gate-editor";
+import { BEDS, DEFAULT_BED, type BedId } from "@/data/beds";
+import { cn } from "@/lib/utils";
 import type { CoChannelView, EcosystemId, Gates } from "@/data/schema";
 import { validateGates } from "@/lib/gates";
 import { MAX_STATIONS_PER_BAND, getEcosystem } from "@/data/ecosystems";
@@ -62,6 +64,7 @@ export function NewCoChannelDialog({
     : setUncontrolledOpen;
   const [title, setTitle] = useState("");
   const [topic, setTopic] = useState("");
+  const [bed, setBed] = useState<BedId>(DEFAULT_BED);
   const [chosen, setChosen] = useState<number | null>(null);
   const [gates, setGates] = useState<Gates>(OPEN_GATES);
   const [busy, setBusy] = useState(false);
@@ -112,6 +115,7 @@ export function NewCoChannelDialog({
       const created = await apiPost<CoChannelView>("/api/co-channels", {
         title,
         topic,
+        bed,
         ecosystem: ecosystem as EcosystemId,
         frequency: frequency ?? undefined,
         gates,
@@ -174,6 +178,37 @@ export function NewCoChannelDialog({
               placeholder="One line, so people know what they are joining."
               maxLength={110}
             />
+          </div>
+
+          {/* Chosen while starting, because the first thing a new station has
+              is nobody in it, and that is the moment the music is doing its
+              only job. Changeable from the room afterwards. */}
+          <div className="space-y-1.5">
+            <span className="flex items-center gap-1">
+              <Label>Under the silence</Label>
+              <Help>
+                Plays while nobody is talking, so an empty room does not sound
+                like a broken one
+              </Help>
+            </span>
+            <div className="grid grid-cols-3 gap-2">
+              {BEDS.map((b) => (
+                <button
+                  key={b.id}
+                  type="button"
+                  onClick={() => setBed(b.id)}
+                  aria-pressed={bed === b.id}
+                  className={cn(
+                    "rounded-md border px-2 py-2 text-center text-[13px] transition-colors",
+                    bed === b.id
+                      ? "border-primary bg-primary/10 font-medium"
+                      : "border-border bg-card hover:bg-muted/50",
+                  )}
+                >
+                  {b.label}
+                </button>
+              ))}
+            </div>
           </div>
 
           <div className="space-y-1.5">
