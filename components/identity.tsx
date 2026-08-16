@@ -5,6 +5,23 @@ import Image from "next/image";
 import { getEcosystem } from "@/data/ecosystems";
 import type { Person } from "@/data/schema";
 import { formatFrequency } from "@/lib/format";
+import {
+  Bird,
+  Bug,
+  Butterfly,
+  Cat,
+  Cow,
+  Dog,
+  Feather,
+  Fish,
+  Flower,
+  Horse,
+  Leaf,
+  PawPrint,
+  Rabbit,
+  Shrimp,
+  Tree,
+} from "@phosphor-icons/react";
 import { cn } from "@/lib/utils";
 
 /**
@@ -15,6 +32,40 @@ import { cn } from "@/lib/utils";
  * them. Exempt from the oklch rule because the library's API expects hex.
  */
 const MARBLE = ["#5b1d99", "#0074b4", "#00b34c", "#ffd41f", "#fc6e3d"];
+
+/**
+ * The animals, and why there are exactly these.
+ *
+ * Phosphor's menagerie, filtered to the ones that still read at 24 pixels: a
+ * silhouette with a recognisable outline. Anything whose identity lives in
+ * fine detail becomes the same grey smudge as everything else at avatar size,
+ * which defeats the purpose of having one.
+ */
+const ANIMALS = [
+  Bird, Butterfly, Cat, Cow, Dog, Fish, Horse, Rabbit,
+  Shrimp, Bug, PawPrint, Feather, Tree, Leaf, Flower,
+] as const;
+
+function AnimalMark({ seed, size }: { seed: string; size: number }) {
+  /* A cheap stable hash. The id never changes, so neither does the animal. */
+  let hash = 0;
+  for (let i = 0; i < seed.length; i++) {
+    hash = (hash * 31 + seed.charCodeAt(i)) >>> 0;
+  }
+  const Animal = ANIMALS[hash % ANIMALS.length];
+
+  return (
+    <span
+      aria-hidden
+      className="absolute inset-0 flex items-center justify-center text-white"
+      /* Below the readable floor the creature is noise on top of the tile,
+         so it simply is not drawn. */
+      style={{ opacity: size < 20 ? 0 : 1 }}
+    >
+      <Animal size={Math.round(size * 0.5)} weight="fill" />
+    </span>
+  );
+}
 
 export function Avatar({
   person,
@@ -43,12 +94,21 @@ export function Avatar({
           unoptimized
         />
       ) : (
-        <BoringAvatar
-          size={size}
-          name={person.id}
-          variant="marble"
-          colors={MARBLE}
-        />
+        <>
+          <BoringAvatar
+            size={size}
+            name={person.id}
+            variant="marble"
+            colors={MARBLE}
+          />
+          {/* An animal on the marble, picked from the id so the same person is
+              the same creature everywhere and forever. A generated tile alone
+              is a colour and hard to tell from the next one; a creature is a
+              thing you can name, which is what makes a face in a list
+              findable. White, because the marble underneath is doing the
+              colour and two colours would fight. */}
+          <AnimalMark seed={person.id} size={size} />
+        </>
       )}
     </span>
   );
