@@ -143,6 +143,24 @@ Co-Channel rather than to the app. There is no left column.
 - A Co-Channel you are in minimises to a dock: bottom right on desktop, full
   width above the safe area on mobile.
 
+## The logo
+
+`public/freeradio-logo.png` is the set itself: a Braun-style panel with a dial,
+a tick scale, a grille and a red needle. It is the same vocabulary the interface
+is built from, so it is used as the object rather than as a badge.
+
+- **Favicon** keeps its transparency, so it sits on any tab colour.
+- **Apple icon** is flattened onto the dark shell, because iOS composites a
+  transparent icon onto black and would put hard corners inside its own mask.
+- **Share cards** show it at 380px, where the dial actually reads. The drawn
+  tick scale that used to fill that space was a worse version of the dial the
+  logo already has on it.
+- **Top bar** pairs a 26px mark with the wordmark, and drops the mark below
+  `sm` where the band switch needs the room more.
+
+The detail is the point above ~48px and mud below ~24px, so `LogoMark` is
+never used smaller than that, and the wordmark carries the name where it is.
+
 ## Conventions
 
 - Tokens in `DESIGN.md` are normative. If prose and tokens disagree, tokens win.

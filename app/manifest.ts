@@ -11,7 +11,15 @@ export default function manifest(): MetadataRoute.Manifest {
     background_color: "#f3f2f0",
     theme_color: "#f3f2f0",
     icons: [
-      { src: "/icon", sizes: "32x32", type: "image/png" },
+      /* The logo itself for the maskable slot, since it is already a rounded
+         square on a transparent ground, and the flattened Apple icon for the
+         home screen. */
+      {
+        src: "/freeradio-logo.png",
+        sizes: "600x600",
+        type: "image/png",
+        purpose: "any",
+      },
       { src: "/apple-icon", sizes: "180x180", type: "image/png" },
     ],
   };

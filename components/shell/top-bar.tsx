@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
 import { Gear, MagnifyingGlass, Plus } from "@phosphor-icons/react";
+import { Wordmark } from "@/components/brand";
 import { BandSwitch } from "@/components/shell/band-switch";
 import { MobileMenu } from "@/components/shell/mobile-menu";
 import { CommandBar } from "@/components/shell/command-bar";
@@ -36,13 +37,16 @@ export function TopBar() {
     <>
       <header className="sticky top-0 z-40 border-b border-border bg-background/85 backdrop-blur-md">
         <div className="mx-auto flex h-14 max-w-[1200px] items-center gap-2 px-4 sm:px-6">
-          {/* The wordmark is small and sits on a neutral field. */}
+          {/* The wordmark is small and sits on a neutral field. The mark comes
+              along on wider screens; below sm the band switch needs the room
+              more than the logo does. */}
           <Link
             href="/"
-            className="mr-1 shrink-0 rounded-sm font-display text-[13px] font-semibold uppercase leading-none tracking-[0.14em] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            aria-label="Free Radio, on air"
+            className="mr-1 shrink-0 rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           >
-            Free
-            <span className="text-muted-foreground">Radio</span>
+            <Wordmark showMark={false} className="sm:hidden" />
+            <Wordmark markSize={26} className="hidden sm:inline-flex" />
           </Link>
 
           <BandSwitch className="shrink-0" />

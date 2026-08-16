@@ -1,4 +1,5 @@
 import { ImageResponse } from "next/og";
+import { logoDataUri } from "@/lib/logo";
 import { getCoChannel } from "@/lib/server/store";
 
 export const size = { width: 1200, height: 630 };
@@ -41,8 +42,18 @@ export default async function CoChannelImage({
             justifyContent: "space-between",
           }}
         >
-          <div style={{ fontSize: 20, letterSpacing: 6, fontWeight: 600, color: "#38352f" }}>
-            FREE RADIO
+          <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+            <img src={logoDataUri()} width={64} height={64} alt="" />
+            <div
+              style={{
+                fontSize: 20,
+                letterSpacing: 6,
+                fontWeight: 600,
+                color: "#6b6862",
+              }}
+            >
+              FREE RADIO
+            </div>
           </div>
           {room?.recording && (
             <div

@@ -14,6 +14,7 @@ import {
   ShieldCheck,
   UsersThree,
 } from "@phosphor-icons/react";
+import { LogoMark, Wordmark } from "@/components/brand";
 import { EcosystemMark } from "@/components/identity";
 import { Panel } from "@/components/instrument/parts";
 import { TuningScale, type Station } from "@/components/instrument/tuning-scale";
@@ -118,9 +119,7 @@ export default function WelcomePage() {
         {/* ---- shared chrome ---- */}
         <div className="flex items-center justify-between">
           {step === "what" ? (
-            <span className="font-display text-[13px] font-semibold uppercase leading-none tracking-[0.14em]">
-              Free<span className="text-muted-foreground">Radio</span>
-            </span>
+            <Wordmark markSize={24} />
           ) : (
             <button
               type="button"
@@ -287,9 +286,13 @@ export default function WelcomePage() {
           {step === "ready" && (
             <>
               <div className="flex flex-1 flex-col items-center justify-center gap-5 py-8 text-center">
-                <span className="flex size-20 animate-in items-center justify-center rounded-full bg-primary text-primary-foreground zoom-in-75 duration-300">
-                  <Broadcast size={38} />
-                </span>
+                {/* The set itself, at the one size where its dial, grille and
+                    needle actually read. */}
+                <LogoMark
+                  size={132}
+                  priority
+                  className="animate-in zoom-in-90 duration-500"
+                />
                 <h1 className="font-display text-[28px] font-semibold leading-tight tracking-tight text-balance">
                   The band is open
                 </h1>
