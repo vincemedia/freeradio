@@ -1,5 +1,5 @@
 import { ImageResponse } from "next/og";
-import { logoDataUri } from "@/lib/logo";
+import { logoUri } from "@/lib/og-assets";
 
 export const size = { width: 180, height: 180 };
 export const contentType = "image/png";
@@ -25,7 +25,7 @@ export default function AppleIcon() {
           background: "#1e1d1c",
         }}
       >
-        <img src={logoDataUri()} width={152} height={152} alt="" />
+        <img src={logoUri()} width={152} height={152} alt="" />
       </div>
     ),
     size,
