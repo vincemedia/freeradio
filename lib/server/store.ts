@@ -183,6 +183,7 @@ export function getCoChannel(id: string): CoChannelView | undefined {
 export function bandOccupancy(ecosystem: EcosystemId) {
   return listCoChannels({ ecosystem }).map((c) => ({
     id: c.id,
+    kind: c.kind,
     frequency: c.frequency,
     title: c.title,
     occupantCount: c.occupantCount,

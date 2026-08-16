@@ -3,6 +3,7 @@
 import { IconContext } from "@phosphor-icons/react";
 import { ThemeProvider } from "next-themes";
 import { Toaster } from "sonner";
+import { LiveRoomProvider } from "@/components/live-room-provider";
 
 /**
  * One icon weight for the whole product, set once.
@@ -21,7 +22,9 @@ export function Providers({ children }: { children: React.ReactNode }) {
       disableTransitionOnChange
     >
       <IconContext.Provider value={ICONS}>
-        {children}
+        {/* Above the router, so the room you are in survives looking at
+            another page. */}
+        <LiveRoomProvider>{children}</LiveRoomProvider>
         <Toaster
           position="top-center"
           toastOptions={{

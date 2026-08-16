@@ -17,6 +17,7 @@ import { Button } from "@/components/ui/button";
 import { Help } from "@/components/ui/overlays";
 import { Badge, Input } from "@/components/ui/primitives";
 import { getEcosystem } from "@/data/ecosystems";
+import { useLive } from "@/components/live-room-provider";
 import { useRadio } from "@/lib/store";
 import { getToken } from "@/data/tokens";
 import type { CoChannelView, Person } from "@/data/schema";
@@ -36,6 +37,9 @@ type ContactRow = { person: Person; coChannel: { id: string } | null };
  */
 export function SidePane({ room }: { room: CoChannelView }) {
   const connected = useRadio((s) => s.session?.connected) === true;
+  const live = useLive();
+  /* A live room's occupancy is the meeting's, not the fixture's. */
+  const isLive = room.kind === "live";
   const [q, setQ] = useState("");
   const { data: contacts } = useFetch<ContactRow[]>("/api/contacts");
 
@@ -96,7 +100,7 @@ export function SidePane({ room }: { room: CoChannelView }) {
           </div>
           <div className="flex items-baseline justify-between gap-3">
             <dt className="text-muted-foreground">In the room</dt>
-            <dd className="readout">{room.occupantCount}</dd>
+            <dd className="readout">{isLive ? live.participants.length : room.occupantCount}</dd>
           </div>
         </dl>
 
@@ -169,7 +173,31 @@ export function SidePane({ room }: { room: CoChannelView }) {
           In the room
         </h3>
         <ul className="space-y-1">
-          {room.occupants.map((o) => (
+          {/* A live room's occupancy is the meeting's. A recorded one's is who
+              was there, which is history and does not change. */}
+          {isLive &&
+            live.participants.map((p) => (
+              <li key={p.id} className="flex items-center gap-2.5 py-1">
+                <span className="min-w-0 flex-1 text-sm font-medium">
+                  {p.isSelf ? "You" : p.name}
+                </span>
+                <span
+                  className={cn(
+                    "shrink-0 text-[11px]",
+                    p.muted ? "text-muted-foreground" : "text-foreground",
+                  )}
+                >
+                  {p.muted ? "Muted" : "Live"}
+                </span>
+              </li>
+            ))}
+          {isLive && live.participants.length === 0 && (
+            <li className="py-1 text-sm text-muted-foreground">
+              Nobody is here yet.
+            </li>
+          )}
+
+          {!isLive && room.occupants.map((o) => (
             <li key={o.id} className="flex items-center gap-2.5 py-1">
               <Avatar person={o.person} size={30} />
               <span className="min-w-0 flex-1">

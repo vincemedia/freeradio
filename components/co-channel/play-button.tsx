@@ -23,6 +23,7 @@ export function PlayButton({
   title,
   labelled = false,
   lockedReason,
+  autoPlay = false,
   className,
 }: {
   src?: string;
@@ -31,6 +32,8 @@ export function PlayButton({
   labelled?: boolean;
   /** why it is unavailable, when the reason is the price rather than the file */
   lockedReason?: string;
+  /** start on mount; used when arriving somewhere meant to be playing */
+  autoPlay?: boolean;
   className?: string;
 }) {
   const [playing, setPlaying] = useState(false);
@@ -53,6 +56,20 @@ export function PlayButton({
   }, [playing]);
 
   useEffect(() => () => player.release(onLost), [onLost]);
+
+  /* Arriving somewhere meant to be playing. Browsers refuse audio without a
+     gesture, so this is an attempt rather than a promise: if it is refused
+     the button is simply there, unpressed, which is the honest fallback. */
+  useEffect(() => {
+    if (!autoPlay || !src) return;
+    let cancelled = false;
+    void player.claim(src, 0, onLost).then((started) => {
+      if (!cancelled) setPlaying(started);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [autoPlay, src, onLost]);
 
   const toggle = useCallback(async () => {
     if (!src) return;

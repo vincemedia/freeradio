@@ -214,9 +214,9 @@ export function useLiveRoom(coChannelId: string | null): LiveRoom {
     }
   }, []);
 
-  /* Leaving on unmount is not optional: a room you have navigated away from
-     still holds your microphone open otherwise. */
-  useEffect(() => leave, [leave]);
+  /* Tear down when the station changes or the tree unmounts: a meeting left
+     running holds the microphone open. */
+  useEffect(() => leave, [leave, coChannelId]);
 
   return {
     status,

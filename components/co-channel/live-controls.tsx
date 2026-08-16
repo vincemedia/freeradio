@@ -151,9 +151,11 @@ export function LiveControls({
  */
 export function RecordedControls({
   room,
+  autoPlay,
   onCopy,
 }: {
   room: CoChannelView;
+  autoPlay?: boolean;
   onCopy: () => void;
 }) {
   return (
@@ -162,6 +164,7 @@ export function RecordedControls({
         src={room.hasAudio ? `/api/co-channels/${room.id}/audio` : undefined}
         title={room.title}
         labelled
+        autoPlay={autoPlay}
       />
       <Button variant="ghost" size="icon-sm" aria-label="Copy link" onClick={onCopy}>
         <Copy />

@@ -1,6 +1,6 @@
 "use client";
 
-import { useParams, useRouter } from "next/navigation";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import {
@@ -11,16 +11,16 @@ import useFetch from "@/lib/use-fetch";
 import { Nest, OccupantGrid, RoomStatus, Transcript } from "@/components/co-channel/room";
 import { LiveControls, RecordedControls } from "@/components/co-channel/live-controls";
 import { LiveOccupants } from "@/components/co-channel/live-occupants";
-import { useLiveRoom } from "@/lib/use-live-room";
+import { useLive } from "@/components/live-room-provider";
 import { SidePane } from "@/components/co-channel/side-pane";
 import { GateBadge } from "@/components/co-channel/card";
-import { EcosystemMark, Facepile, Identity } from "@/components/identity";
+import { EcosystemMark, Identity } from "@/components/identity";
 import { Panel } from "@/components/instrument/parts";
 import { Button } from "@/components/ui/button";
 import { Help } from "@/components/ui/overlays";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Skeleton } from "@/components/ui/primitives";
-import type { CoChannelView } from "@/data/schema";
+import type { CoChannelView, TranscriptLineView } from "@/data/schema";
 import { GATE_HELP } from "@/lib/gates";
 import { elapsedSince, formatDuration, formatFrequency } from "@/lib/format";
 import { useRadio } from "@/lib/store";
@@ -30,27 +30,35 @@ type RoomResponse = CoChannelView;
 
 export default function CoChannelPage() {
   const { id } = useParams<{ id: string }>();
+  const search = useSearchParams();
+  /* First run lands here already playing, which is the point of landing here. */
+  const autoPlay = search.get("play") === "1";
   const router = useRouter();
 
-  const session = useRadio((s) => s.session);
-  const room = useRadio((s) => s.room);
-  const transcript = useRadio((s) => s.transcript);
   const connected = useRadio((s) => s.session?.connected) === true;
-  const tunedTo = useRadio((s) => s.tunedTo);
   const connect = useRadio((s) => s.connect);
 
   const { data: preview, loading, error } = useFetch<RoomResponse>(`/api/co-channels/${id}`);
+  /* A recorded broadcast's words are a fact about the past, fetched once. */
+  const { data: transcriptLines } = useFetch<TranscriptLineView[]>(
+    preview && preview.kind === "recorded" && preview.hasAudio
+      ? `/api/co-channels/${id}/transcript`
+      : null,
+  );
 
   /* A live station is a real meeting with real microphones in it. A recorded
      one already happened: there is nobody to join and something to play. */
   const isLive = preview?.kind === "live";
-  const live = useLiveRoom(isLive ? id : null);
+  const live = useLive();
 
-  const inThisRoom = session?.coChannelId === id;
-  /* Listening is not membership. You can hear this room without a wallet and
-     without appearing in it; joining is the thing that puts you in the list. */
-  const listeningHere = tunedTo === id;
-  const view = (inThisRoom || listeningHere) && room ? room : preview;
+  /* Opening a live station is entering it. The provider owns the meeting, so
+     this is a pointer rather than a join, and leaving the page does not leave
+     the room. */
+  useEffect(() => {
+    if (isLive && live.stationId !== id) live.enter(id);
+  }, [isLive, id, live]);
+
+  const view = preview;
 
   /* Kept for the recorded grid's stagger, which still animates in. */
   const leaving = false;
@@ -99,10 +107,6 @@ export default function CoChannelPage() {
 
   if (!view) return null;
 
-  /* A gated room is described rather than judged now: holdings belong to a
-     wallet and this app does not read them, so the badge says what the door
-     asks for and the door itself answers when you try it. */
-  const locked = false;
 
   return (
     <div className="flex gap-6">
@@ -190,7 +194,7 @@ export default function CoChannelPage() {
                   onCopy={copyLink}
                 />
               ) : (
-                <RecordedControls room={view} onCopy={copyLink} />
+                <RecordedControls room={view} autoPlay={autoPlay} onCopy={copyLink} />
               )}
 
               {/* The sidepane docks at xl; below that it is a sheet. */}
@@ -216,18 +220,12 @@ export default function CoChannelPage() {
             </div>
           </div>
 
-          {!inThisRoom && !locked && (
-            <p className="mt-4 flex items-center gap-2 text-xs text-muted-foreground">
-              <Facepile
-                people={view.occupants.map((o) => o.person)}
-                max={4}
-                size={22}
-              />
-              {/* What each of the two controls does, said before either is
-                  pressed rather than in a toast afterwards. */}
+          {/* What pressing the control will do, before it is pressed. */}
+          {isLive && live.status !== "live" && (
+            <p className="mt-4 text-xs text-muted-foreground">
               {connected
-                ? "Joining shows your handle and avatar to everyone here. You arrive muted. Listening shows nothing."
-                : "Listening needs no wallet and shows nothing. Joining puts your handle in the room, muted."}
+                ? "You arrive muted, and your name appears to everyone in the room."
+                : "Listening needs no wallet and shows nothing. Connect one to be heard."}
             </p>
           )}
         </Panel>
@@ -239,7 +237,7 @@ export default function CoChannelPage() {
             Timing lives in globals.css so it cannot drift from the view
             transition's own duration. */}
         <div data-settle style={{ "--settle-index": 0 } as React.CSSProperties}>
-          <Nest room={view} canPost={inThisRoom} />
+          <Nest room={view} />
         </div>
         <div data-settle style={{ "--settle-index": 1 } as React.CSSProperties}>
           {isLive ? (
@@ -254,7 +252,7 @@ export default function CoChannelPage() {
               Anyone listening is hearing the same words, so withholding them
               from a listener would be hiding what is already audible. */}
           {isLive ? null : view.hasAudio ? (
-            <Transcript lines={transcript} />
+            <Transcript lines={transcriptLines ?? []} />
           ) : (
             <p className="rounded-lg border border-dashed border-border px-4 py-6 text-center text-sm text-muted-foreground">
               No recording was kept of this broadcast, so there is no

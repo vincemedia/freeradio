@@ -1,25 +1,20 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import { toast } from "sonner";
+import { useEffect, useRef } from "react";
 import {
   ArrowSquareOut,
   Crown,
   LinkSimple,
   Microphone,
   MicrophoneSlash,
-  Plus,
 } from "@phosphor-icons/react";
 import { Avatar, Identity } from "@/components/identity";
 import { PersonCard } from "@/components/person-card";
 import { Grille, Lamp, SpeakingRing } from "@/components/instrument/parts";
-import { LevelMeter } from "@/components/instrument/level-meter";
-import { Button } from "@/components/ui/button";
 import { Help } from "@/components/ui/overlays";
-import { Badge, Input } from "@/components/ui/primitives";
+import { Badge } from "@/components/ui/primitives";
 import type { CoChannelView, TranscriptLineView } from "@/data/schema";
 import { formatClock } from "@/lib/format";
-import { useSpeakingLevel } from "@/lib/use-level";
 import { useRadio } from "@/lib/store";
 import { cn } from "@/lib/utils";
 
@@ -30,32 +25,11 @@ import { cn } from "@/lib/utils";
  * mentioned out loud is useless unless it is somewhere you can reach without
  * interrupting. Newest first: the one just mentioned is the one you want.
  */
-export function Nest({
-  room,
-  canPost,
-}: {
-  room: CoChannelView;
-  canPost: boolean;
-}) {
-  const postNestLink = useRadio((s) => s.postNestLink);
-  const [adding, setAdding] = useState(false);
-  const [url, setUrl] = useState("");
-  const [title, setTitle] = useState("");
-
-  const submit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const ok = await postNestLink(url, title);
-    if (ok) {
-      toast.success("Pinned to the nest");
-      setUrl("");
-      setTitle("");
-      setAdding(false);
-    } else {
-      toast.error("That is not a link this room can open");
-    }
-  };
-
-  if (room.nest.length === 0 && !canPost) return null;
+export function Nest({ room }: { room: CoChannelView }) {
+  /* Read-only. Pinning was a write into the simulation, and the live rooms it
+     would belong to are new and empty; it comes back when there is somewhere
+     durable to put it. */
+  if (room.nest.length === 0) return null;
 
   return (
     <section className="space-y-2">
@@ -64,45 +38,7 @@ export function Nest({
           Nest
           <Help>Links anyone in the room pinned while talking</Help>
         </h2>
-        {canPost && (
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => setAdding((v) => !v)}
-            aria-expanded={adding}
-          >
-            <Plus size={14} />
-            Pin a link
-          </Button>
-        )}
       </div>
-
-      {adding && (
-        <form
-          onSubmit={submit}
-          className="flex flex-col gap-2 rounded-lg border border-border bg-card p-3 sm:flex-row"
-        >
-          <Input
-            value={url}
-            onChange={(e) => setUrl(e.target.value)}
-            placeholder="https://"
-            aria-label="Link address"
-            type="url"
-            required
-            className="h-10 sm:flex-1"
-          />
-          <Input
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            placeholder="What is it?"
-            aria-label="Link title"
-            className="h-10 sm:flex-1"
-          />
-          <Button type="submit" variant="primary" size="sm" className="shrink-0">
-            Pin
-          </Button>
-        </form>
-      )}
 
       {room.nest.length > 0 && (
         <ul className="grid gap-2 sm:grid-cols-2">
@@ -159,23 +95,14 @@ export function OccupantGrid({
   /** reverses the stagger and runs it faster, on the way out */
   leaving?: boolean;
 }) {
-  const speakingId = useRadio((s) => s.speakingId);
-  const speakingAt = useRadio((s) => s.speakingAt);
   const me = useRadio((s) => s.session?.me?.id);
   const count = room.occupants.length;
-  /* One meter reading for the grid: exactly one person speaks at a time, so
-     six hooks would be five of them idling. */
-  const level = useSpeakingLevel(speakingId !== null, {
-    stationId: room.hasAudio ? room.id : undefined,
-    atSeconds: speakingAt,
-  });
 
   return (
     <section className="relative overflow-hidden rounded-lg border border-border bg-card">
       <Grille className="absolute inset-0 opacity-70" />
       <ul className="relative grid grid-cols-3 gap-x-2 gap-y-5 p-5 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6">
         {room.occupants.map((o, i) => {
-          const speaking = speakingId === o.personId;
           /* The room fills in reading order and empties in reverse, so
              arriving reads as the room assembling and leaving as it packing
              up. Exits are quicker than entrances, per DESIGN.md: going should
@@ -196,7 +123,7 @@ export function OccupantGrid({
               )}
             >
               <span className="relative">
-                <SpeakingRing speaking={speaking}>
+                <SpeakingRing speaking={false}>
                   <Avatar person={o.person} size={56} />
                 </SpeakingRing>
 
@@ -207,24 +134,19 @@ export function OccupantGrid({
                 <span
                   className={cn(
                     "absolute -bottom-0.5 -right-0.5 z-10 flex items-center justify-center rounded-full border-2 border-card transition-[width] duration-150",
-                    speaking ? "h-5 w-[26px] bg-card" : "size-5",
-                    !speaking &&
-                      (o.muted
+                    "size-5",
+                    (o.muted
                         ? "bg-muted text-muted-foreground"
                         : "bg-primary text-primary-foreground"),
                   )}
-                  title={o.muted ? "Muted" : speaking ? "Speaking" : "Unmuted"}
+                  title={o.muted ? "Muted" : "Unmuted"}
                 >
-                  {speaking ? (
-                    <LevelMeter level={level} className="h-3.5" />
-                  ) : o.muted ? (
+                  {o.muted ? (
                     <MicrophoneSlash size={10} weight="fill" />
                   ) : (
                     <Microphone size={10} weight="fill" />
                   )}
-                  <span className="sr-only">
-                    {o.muted ? "Muted" : speaking ? "Speaking" : "Unmuted"}
-                  </span>
+                  <span className="sr-only">{o.muted ? "Muted" : "Unmuted"}</span>
                 </span>
 
                 {o.role === "host" && (

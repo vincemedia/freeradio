@@ -50,6 +50,9 @@ export interface StationAudio {
  */
 export const FIRST_RUN_STATION = "cc-censorship-millions";
 
+/** The band that station is on, so the dial agrees with what is playing. */
+export const FIRST_RUN_BAND = "twetch" as const;
+
 export const STATION_AUDIO: Record<string, StationAudio> = {
   /* 56.0s, 560 windows, 14 turns. */
   "cc-ordinals-wallets": {

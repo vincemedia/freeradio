@@ -21,8 +21,6 @@ import { useRadio } from "@/lib/store";
 export function WalletButton() {
   const session = useRadio((s) => s.session);
   const connecting = useRadio((s) => s.connecting);
-  const usedWallet = useRadio((s) => s.usedWallet);
-  const adopted = useRadio((s) => s.session?.adopted);
   const connect = useRadio((s) => s.connect);
   const disconnect = useRadio((s) => s.disconnect);
 
@@ -50,13 +48,7 @@ export function WalletButton() {
               });
               return;
             }
-            if (result.usedWallet) {
-              toast.success("Wallet connected");
-            } else {
-              toast("Connected as the demo identity", {
-                description: "No BRC-100 wallet answered in this browser.",
-              });
-            }
+            toast.success("Wallet connected");
           });
         }}
       >
@@ -96,16 +88,12 @@ export function WalletButton() {
             with your own key should never let somebody believe they are
             signing with one when they are not. */}
         <div className="mt-3 space-y-1.5">
-          {usedWallet ? (
-            <Badge variant="outline">BRC-100 wallet connected</Badge>
-          ) : (
-            <Badge variant="signal">Demo identity, no wallet attached</Badge>
-          )}
-          {adopted && (
-            <p className="text-[11px] leading-snug text-muted-foreground">
-              Your wallet is attached and will sign. What is on screen belongs
-              to the demo account, because these fixtures were written before
-              your key existed.
+          <Badge variant="outline">BRC-100 wallet connected</Badge>
+          {/* The key, not a name borrowed from a fixture. Shown in full-ish
+              because it is the only thing that is actually theirs. */}
+          {me.publicKey && (
+            <p className="readout text-[11px] leading-snug text-muted-foreground">
+              {me.publicKey.slice(0, 10)}…{me.publicKey.slice(-6)}
             </p>
           )}
         </div>

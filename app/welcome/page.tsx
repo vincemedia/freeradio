@@ -22,7 +22,8 @@ import { EcosystemMark, Facepile } from "@/components/identity";
 import { Panel } from "@/components/instrument/parts";
 import { TuningScale, type Station } from "@/components/instrument/tuning-scale";
 import { Button } from "@/components/ui/button";
-import { FIRST_RUN_STATION } from "@/data/audio";
+import { Input } from "@/components/ui/primitives";
+import { FIRST_RUN_BAND, FIRST_RUN_STATION } from "@/data/audio";
 import { ecosystems, getEcosystem } from "@/data/ecosystems";
 import type { CoChannelView, EcosystemId } from "@/data/schema";
 import { useRadio } from "@/lib/store";
@@ -161,49 +162,47 @@ export default function WelcomePage() {
 
   const next = () => setStep(STEPS[Math.min(index + 1, STEPS.length - 1)]);
   const back = () => setStep(STEPS[Math.max(index - 1, 0)]);
-  const join = useRadio((s) => s.join);
-  const tuneIn = useRadio((s) => s.tuneIn);
   const connect = useRadio((s) => s.connect);
   const connecting = useRadio((s) => s.connecting);
+  const setUsername = useRadio((s) => s.setUsername);
+
+  /* Chosen before the wallet, on purpose: what you are called is yours to
+     decide, and deciding it should not require having connected anything. */
+  const [name, setName] = useState("");
+  const [nameError, setNameError] = useState<string | null>(null);
+  const [nameSaved, setNameSaved] = useState(false);
+
+  const saveName = async () => {
+    const result = await setUsername(name);
+    if (!result.ok) {
+      setNameError(result.error ?? "That name will not do.");
+      return false;
+    }
+    setNameError(null);
+    setNameSaved(true);
+    return true;
+  };
 
   /**
-   * Finish in a station rather than in front of a list.
+   * Finish inside Neil's broadcast, playing.
    *
    * The product is people talking; a directory is not that. So the last step
-   * puts them on a frequency and the hint on "On air" is what tells them there
-   * is a whole band behind it.
+   * puts something in your ears rather than a list in front of you, and the
+   * hint on "On air" is what says there is a whole band behind it.
    *
-   * Which of the two it does depends on whether they connected. With an
-   * identity they join, muted, and appear in the room. Without one they
-   * listen, which is the whole of what a wallet-less visitor can do and is not
-   * a degraded version of anything. Either way, if the station has closed this
-   * falls back to the list rather than stranding them.
+   * A recorded station rather than a live one on purpose: a live room is
+   * empty until somebody else turns up, and an empty room is a worse first
+   * impression than a good conversation you can hear immediately.
    */
   const finish = async () => {
+    if (name.trim() && !nameSaved) await saveName();
     if (!followed.includes(useRadio.getState().ecosystem)) {
       setEcosystem(followed[0]);
     }
     setOnboarded(true);
-
-    const connected = useRadio.getState().session?.connected === true;
-    const landed = connected
-      ? (await join(FIRST_RUN_STATION)).ok
-      : await tuneIn(FIRST_RUN_STATION);
-
-    if (!landed) {
-      router.replace("/");
-      return;
-    }
-
-    /* Move the dial to the band the station is actually on. Landing in a
-       Twetch room while the switch still reads Nexus is not wrong — you can
-       be in a room on any band — but as a first impression it reads as the
-       app disagreeing with itself. Taken from the room rather than written
-       down here, so it stays true if the first-run station moves. */
-    const band = useRadio.getState().room?.ecosystem;
-    if (band) setEcosystem(band);
-
-    router.replace(`/co-channel/${FIRST_RUN_STATION}`);
+    setEcosystem(FIRST_RUN_BAND);
+    /* `play` is what the station page reads to start on arrival. */
+    router.replace(`/co-channel/${FIRST_RUN_STATION}?play=1`);
   };
 
   /* A slow sweep on the first screen, so the needle is visibly a needle
@@ -483,10 +482,43 @@ export default function WelcomePage() {
                 </p>
               </div>
 
+              {/* The name comes first, because it is the only thing here
+                  that is theirs to decide. It attaches to whichever key
+                  connects — or to none, and waits. */}
+              <div className="w-full space-y-2 text-left">
+                <label
+                  htmlFor="fr-username"
+                  className="block text-[11px] font-medium uppercase tracking-[0.06em] text-muted-foreground"
+                >
+                  Pick a username
+                </label>
+                <Input
+                  id="fr-username"
+                  value={name}
+                  onChange={(e) => {
+                    setName(e.target.value);
+                    setNameError(null);
+                    setNameSaved(false);
+                  }}
+                  onBlur={() => {
+                    if (name.trim()) void saveName();
+                  }}
+                  placeholder="what people call you on air"
+                  autoComplete="off"
+                  spellCheck={false}
+                  aria-describedby="fr-username-help"
+                  className="h-11"
+                />
+                <p id="fr-username-help" className="text-xs text-muted-foreground">
+                  {nameError ??
+                    "Shown to everyone in a room. Without one you appear as your identity key, shortened."}
+                </p>
+              </div>
+
               {/* Both ways out of the last step, with the wallet on top
                   because it is the one that opens the rest of the product.
-                  Skipping is not a lesser path: the band, the stations and
-                  their audio all work without an identity, and pretending
+                  Skipping is not a lesser path: the band and the recorded
+                  broadcasts all work without an identity, and pretending
                   otherwise would be a gate with nothing behind it. */}
               <div className="space-y-2">
                 <Button
@@ -500,12 +532,6 @@ export default function WelcomePage() {
                           description: result.error,
                         });
                         return;
-                      }
-                      if (!result.usedWallet) {
-                        toast("Connected as the demo identity", {
-                          description:
-                            "No BRC-100 wallet answered in this browser.",
-                        });
                       }
                       void finish();
                     });

@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 import { MinimisedBar } from "@/components/co-channel/minimised-bar";
 import { TopBar } from "@/components/shell/top-bar";
-import { startSpeaking, useRadio } from "@/lib/store";
+import { useRadio } from "@/lib/store";
 
 /**
  * The shell: a top bar, a variable-width content area, and nothing else.
@@ -16,7 +16,6 @@ import { startSpeaking, useRadio } from "@/lib/store";
 export function AppShell({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const refreshSession = useRadio((s) => s.refreshSession);
-  const tunedTo = useRadio((s) => s.tunedTo);
 
   /* First run goes to the welcome flow.
      The check reads live state rather than a render-scoped value: this runs
@@ -34,15 +33,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     void refreshSession();
   }, [refreshSession]);
 
-  /* The receiver runs from here rather than from the room's own page, so a
-     station keeps talking and its audio keeps playing while you look at
-     something else. Keyed on what you are tuned to rather than what you are
-     in, because listening does not require a wallet and being in a room
-     does. */
-  useEffect(() => {
-    if (!tunedTo) return;
-    return startSpeaking(tunedTo);
-  }, [tunedTo]);
 
   return (
     <div className="flex min-h-dvh flex-col bg-background">

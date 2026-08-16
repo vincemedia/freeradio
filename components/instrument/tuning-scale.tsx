@@ -52,6 +52,8 @@ function useCountTo(target: number, step: number): number {
 
 export interface Station {
   id: string;
+  /** live stations are joinable; recorded ones are played */
+  kind?: "live" | "recorded";
   frequency: number;
   title: string;
   occupantCount: number;
