@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   ArrowLeft,
   Broadcast,
@@ -14,13 +14,14 @@ import {
   ShieldCheck,
   UsersThree,
 } from "@phosphor-icons/react";
+import useFetch from "@/lib/use-fetch";
 import { LogoMark, Wordmark } from "@/components/brand";
-import { EcosystemMark } from "@/components/identity";
+import { EcosystemMark, Facepile } from "@/components/identity";
 import { Panel } from "@/components/instrument/parts";
 import { TuningScale, type Station } from "@/components/instrument/tuning-scale";
 import { Button } from "@/components/ui/button";
-import { ecosystems } from "@/data/ecosystems";
-import type { EcosystemId } from "@/data/schema";
+import { ecosystems, getEcosystem } from "@/data/ecosystems";
+import type { CoChannelView, EcosystemId } from "@/data/schema";
 import { useRadio } from "@/lib/store";
 import { cn } from "@/lib/utils";
 
@@ -40,15 +41,55 @@ import { cn } from "@/lib/utils";
 const STEPS = ["what", "band", "rules", "ready"] as const;
 type Step = (typeof STEPS)[number];
 
-/* A band with nothing real on it, purely so the scale has something to show
-   before any data has loaded. Marked plainly as an example. */
-const DEMO_STATIONS: Station[] = [
+/* Marks for the scale before the real rooms arrive, so the dial is never an
+   empty ruler. They carry no titles because they are not rooms. */
+const PLACEHOLDER_STATIONS: Station[] = [
   { id: "d1", frequency: 89.5, title: "", occupantCount: 3, contactCount: 1, primaryGate: "open", recording: false },
   { id: "d2", frequency: 94.1, title: "", occupantCount: 5, contactCount: 0, primaryGate: "open", recording: false },
   { id: "d3", frequency: 98.7, title: "", occupantCount: 6, contactCount: 2, primaryGate: "open", recording: true },
   { id: "d4", frequency: 101.3, title: "", occupantCount: 4, contactCount: 0, primaryGate: "token", recording: false },
   { id: "d5", frequency: 104.9, title: "", occupantCount: 3, contactCount: 1, primaryGate: "vouch", recording: false },
 ];
+
+/** How many rooms the sweep visits before it repeats. */
+const SWEEP_SIZE = 5;
+
+/**
+ * Rooms for the demonstration dial, drawn from what is actually on air.
+ *
+ * One per band where possible, so the first thing anybody sees is that a
+ * frequency belongs to an ecosystem rather than to the app, which is the
+ * point step two then asks them to act on. Frequencies must be distinct or
+ * two rooms would land on the same mark and only one would ever be tunable.
+ */
+function pickSweep(rooms: CoChannelView[]): CoChannelView[] {
+  const chosen: CoChannelView[] = [];
+  const usedBands = new Set<string>();
+  const usedFrequencies = new Set<string>();
+
+  const take = (room: CoChannelView) => {
+    const f = room.frequency.toFixed(1);
+    if (usedFrequencies.has(f)) return;
+    usedFrequencies.add(f);
+    usedBands.add(room.ecosystem);
+    chosen.push(room);
+  };
+
+  /* Busiest first within each band, so the rooms on show are ones with
+     somebody in them. */
+  const byOccupancy = [...rooms].sort((a, b) => b.occupantCount - a.occupantCount);
+  for (const room of byOccupancy) {
+    if (chosen.length >= SWEEP_SIZE) break;
+    if (!usedBands.has(room.ecosystem)) take(room);
+  }
+  /* Top up from anywhere if there were not enough bands on air. */
+  for (const room of byOccupancy) {
+    if (chosen.length >= SWEEP_SIZE) break;
+    take(room);
+  }
+
+  return chosen.sort((a, b) => a.frequency - b.frequency);
+}
 
 const RULES = [
   {
@@ -87,7 +128,29 @@ export default function WelcomePage() {
   const setEcosystem = useRadio((s) => s.setEcosystem);
 
   const [step, setStep] = useState<Step>("what");
-  const [frequency, setFrequency] = useState(98.7);
+
+  /* The needle position is derived: the sweep advances an index, and dragging
+     sets an override that also stops the sweep. Storing the frequency instead
+     meant writing it from inside the effect, which is a cascading render for
+     something that is really just "which room are we showing". */
+  const [sweepIndex, setSweepIndex] = useState(0);
+  const [manual, setManual] = useState<number | null>(null);
+
+  /* Real rooms, so the dial demonstrates the product rather than illustrating
+     it. Only fetched on the first step, which is the only one that shows it. */
+  const { data: rooms } = useFetch<CoChannelView[]>(
+    step === "what" ? "/api/co-channels" : null,
+  );
+  const sweep = useMemo(() => pickSweep(rooms ?? []), [rooms]);
+  const stations = sweep.length > 0 ? sweep : PLACEHOLDER_STATIONS;
+
+  const frequency =
+    manual ?? stations[sweepIndex % stations.length]?.frequency ?? 98.7;
+
+  /* What the needle is currently sitting on, which drives everything above
+     the scale: the subject, the faces, and the band it belongs to. */
+  const tuned = sweep.find((r) => Math.abs(r.frequency - frequency) < 0.05);
+  const tunedBand = tuned ? getEcosystem(tuned.ecosystem) : undefined;
 
   const index = STEPS.indexOf(step);
   const progress = Math.max(0.08, (index + 1) / STEPS.length);
@@ -100,18 +163,24 @@ export default function WelcomePage() {
   };
 
   /* A slow sweep on the first screen, so the needle is visibly a needle
-     before anybody is asked to drag one. Stops as soon as you move on. */
+     before anybody is asked to drag one, and so the room shown above it
+     changes while you read.
+
+     Depends on the count, not the array, which is a new object every render
+     and would restart the interval constantly. */
+  const stationCount = stations.length;
   useEffect(() => {
-    if (step !== "what") return;
-    const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
-    if (mq.matches) return;
-    let i = 0;
-    const t = setInterval(() => {
-      i = (i + 1) % DEMO_STATIONS.length;
-      setFrequency(DEMO_STATIONS[i].frequency);
-    }, 2600);
+    /* Only while the first step is showing, and only until somebody takes
+       hold of the dial themselves. */
+    if (step !== "what" || manual !== null) return;
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+
+    const t = setInterval(
+      () => setSweepIndex((i) => (i + 1) % stationCount),
+      3200,
+    );
     return () => clearInterval(t);
-  }, [step]);
+  }, [step, manual, stationCount]);
 
   return (
     <div className="relative min-h-dvh bg-background">
@@ -154,14 +223,50 @@ export default function WelcomePage() {
           {step === "what" && (
             <>
               <div className="flex flex-1 flex-col justify-center py-8">
+                {/* What the needle is on, above the scale that found it.
+                    Fixed height so the panel does not jump as the sweep moves
+                    between rooms with different length titles. */}
+                <div className="mb-3 flex h-[4.75rem] items-end">
+                  {tuned ? (
+                    <div
+                      key={tuned.id}
+                      className="w-full animate-in fade-in duration-300"
+                    >
+                      <p className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+                        <EcosystemMark ecosystem={tuned.ecosystem} size={13} />
+                        {tunedBand?.name ?? tuned.ecosystem} band
+                      </p>
+                      <h2 className="mt-1 truncate font-display text-[17px] font-semibold leading-snug tracking-tight">
+                        {tuned.title}
+                      </h2>
+                      <div className="mt-1.5 flex items-center gap-2">
+                        <Facepile
+                          people={tuned.occupants.map((o) => o.person)}
+                          max={4}
+                          size={24}
+                        />
+                        <span className="text-[11px] text-muted-foreground">
+                          {tuned.occupantCount} in the room
+                        </span>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="w-full space-y-1.5">
+                      <div className="h-3 w-24 animate-pulse rounded-sm bg-border" />
+                      <div className="h-4 w-48 animate-pulse rounded-sm bg-border" />
+                      <div className="h-6 w-28 animate-pulse rounded-full bg-border" />
+                    </div>
+                  )}
+                </div>
+
                 <Panel className="p-4">
                   <TuningScale
                     min={87.5}
                     max={108}
                     step={0.1}
                     value={frequency}
-                    stations={DEMO_STATIONS}
-                    onChange={setFrequency}
+                    stations={stations}
+                    onChange={setManual}
                   />
                 </Panel>
                 <h1 className="mt-8 font-display text-[28px] font-semibold leading-tight tracking-tight text-balance">
