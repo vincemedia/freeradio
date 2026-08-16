@@ -1,0 +1,26 @@
+name: verify
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - run: bun install --frozen-lockfile
+
+      # Types, lint, and the fixture rules typecheck cannot see: one person in
+      # two rooms, a frequency issued twice, somebody speaking while muted.
+      - run: bun run typecheck
+      - run: bun run lint
+      - run: bun run check
+
+      - run: bun run build

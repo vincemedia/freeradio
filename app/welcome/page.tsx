@@ -176,7 +176,20 @@ export default function WelcomePage() {
     setOnboarded(true);
 
     const landed = await join(FIRST_RUN_STATION);
-    router.replace(landed.ok ? `/co-channel/${FIRST_RUN_STATION}` : "/");
+    if (!landed.ok) {
+      router.replace("/");
+      return;
+    }
+
+    /* Move the dial to the band the station is actually on. Landing in a
+       Twetch room while the switch still reads Nexus is not wrong — you can
+       be in a room on any band — but as a first impression it reads as the
+       app disagreeing with itself. Taken from the room rather than written
+       down here, so it stays true if the first-run station moves. */
+    const band = useRadio.getState().room?.ecosystem;
+    if (band) setEcosystem(band);
+
+    router.replace(`/co-channel/${FIRST_RUN_STATION}`);
   };
 
   /* A slow sweep on the first screen, so the needle is visibly a needle
