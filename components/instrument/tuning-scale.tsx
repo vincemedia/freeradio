@@ -5,6 +5,9 @@ import type { GateKind } from "@/data/schema";
 import { formatFrequency } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
+/** Horizontal padding of the rails inside the track, in pixels. */
+const RAIL_INSET = 12;
+
 export interface Station {
   id: string;
   frequency: number;
@@ -71,7 +74,11 @@ export function TuningScale({
       const el = trackRef.current;
       if (!el) return value;
       const rect = el.getBoundingClientRect();
-      const ratio = (clientX - rect.left) / rect.width;
+      /* The rails are inset by RAIL_INSET, so the usable span is narrower
+         than the track. Without this the needle lags the pointer, worst at
+         the ends of the band. */
+      const usable = rect.width - RAIL_INSET * 2;
+      const ratio = (clientX - rect.left - RAIL_INSET) / usable;
       return snap(min + ratio * (max - min));
     },
     [min, max, snap, value],
@@ -144,6 +151,10 @@ export function TuningScale({
         </span>
       </div>
 
+      {/* The rails inside are full-width and translated by up to 100%, which
+          would push them past the track and make the page scroll sideways.
+          They are inset by 12px instead, and the track clips anything that
+          still reaches the edge, so the page body never scrolls horizontally. */}
       <div
         ref={trackRef}
         role="slider"
@@ -158,10 +169,10 @@ export function TuningScale({
         onPointerUp={endDrag}
         onPointerCancel={endDrag}
         onKeyDown={handleKeyDown}
-        className="relative h-20 cursor-ew-resize touch-none rounded-md border border-panel-border bg-card focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+        className="relative h-20 cursor-ew-resize touch-none overflow-hidden rounded-md border border-panel-border bg-card focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
       >
         {/* Ticks. The only ornament, and each one is a frequency. */}
-        <div aria-hidden className="absolute inset-x-0 top-0 h-full">
+        <div aria-hidden className="absolute inset-y-0 left-3 right-3">
           {ticks.map((t) => {
             const p = ((t.f - min) / (max - min)) * 100;
             return (
@@ -194,7 +205,7 @@ export function TuningScale({
         </div>
 
         {/* Stations. Height carries occupancy, so a busy room is a taller mark. */}
-        <div aria-hidden className="absolute inset-x-0 bottom-0 h-11">
+        <div aria-hidden className="absolute bottom-0 left-3 right-3 h-11">
           {stations.map((s) => {
             const p = ((s.frequency - min) / (max - min)) * 100;
             const height = Math.min(28, 10 + s.occupantCount * 3.5);
@@ -205,10 +216,13 @@ export function TuningScale({
                 className="absolute inset-y-0 w-full"
                 style={{ transform: `translateX(${p}%)` }}
               >
+                {/* The tuned mark widens so the yellow still reads either side
+                    of the 2px needle sitting on top of it. */}
                 <div
-                  className="absolute bottom-2 left-0 w-[3px] -translate-x-1/2 rounded-[1px] transition-[background-color,height] duration-150"
+                  className="absolute bottom-2 left-0 -translate-x-1/2 rounded-[1px] transition-[background-color,height,width] duration-150"
                   style={{
                     height,
+                    width: isTuned ? 8 : 3,
                     backgroundColor: isTuned
                       ? "var(--primary)"
                       : s.contactCount > 0
@@ -231,15 +245,16 @@ export function TuningScale({
         {/* The needle. The only red line on the scale. */}
         <div
           aria-hidden
-          className="pointer-events-none absolute inset-y-0 w-full transition-transform duration-[400ms] ease-[var(--ease-detent)] motion-reduce:transition-none"
+          className="pointer-events-none absolute inset-y-0 left-3 right-3 transition-transform duration-400 ease-detent motion-reduce:transition-none"
           style={{ transform: `translateX(${pct}%)` }}
         >
           <div
             className="absolute inset-y-0 left-0 w-0.5 -translate-x-1/2"
             style={{ backgroundColor: "var(--needle)" }}
           />
+          {/* Sits just inside the track, since the track clips its overflow. */}
           <div
-            className="absolute -top-1 left-0 size-2 -translate-x-1/2 rotate-45"
+            className="absolute top-0 left-0 size-2 -translate-x-1/2 rotate-45"
             style={{ backgroundColor: "var(--needle)" }}
           />
         </div>
