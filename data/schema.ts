@@ -239,6 +239,15 @@ export interface Recording {
   duration: number;
   occupantIds: string[];
   plays: number;
+  /**
+   * The file, where one exists.
+   *
+   * Three of these are real recordings and play; the rest are fixture rows
+   * with a duration and no sound behind it. The UI reads this rather than
+   * assuming, so a play control is only offered where pressing it does
+   * something.
+   */
+  audioSrc?: string;
 }
 
 /* -------------------------------------------------------------- view types */

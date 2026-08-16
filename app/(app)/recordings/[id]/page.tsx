@@ -3,9 +3,10 @@
 import { useParams, useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
-import { CaretLeft, Copy, LockKey, Pause, Play } from "@phosphor-icons/react";
+import { CaretLeft, Copy, LockKey } from "@phosphor-icons/react";
 import useFetch from "@/lib/use-fetch";
 import { Avatar, EcosystemMark, Identity } from "@/components/identity";
+import { PlayButton } from "@/components/co-channel/play-button";
 import { Panel } from "@/components/instrument/parts";
 import { Button } from "@/components/ui/button";
 import { Help } from "@/components/ui/overlays";
@@ -38,7 +39,6 @@ type Row = Recording & {
 export default function RecordingPage() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
-  const [playing, setPlaying] = useState(false);
   const [bought, setBought] = useState(false);
 
   const { data, loading, error } = useFetch<Row>(`/api/recordings/${id}`);
@@ -156,24 +156,7 @@ export default function RecordingPage() {
                 {`Unlock for $${data.priceUsd}`}
               </Button>
             ) : (
-              <Button
-                variant="primary"
-                size="sm"
-                onClick={() => setPlaying((p) => !p)}
-                aria-pressed={playing}
-              >
-                {playing ? (
-                  <>
-                    <Pause size={15} weight="fill" />
-                    Pause
-                  </>
-                ) : (
-                  <>
-                    <Play size={15} weight="fill" />
-                    Play
-                  </>
-                )}
-              </Button>
+              <PlayButton src={data.audioSrc} title={data.title} labelled />
             )}
             <Button
               variant="ghost"

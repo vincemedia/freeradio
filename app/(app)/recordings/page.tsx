@@ -2,10 +2,11 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { LockKey, Pause, Play, Record } from "@phosphor-icons/react";
+import { LockKey, Record } from "@phosphor-icons/react";
 import { toast } from "sonner";
 import useFetch from "@/lib/use-fetch";
 import { Facepile, Identity } from "@/components/identity";
+import { PlayButton } from "@/components/co-channel/play-button";
 import { PageHeader } from "@/components/shell/page-header";
 import { Button } from "@/components/ui/button";
 import { EmptyState, Skeleton } from "@/components/ui/primitives";
@@ -34,13 +35,12 @@ type Row = Recording & {
  * own frequency and title: the room is gone and its frequency belongs to
  * somebody else by now.
  *
- * Playback is mocked, like the audio everywhere else in this prototype. The
- * control still behaves honestly: it toggles, it says which one is playing,
- * and only one plays at a time.
+ * Three of these have a real file behind them and play. The rest are rows
+ * with a duration and no audio, and their control says so rather than
+ * miming: the same rule the price button follows two lines down.
  */
 export default function RecordingsPage() {
   const ecosystem = useRadio((s) => s.ecosystem);
-  const [playing, setPlaying] = useState<string | null>(null);
   /* Unlocks are per session, like the rest of the mock money in this app. */
   const [bought, setBought] = useState<Set<string>>(new Set());
 
@@ -69,7 +69,6 @@ export default function RecordingsPage() {
       ) : (
         <ul className="space-y-2">
           {data!.map((r) => {
-            const isPlaying = playing === r.id;
             const locked = r.priceUsd > 0 && !bought.has(r.id);
             return (
               <li
@@ -95,15 +94,11 @@ export default function RecordingsPage() {
                     <LockKey />
                   </Button>
                 ) : (
-                  <Button
-                    variant={isPlaying ? "primary" : "secondary"}
-                    size="icon"
-                    aria-label={isPlaying ? `Pause ${r.title}` : `Play ${r.title}`}
-                    onClick={() => setPlaying(isPlaying ? null : r.id)}
+                  <PlayButton
+                    src={r.audioSrc}
+                    title={r.title}
                     className="shrink-0"
-                  >
-                    {isPlaying ? <Pause weight="fill" /> : <Play weight="fill" />}
-                  </Button>
+                  />
                 )}
 
                 <div className="min-w-0 flex-1">

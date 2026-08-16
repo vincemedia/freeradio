@@ -9,12 +9,61 @@
  * Occupant ids are a plain list here rather than a join table: nothing about a
  * finished recording changes, so there is no relationship left to model.
  */
+import { STATION_AUDIO } from "./audio";
 import type { Recording } from "./schema";
 
 const NOW = Date.now();
 const hoursAgo = (h: number) => new Date(NOW - h * 3_600_000).toISOString();
 
+/**
+ * The three that are real.
+ *
+ * Same files as the live stations, kept from an earlier session on the same
+ * frequency, which is what a recording is. Duration is the file's own length
+ * rather than a number typed in, so the row cannot claim a length the audio
+ * does not have.
+ */
+const REAL: Recording[] = [
+  {
+    id: "rec-censorship-part-one",
+    title: "Censorship killed millions, the opening",
+    frequency: 93.5,
+    ecosystem: "twetch",
+    hostId: "tw-neil",
+    recordedAt: hoursAgo(6),
+    duration: STATION_AUDIO["cc-censorship-millions"].envelope.length / 10,
+    occupantIds: ["tw-neil", "nick-hudson", "tw-marisol", "tw-brid"],
+    plays: 1_284,
+    audioSrc: STATION_AUDIO["cc-censorship-millions"].src,
+  },
+  {
+    id: "rec-kurt-ama-12",
+    title: "Ask me anything, episode twelve",
+    frequency: 106.7,
+    ecosystem: "twetch",
+    hostId: "tw-kurt",
+    recordedAt: hoursAgo(30),
+    duration: STATION_AUDIO["cc-kurt-ama"].envelope.length / 10,
+    occupantIds: ["tw-kurt", "tw-devon", "tw-shruggr"],
+    plays: 863,
+    audioSrc: STATION_AUDIO["cc-kurt-ama"].src,
+  },
+  {
+    id: "rec-ordinals-wallet-setup",
+    title: "Setting up the wallet, start to finish",
+    frequency: 100.0,
+    ecosystem: "nexus",
+    hostId: "grace-adeyemi",
+    recordedAt: hoursAgo(11),
+    duration: STATION_AUDIO["cc-ordinals-wallets"].envelope.length / 10,
+    occupantIds: ["grace-adeyemi", "amara-okonkwo", "fatima-zahra"],
+    plays: 297,
+    audioSrc: STATION_AUDIO["cc-ordinals-wallets"].src,
+  },
+];
+
 export const recordings: Recording[] = [
+  ...REAL,
   {
     id: "rec-spv-teach-in",
     title: "SPV, from first principles",
