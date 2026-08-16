@@ -2,6 +2,7 @@ import "server-only";
 
 import { withinLifespan } from "@/lib/server/lifecycle";
 import { DEFAULT_BED, isBedId, type BedId } from "@/data/beds";
+import { getCoChannelRow } from "@/lib/server/store";
 import type { CoChannel, EcosystemId } from "@/data/schema";
 import {
   createMeeting,
@@ -158,4 +159,24 @@ export async function createUserStation(input: {
 
   await createMeeting(config, { title: encodeStation(encoded) });
   return toStation(encoded, new Date().toISOString());
+}
+
+/**
+ * A station by id, wherever it lives.
+ *
+ * The seeded band is in memory; a station somebody started is a RealtimeKit
+ * meeting. Two homes, and every caller that forgot the second one was broken
+ * for exactly the stations real people made — which is the worst possible
+ * half to get wrong, and the half nobody tests, because a seeded room works
+ * on the first try every time.
+ *
+ * The token route forgot it, so no station anybody started could be joined:
+ * the page loaded, the room read fine, and the one call that mints the right
+ * to be in it answered "that Co-Channel has closed". Hence this, so there is
+ * one answer to "does this station exist" rather than one per caller.
+ */
+export async function anyStation(id: string): Promise<CoChannel | null> {
+  const seeded = getCoChannelRow(id);
+  if (seeded) return seeded;
+  return userStation(id);
 }

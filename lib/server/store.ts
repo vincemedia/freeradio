@@ -165,6 +165,11 @@ export function listCoChannels(opts: ListOptions = {}): CoChannelView[] {
   );
 }
 
+/** The bare row, for callers that only need to know it exists and where. */
+export function getCoChannelRow(id: string) {
+  return state.channels.find((c) => c.id === id) ?? null;
+}
+
 export function getCoChannel(id: string): CoChannelView | undefined {
   const row = state.channels.find((c) => c.id === id);
   return row ? toView(row) : undefined;

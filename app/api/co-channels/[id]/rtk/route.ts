@@ -9,7 +9,7 @@ import {
   sessionParticipants,
   type SessionParticipant,
 } from "@/lib/server/realtimekit";
-import { getCoChannel } from "@/lib/server/store";
+import { anyStation } from "@/lib/server/user-stations";
 
 export const dynamic = "force-dynamic";
 
@@ -76,7 +76,7 @@ export async function POST(
     );
   }
 
-  const room = getCoChannel(id);
+  const room = await anyStation(id);
   if (!room) {
     return NextResponse.json(
       { error: "That Co-Channel has closed." },
