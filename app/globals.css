@@ -83,7 +83,7 @@
      an inner highlight along the top where the light lands. Pressing swaps in
      the pressed set, which pulls the drop shadow in and deepens the bottom
      inset, so the piece squashes instead of sliding. */
-  --radius-clay: 14px;
+  --radius-clay: 8px;
 
   --shadow-clay-primary:
     0 12px 24px -10px oklch(0.72 0.15 89 / 0.65),
@@ -159,7 +159,7 @@
 
   --shadow-raised: 0 1px 2px oklch(0 0 0 / 0.3), 0 2px 8px oklch(0 0 0 / 0.24);
   --shadow-overlay: 0 8px 30px oklch(0 0 0 / 0.45);
-  --radius-clay: 14px;
+  --radius-clay: 8px;
 
   --shadow-clay-primary:
     0 12px 26px -10px oklch(0.72 0.15 89 / 0.4),

@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import useFetch from "@/lib/use-fetch";
 import { Facepile, Identity } from "@/components/identity";
 import { PlayButton } from "@/components/co-channel/play-button";
+import { Price, usePriceLabel } from "@/components/price";
 import { PageHeader } from "@/components/shell/page-header";
 import { Button } from "@/components/ui/button";
 import { EmptyState, Skeleton } from "@/components/ui/primitives";
@@ -43,6 +44,7 @@ export default function RecordingsPage() {
   const ecosystem = useRadio((s) => s.ecosystem);
   /* Unlocks are per session, like the rest of the mock money in this app. */
   const [bought, setBought] = useState<Set<string>>(new Set());
+  const priceLabel = usePriceLabel();
 
   const { data, loading } = useFetch<Row[]>(`/api/recordings?ecosystem=${ecosystem}`);
 
@@ -76,30 +78,32 @@ export default function RecordingsPage() {
                 id={r.id}
                 className="flex items-center gap-3 rounded-lg border border-border bg-card p-3 sm:p-4"
               >
-                {locked ? (
-                  /* The price is the button. A play control that refuses when
-                     pressed would be the dishonest version of this. */
-                  <Button
-                    variant="secondary"
-                    size="icon"
-                    aria-label={`Unlock ${r.title} for $${r.priceUsd}`}
-                    onClick={() => {
-                      setBought((b) => new Set(b).add(r.id));
-                      toast.success("Unlocked", {
-                        description: `$${r.priceUsd} to ${formatIdentity(r.host)}, less a ${Math.round(r.platformFee * 100)}% platform fee.`,
-                      });
-                    }}
-                    className="shrink-0"
-                  >
-                    <LockKey />
-                  </Button>
-                ) : (
+                {/* Locked rows keep both controls: the lock is the price and
+                    the play button beside it is what the price buys, greyed
+                    until it is paid. Swapping one for the other hid the thing
+                    being sold behind the thing selling it. */}
+                <div className="flex shrink-0 items-center gap-1.5">
+                  {locked && (
+                    <Button
+                      variant="secondary"
+                      size="icon"
+                      aria-label={`Unlock ${r.title} for ${priceLabel(r.priceUsd)}`}
+                      onClick={() => {
+                        setBought((b) => new Set(b).add(r.id));
+                        toast.success("Unlocked", {
+                          description: `${priceLabel(r.priceUsd)} to ${formatIdentity(r.host)}, less a ${Math.round(r.platformFee * 100)}% platform fee.`,
+                        });
+                      }}
+                    >
+                      <LockKey />
+                    </Button>
+                  )}
                   <PlayButton
-                    src={r.audioSrc}
+                    src={locked ? undefined : r.audioSrc}
                     title={r.title}
-                    className="shrink-0"
+                    lockedReason={locked ? "Unlock this recording to play it" : undefined}
                   />
-                )}
+                </div>
 
                 <div className="min-w-0 flex-1">
                   <div className="flex items-baseline gap-2">
@@ -122,11 +126,15 @@ export default function RecordingsPage() {
                     <span className="readout">{formatDuration(r.duration)}</span>
                     <span>{formatAgo(r.recordedAt)}</span>
                     <span>{formatCount(r.plays)} plays</span>
-                    {r.priceUsd > 0 && (
-                      <span className={locked ? "text-foreground" : undefined}>
-                        {locked ? `$${r.priceUsd} to listen` : "Unlocked"}
-                      </span>
-                    )}
+                    {r.priceUsd > 0 &&
+                      (locked ? (
+                        <span className="flex items-baseline gap-1 text-foreground">
+                          <Price usd={r.priceUsd} inline />
+                          to unlock
+                        </span>
+                      ) : (
+                        <span>Unlocked</span>
+                      ))}
                   </div>
                 </div>
 

@@ -7,6 +7,7 @@ import { CaretLeft, Copy, LockKey } from "@phosphor-icons/react";
 import useFetch from "@/lib/use-fetch";
 import { Avatar, EcosystemMark, Identity } from "@/components/identity";
 import { PlayButton } from "@/components/co-channel/play-button";
+import { usePriceLabel } from "@/components/price";
 import { Panel } from "@/components/instrument/parts";
 import { Button } from "@/components/ui/button";
 import { Help } from "@/components/ui/overlays";
@@ -40,6 +41,7 @@ export default function RecordingPage() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
   const [bought, setBought] = useState(false);
+  const priceLabel = usePriceLabel();
 
   const { data, loading, error } = useFetch<Row>(`/api/recordings/${id}`);
 
@@ -141,23 +143,29 @@ export default function RecordingPage() {
           </div>
 
           <div className="flex shrink-0 items-center gap-1.5">
-            {locked ? (
+            {/* Both controls, like the list: the lock is the price and the
+                play button beside it is what the price buys. */}
+            {locked && (
               <Button
                 variant="primary"
                 size="sm"
                 onClick={() => {
                   setBought(true);
                   toast.success("Unlocked", {
-                    description: `$${data.priceUsd} to ${formatIdentity(data.host)}, less a ${Math.round(data.platformFee * 100)}% platform fee.`,
+                    description: `${priceLabel(data.priceUsd)} to ${formatIdentity(data.host)}, less a ${Math.round(data.platformFee * 100)}% platform fee.`,
                   });
                 }}
               >
                 <LockKey size={15} />
-                {`Unlock for $${data.priceUsd}`}
+                {`Unlock for ${priceLabel(data.priceUsd)}`}
               </Button>
-            ) : (
-              <PlayButton src={data.audioSrc} title={data.title} labelled />
             )}
+            <PlayButton
+              src={locked ? undefined : data.audioSrc}
+              title={data.title}
+              lockedReason={locked ? "Unlock this recording to play it" : undefined}
+              labelled
+            />
             <Button
               variant="ghost"
               size="icon-sm"

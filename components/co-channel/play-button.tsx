@@ -22,12 +22,15 @@ export function PlayButton({
   src,
   title,
   labelled = false,
+  lockedReason,
   className,
 }: {
   src?: string;
   title: string;
   /** show the word beside the glyph, for the one control on a detail page */
   labelled?: boolean;
+  /** why it is unavailable, when the reason is the price rather than the file */
+  lockedReason?: string;
   className?: string;
 }) {
   const [playing, setPlaying] = useState(false);
@@ -64,17 +67,25 @@ export function PlayButton({
   }, [src, playing, onLost]);
 
   if (!src) {
+    /* Two different reasons to be inert, and they must not look the same: one
+       is a locked door you can pay to open, the other is a file that does not
+       exist in this prototype. */
+    const reason = lockedReason ?? "This recording has no audio in the prototype";
     return (
       <Button
         variant="secondary"
         size={labelled ? "sm" : "icon"}
         disabled
-        title="This recording has no audio in the prototype"
-        aria-label={`${title} has no audio in this prototype`}
+        title={reason}
+        aria-label={`${title}: ${reason}`}
         className={className}
       >
-        <SpeakerSlash size={labelled ? 15 : undefined} />
-        {labelled && "No audio"}
+        {lockedReason ? (
+          <Play size={labelled ? 15 : undefined} weight="fill" />
+        ) : (
+          <SpeakerSlash size={labelled ? 15 : undefined} />
+        )}
+        {labelled && (lockedReason ? "Play" : "No audio")}
       </Button>
     );
   }

@@ -6,6 +6,7 @@ import { Broadcast, CaretLeft, CaretRight, LockKey } from "@phosphor-icons/react
 import useFetch from "@/lib/use-fetch";
 import { CoChannelCard } from "@/components/co-channel/card";
 import { NewCoChannelDialog } from "@/components/co-channel/new-co-channel";
+import { Price } from "@/components/price";
 import { PageHeader } from "@/components/shell/page-header";
 import { Panel } from "@/components/instrument/parts";
 import {
@@ -167,8 +168,10 @@ export default function ScanPage() {
             day: "numeric",
             month: "long",
           })}
-          . Holding a frequency costs ${band?.holdPriceUsd ?? 0} a month on this
-          band, and means an address that survives the room closing.
+          . Holding a frequency costs{" "}
+          <Price usd={band?.holdPriceUsd ?? 0} inline className="text-foreground" />{" "}
+          a month on this band, and means an address that survives the room
+          closing.
         </EmptyState>
       ) : (
         <EmptyState

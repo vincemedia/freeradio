@@ -129,9 +129,26 @@ export function CoChannelCard({
         </span>
       </div>
 
-      <div className="flex min-w-0 items-center gap-1.5 border-t border-border pt-2.5 text-[11px]">
-        <span className="shrink-0 text-muted-foreground">Host</span>
-        <Identity person={coChannel.host} className="min-w-0 text-[11px]" />
+      {/* The host on the left, the way in on the right. The whole card is
+          already a link to the room, so this is not a second destination: it
+          is the same one, named, so the row reads as an action rather than as
+          a caption you have to guess is clickable.
+
+          A span rather than a button, because a button inside a link is not a
+          thing HTML allows and the outer link is what handles the click. It
+          responds to the card's own hover, which is what group-hover is for. */}
+      <div className="flex min-w-0 items-center justify-between gap-3 border-t border-border pt-2.5 text-[11px]">
+        <span className="flex min-w-0 items-center gap-1.5">
+          <span className="shrink-0 text-muted-foreground">Host</span>
+          <Identity person={coChannel.host} className="min-w-0 text-[11px]" />
+        </span>
+
+        <span
+          aria-hidden
+          className="inline-flex shrink-0 items-center gap-1 rounded-[var(--radius-clay)] bg-primary px-2.5 py-1 text-[11px] font-medium text-primary-foreground shadow-[var(--shadow-clay-primary)] transition-transform duration-150 ease-[var(--ease-out-quint)] group-active:scale-[0.98] group-active:shadow-[var(--shadow-clay-primary-pressed)]"
+        >
+          {inThisRoom ? "Back in" : "Join"}
+        </span>
       </div>
     </Link>
   );
