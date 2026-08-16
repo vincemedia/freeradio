@@ -29,7 +29,8 @@ const THEMES = [
 export default function SettingsPage() {
   const { theme, setTheme } = useTheme();
   const ecosystem = useRadio((s) => s.ecosystem);
-  const setEcosystem = useRadio((s) => s.setEcosystem);
+  const followed = useRadio((s) => s.followed);
+  const toggleFollowed = useRadio((s) => s.toggleFollowed);
   const session = useRadio((s) => s.session);
 
   /* next-themes only knows the resolved theme on the client, so the controls
@@ -109,23 +110,29 @@ export default function SettingsPage() {
       {/* ---- default band ---- */}
       <section className="space-y-3">
         <h2 className="flex items-center gap-1 text-[11px] font-medium uppercase tracking-[0.06em] text-muted-foreground">
-          Band
-          <Help>The band Free Radio opens on, and the one the top bar starts from</Help>
+          Bands you follow
+          <Help>Followed bands come first in the switch; you still listen to one at a time</Help>
         </h2>
         <ul className="grid gap-2 sm:grid-cols-2">
           {ecosystems.map((e) => {
-            const active = ecosystem === e.id;
+            const picked = followed.includes(e.id);
+            const locked = picked && followed.length === 1;
             return (
               <li key={e.id}>
                 <button
                   type="button"
-                  onClick={() => setEcosystem(e.id as EcosystemId)}
-                  aria-pressed={active}
+                  onClick={() => toggleFollowed(e.id as EcosystemId)}
+                  aria-pressed={picked}
+                  disabled={locked}
+                  title={
+                    locked ? "Follow another band before dropping this one" : undefined
+                  }
                   className={cn(
                     "flex w-full items-center gap-3 rounded-md border p-3 text-left transition-colors",
-                    active
+                    picked
                       ? "border-primary bg-primary/10"
                       : "border-border bg-card hover:bg-muted/50",
+                    locked && "cursor-default",
                   )}
                 >
                   <EcosystemMark ecosystem={e.id} size={20} />
@@ -134,9 +141,9 @@ export default function SettingsPage() {
                       <span className="truncate text-sm font-medium">
                         {e.name}
                       </span>
-                      {e.local && (
+                      {e.id === ecosystem && (
                         <span className="shrink-0 text-[11px] text-muted-foreground">
-                          you are here
+                          listening
                         </span>
                       )}
                     </span>
@@ -144,12 +151,25 @@ export default function SettingsPage() {
                       {e.domain}
                     </span>
                   </span>
-                  {active && <Check size={15} className="shrink-0" />}
+                  <span
+                    aria-hidden
+                    className={cn(
+                      "flex size-5 shrink-0 items-center justify-center rounded-sm border transition-colors",
+                      picked
+                        ? "border-primary bg-primary text-primary-foreground"
+                        : "border-border",
+                    )}
+                  >
+                    {picked && <Check size={13} weight="bold" />}
+                  </span>
                 </button>
               </li>
             );
           })}
         </ul>
+        <p className="text-xs text-muted-foreground">
+          The band you are listening to is switched from the top bar.
+        </p>
       </section>
     </div>
   );

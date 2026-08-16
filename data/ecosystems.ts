@@ -33,20 +33,9 @@ export const ecosystems: Ecosystem[] = [
     description:
       "The hub you are signed into. Its handles need no suffix, since they are local to you.",
     alias: "nexus",
-    domain: "nexus.app",
+    domain: "nexus.free",
     icon: "/icons/nexus.png",
     local: true,
-    band: BAND,
-  },
-  {
-    id: "treechat",
-    name: "Treechat",
-    description:
-      "Boards where posts earn value from readers rather than advertisers. Accounts are numbered in the order they joined.",
-    alias: "treechat",
-    domain: "treechat.app",
-    icon: "/ecosystems/treechat.webp",
-    numericHandles: true,
     band: BAND,
   },
   {
@@ -79,6 +68,17 @@ export const ecosystems: Ecosystem[] = [
     alias: "handcash",
     domain: "handcash.io",
     icon: "/ecosystems/handcash.webp",
+    band: BAND,
+  },
+  {
+    id: "treechat",
+    name: "Treechat",
+    description:
+      "Boards where posts earn value from readers rather than advertisers. Accounts are numbered in the order they joined.",
+    alias: "treechat",
+    domain: "treechat.app",
+    icon: "/ecosystems/treechat.webp",
+    numericHandles: true,
     band: BAND,
   },
   {

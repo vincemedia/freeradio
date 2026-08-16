@@ -30,8 +30,8 @@ import { cn } from "@/lib/utils";
  *
  * Four steps, the same step-machine shape the suite uses elsewhere: a shared
  * header with back and skip, a progress bar, and one decision per screen. The
- * only real decision is the band, and it is pre-answered with the one you are
- * already inside.
+ * only real decision is which bands to follow, and it comes pre-answered with
+ * the one you are already inside.
  *
  * The tuning scale appears on the very first screen doing the thing it does in
  * the product, rather than as an illustration of it. If the central control
@@ -124,7 +124,8 @@ const GATES = [
 export default function WelcomePage() {
   const router = useRouter();
   const setOnboarded = useRadio((s) => s.setOnboarded);
-  const ecosystem = useRadio((s) => s.ecosystem);
+  const followed = useRadio((s) => s.followed);
+  const toggleFollowed = useRadio((s) => s.toggleFollowed);
   const setEcosystem = useRadio((s) => s.setEcosystem);
 
   const [step, setStep] = useState<Step>("what");
@@ -158,6 +159,11 @@ export default function WelcomePage() {
   const next = () => setStep(STEPS[Math.min(index + 1, STEPS.length - 1)]);
   const back = () => setStep(STEPS[Math.max(index - 1, 0)]);
   const finish = () => {
+    /* Land on a band you follow rather than whatever was selected before,
+       which after a multi-select may be one you just dropped. */
+    if (!followed.includes(useRadio.getState().ecosystem)) {
+      setEcosystem(followed[0]);
+    }
     setOnboarded(true);
     router.replace("/");
   };
@@ -226,35 +232,35 @@ export default function WelcomePage() {
                 {/* What the needle is on, above the scale that found it.
                     Fixed height so the panel does not jump as the sweep moves
                     between rooms with different length titles. */}
-                <div className="mb-3 flex h-[4.75rem] items-end">
+                <div className="mb-3 flex min-h-[8.5rem] w-full items-center rounded-lg border border-border bg-card p-5">
                   {tuned ? (
                     <div
                       key={tuned.id}
                       className="w-full animate-in fade-in duration-300"
                     >
-                      <p className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
-                        <EcosystemMark ecosystem={tuned.ecosystem} size={13} />
+                      <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                        <EcosystemMark ecosystem={tuned.ecosystem} size={15} />
                         {tunedBand?.name ?? tuned.ecosystem} band
                       </p>
-                      <h2 className="mt-1 truncate font-display text-[17px] font-semibold leading-snug tracking-tight">
+                      <h2 className="mt-1.5 truncate font-display text-[22px] font-semibold leading-snug tracking-tight">
                         {tuned.title}
                       </h2>
-                      <div className="mt-1.5 flex items-center gap-2">
+                      <div className="mt-3 flex items-center gap-2.5">
                         <Facepile
                           people={tuned.occupants.map((o) => o.person)}
-                          max={4}
-                          size={24}
+                          max={5}
+                          size={32}
                         />
-                        <span className="text-[11px] text-muted-foreground">
+                        <span className="text-xs text-muted-foreground">
                           {tuned.occupantCount} in the room
                         </span>
                       </div>
                     </div>
                   ) : (
-                    <div className="w-full space-y-1.5">
-                      <div className="h-3 w-24 animate-pulse rounded-sm bg-border" />
-                      <div className="h-4 w-48 animate-pulse rounded-sm bg-border" />
-                      <div className="h-6 w-28 animate-pulse rounded-full bg-border" />
+                    <div className="w-full space-y-2.5">
+                      <div className="h-3.5 w-28 animate-pulse rounded-sm bg-border" />
+                      <div className="h-6 w-2/3 animate-pulse rounded-sm bg-border" />
+                      <div className="h-8 w-36 animate-pulse rounded-full bg-border" />
                     </div>
                   )}
                 </div>
@@ -288,49 +294,80 @@ export default function WelcomePage() {
             <>
               <div className="flex-1 py-8">
                 <h1 className="font-display text-[26px] font-semibold leading-tight tracking-tight text-balance">
-                  Pick your band
+                  Pick your bands
                 </h1>
                 <p className="mt-2 text-sm leading-relaxed text-balance text-muted-foreground">
                   Every ecosystem has its own band. A frequency is unique within
                   one, so 98.7 on Nexus and 98.7 on Twetch are different rooms.
-                  You can switch any time from the top bar.
+                  Follow as many as you like; you listen to one at a time and
+                  switch from the top bar.
                 </p>
 
                 <ul className="mt-6 space-y-2">
-                  {ecosystems.map((e) => (
-                    <li key={e.id}>
-                      <button
-                        type="button"
-                        onClick={() => setEcosystem(e.id as EcosystemId)}
-                        aria-pressed={ecosystem === e.id}
-                        className={cn(
-                          "flex w-full items-center gap-3 rounded-md border p-3 text-left transition-colors",
-                          ecosystem === e.id
-                            ? "border-primary bg-primary/10"
-                            : "border-border bg-card hover:bg-muted/50",
-                        )}
-                      >
-                        <EcosystemMark ecosystem={e.id} size={22} />
-                        <span className="min-w-0 flex-1">
-                          <span className="flex items-center gap-1.5">
-                            <span className="truncate text-sm font-medium">
-                              {e.name}
-                            </span>
-                            {e.local && (
-                              <span className="text-[11px] text-muted-foreground">
-                                you are here
+                  {ecosystems.map((e) => {
+                    const picked = followed.includes(e.id);
+                    /* The last one cannot be turned off: an empty list would
+                       leave the switch with nothing to offer. */
+                    const locked = picked && followed.length === 1;
+                    return (
+                      <li key={e.id}>
+                        <button
+                          type="button"
+                          onClick={() => toggleFollowed(e.id as EcosystemId)}
+                          aria-pressed={picked}
+                          disabled={locked}
+                          title={
+                            locked ? "Follow another band before dropping this one" : undefined
+                          }
+                          className={cn(
+                            "flex w-full items-center gap-3 rounded-md border p-3 text-left transition-colors",
+                            picked
+                              ? "border-primary bg-primary/10"
+                              : "border-border bg-card hover:bg-muted/50",
+                            locked && "cursor-default",
+                          )}
+                        >
+                          <EcosystemMark ecosystem={e.id} size={22} />
+                          <span className="min-w-0 flex-1">
+                            <span className="flex items-center gap-1.5">
+                              <span className="truncate text-sm font-medium">
+                                {e.name}
                               </span>
+                              {e.local && (
+                                <span className="shrink-0 text-[11px] text-muted-foreground">
+                                  you are here
+                                </span>
+                              )}
+                            </span>
+                            <span className="mt-0.5 block truncate text-[11px] text-muted-foreground">
+                              {e.domain}
+                            </span>
+                          </span>
+                          {/* A checkbox, because this is a set rather than a
+                              choice between alternatives. */}
+                          <span
+                            aria-hidden
+                            className={cn(
+                              "flex size-5 shrink-0 items-center justify-center rounded-sm border transition-colors",
+                              picked
+                                ? "border-primary bg-primary text-primary-foreground"
+                                : "border-border",
                             )}
+                          >
+                            {picked && <Check size={13} weight="bold" />}
                           </span>
-                          <span className="mt-0.5 block truncate text-[11px] text-muted-foreground">
-                            {e.domain}
-                          </span>
-                        </span>
-                        {ecosystem === e.id && <Check size={16} />}
-                      </button>
-                    </li>
-                  ))}
+                        </button>
+                      </li>
+                    );
+                  })}
                 </ul>
+
+                <p className="mt-3 text-[11px] text-muted-foreground">
+                  {followed.length === 1
+                    ? "Following 1 band."
+                    : `Following ${followed.length} bands.`}{" "}
+                  You can change this in Settings.
+                </p>
               </div>
               <Button variant="primary" className="w-full" onClick={next}>
                 Continue

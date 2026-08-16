@@ -44,7 +44,17 @@ export interface RecentRoom {
 
 interface RadioState {
   /* ---- persisted preferences ---- */
+  /** the band you are looking at; one at a time, chosen in the top bar */
   ecosystem: EcosystemId;
+  /**
+   * The bands you follow.
+   *
+   * Distinct from the one you are on: following is a standing interest, and
+   * the switch puts these first so the bands you care about are not buried
+   * under the ones you do not. Never empty, since an empty list would leave
+   * the switch with nothing to put at the top.
+   */
+  followed: EcosystemId[];
   onboarded: boolean;
   recent: RecentRoom[];
 
@@ -56,6 +66,8 @@ interface RadioState {
   joining: boolean;
 
   setEcosystem: (id: EcosystemId) => void;
+  /** follow or unfollow a band; refuses to leave the list empty */
+  toggleFollowed: (id: EcosystemId) => void;
   setOnboarded: (v: boolean) => void;
 
   refreshSession: () => Promise<void>;
@@ -72,6 +84,9 @@ export const useRadio = create<RadioState>()(
   persist(
     (set, get) => ({
       ecosystem: DEFAULT_ECOSYSTEM,
+      /* Nexus to begin with: it is the hub you are signed into, so it is the
+         one band you are definitely on. */
+      followed: [DEFAULT_ECOSYSTEM],
       onboarded: false,
       recent: [],
 
@@ -82,6 +97,19 @@ export const useRadio = create<RadioState>()(
       joining: false,
 
       setEcosystem: (ecosystem) => set({ ecosystem }),
+
+      toggleFollowed: (id) =>
+        set((s) => {
+          const following = s.followed.includes(id);
+          /* Unfollowing the last one would empty the list, so the control
+             stops rather than the state going somewhere unusable. */
+          if (following && s.followed.length === 1) return s;
+          return {
+            followed: following
+              ? s.followed.filter((x) => x !== id)
+              : [...s.followed, id],
+          };
+        }),
       setOnboarded: (onboarded) => set({ onboarded }),
 
       refreshSession: async () => {
@@ -189,6 +217,7 @@ export const useRadio = create<RadioState>()(
       /* Only preferences persist. Live state is the server's to tell us. */
       partialize: (s) => ({
         ecosystem: s.ecosystem,
+        followed: s.followed,
         onboarded: s.onboarded,
         recent: s.recent,
       }),

@@ -1,12 +1,80 @@
 "use client";
 
-import { useCallback, useMemo, useRef } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from "react";
 import type { GateKind } from "@/data/schema";
 import { formatFrequency } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
 /** Horizontal padding of the rails inside the track, in pixels. */
 const RAIL_INSET = 12;
+
+const REDUCED_MOTION = "(prefers-reduced-motion: reduce)";
+
+/**
+ * The reader's motion preference, as a value rather than an effect.
+ *
+ * Subscribed so it also responds if they change it while the page is open,
+ * which is the case a one-off read at mount silently gets wrong.
+ */
+function usePrefersReducedMotion(): boolean {
+  return useSyncExternalStore(
+    (onChange) => {
+      const mq = window.matchMedia(REDUCED_MOTION);
+      mq.addEventListener("change", onChange);
+      return () => mq.removeEventListener("change", onChange);
+    },
+    () => window.matchMedia(REDUCED_MOTION).matches,
+    () => false,
+  );
+}
+
+/**
+ * A readout that counts to its value instead of jumping to it.
+ *
+ * Exponential approach rather than a fixed duration, so it behaves correctly
+ * in both cases it has to serve: a scan is a jump and the digits roll through
+ * the frequencies in between, while a drag moves in tenths and the readout
+ * stays under your finger rather than lagging a fixed 400ms behind it.
+ *
+ * Stops when it arrives. Nothing in this product animates at rest, and a rAF
+ * loop that never settles is exactly that.
+ */
+function useCountTo(target: number, step: number): number {
+  const [display, setDisplay] = useState(target);
+  const frame = useRef<number>(undefined);
+  const reduced = usePrefersReducedMotion();
+
+  useEffect(() => {
+    if (reduced) return;
+
+    const tick = () => {
+      setDisplay((current) => {
+        const gap = target - current;
+        /* Close enough to be the same number once rounded: land exactly and
+           let the loop end. */
+        if (Math.abs(gap) < step / 2) return target;
+        frame.current = requestAnimationFrame(tick);
+        return current + gap * 0.18;
+      });
+    };
+    frame.current = requestAnimationFrame(tick);
+
+    return () => {
+      if (frame.current !== undefined) cancelAnimationFrame(frame.current);
+    };
+  }, [target, step, reduced]);
+
+  /* Reduced motion returns the real value rather than writing it into state,
+     which would be a synchronous setState in an effect for no gain. */
+  return reduced ? target : display;
+}
 
 export interface Station {
   id: string;
@@ -65,6 +133,10 @@ export function TuningScale({
   const dragging = useRef(false);
 
   const pct = ((value - min) / (max - min)) * 100;
+  /* Only the digits count. The needle, the marks and the announced value all
+     use the real frequency, so assistive tech never hears an in-between
+     number and the needle never disagrees with the scale. */
+  const counting = useCountTo(value, step);
 
   const snap = useCallback(
     (raw: number) => {
@@ -150,7 +222,7 @@ export function TuningScale({
       <div className="mb-2 flex items-end justify-between gap-3">
         <div className="flex items-baseline gap-1.5">
           <span className="readout font-display text-3xl leading-none tracking-tight tabular-nums">
-            {formatFrequency(value)}
+            {formatFrequency(counting)}
           </span>
           <span className="text-xs font-medium text-muted-foreground">MHz</span>
         </div>
