@@ -168,9 +168,10 @@ export interface CoChannel {
   /**
    * Whether a real audio file sits behind this station.
    *
-   * True for exactly one of them. Where it is true the transcript and the
-   * level meter are both driven by that file, so the words on screen and the
-   * bars beside them describe the same recording.
+   * True for three of them. Where it is true the transcript and the level
+   * meter are both driven by that file, so the words on screen and the bars
+   * beside them describe the same recording; everywhere else both are
+   * authored. Which stations those are lives in `data/audio.ts`.
    */
   hasAudio: boolean;
   /** short line under the title in browse; the host's own description */

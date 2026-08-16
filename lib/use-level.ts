@@ -2,16 +2,17 @@
 
 import { useEffect, useRef, useState } from "react";
 import { usePrefersReducedMotion } from "@/lib/use-reduced-motion";
-import { ENVELOPE, ENVELOPE_WINDOW_MS } from "@/data/audio";
+import { ENVELOPE_WINDOW_MS, STATION_AUDIO } from "@/data/audio";
 
 /**
  * The speaking level, 0 to 1.
  *
- * Two sources, one shape. On the station with a real file behind it the level
- * is read from the measured envelope, so the bars carry the actual dynamics of
- * that recording, pauses included. Everywhere else there is no audio to
- * measure, so it is synthesised: a couple of detuned sines, which gives the
- * uneven rise and fall of speech without the twitchiness of random noise.
+ * Two sources, one shape. On a station with a real file behind it the level is
+ * read from that file's measured envelope, so the bars carry the actual
+ * dynamics of the recording, pauses included. Everywhere else there is no
+ * audio to measure, so it is synthesised: a couple of detuned sines, which
+ * gives the uneven rise and fall of speech without the twitchiness of random
+ * noise.
  *
  * Either way it stops dead when nobody is speaking. Nothing in this product
  * animates at rest, and a meter jittering in an empty room is the clearest
@@ -21,13 +22,15 @@ const FRAME_MS = 90;
 
 export function useSpeakingLevel(
   active: boolean,
-  opts: { fromAudio?: boolean; startedAt?: number } = {},
+  opts: { stationId?: string; startedAt?: number } = {},
 ): number {
   const [level, setLevel] = useState(0);
   const started = useRef<number>(0);
   const reduced = usePrefersReducedMotion();
 
-  const { fromAudio = false, startedAt } = opts;
+  const { stationId, startedAt } = opts;
+  /* Undefined for every station without a file, which is most of them. */
+  const envelope = stationId ? STATION_AUDIO[stationId]?.envelope : undefined;
 
   useEffect(() => {
     /* Silence and the reduced-motion reading are both derived below rather
@@ -40,9 +43,9 @@ export function useSpeakingLevel(
     const timer = setInterval(() => {
       const elapsed = performance.now() - started.current;
 
-      if (fromAudio) {
+      if (envelope) {
         const i = Math.floor(elapsed / ENVELOPE_WINDOW_MS);
-        const value = ENVELOPE[i % ENVELOPE.length] ?? 0;
+        const value = envelope[i % envelope.length] ?? 0;
         setLevel(value / 100);
         return;
       }
@@ -58,7 +61,7 @@ export function useSpeakingLevel(
     }, FRAME_MS);
 
     return () => clearInterval(timer);
-  }, [active, reduced, fromAudio, startedAt]);
+  }, [active, reduced, envelope, startedAt]);
 
   if (!active) return 0;
   /* One steady reading rather than none: the meter still says somebody is

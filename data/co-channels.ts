@@ -130,14 +130,18 @@ const SPECS: Spec[] = [
     startedMinutesAgo: 92,
   },
   {
-    /* The one station with real audio behind it. Its transcript and its level
-       meter both come from the file, so what you see and what you hear are
-       the same recording. */
+    /* One of the three stations with a real file behind it. Transcript and
+       level meter both come from that file, so what you read and what the
+       bars are doing describe the same recording.
+
+       It is a walkthrough, not a panel: one person talking the room through
+       setting a wallet up, everybody else listening. So everybody else is
+       muted, which is also why the room has no second voice in its script. */
     id: "cc-ordinals-wallets",
     frequency: 100.0,
     ecosystem: "nexus",
     title: "Mastering ordinals wallets",
-    topic: "Sat selection, safe transfers, and not spending the thing you meant to keep.",
+    topic: "Setting up a non-custodial wallet on 3D Ordi, and who ends up holding the keys.",
     hostId: "grace-adeyemi",
     occupantIds: [
       "grace-adeyemi",
@@ -145,7 +149,7 @@ const SPECS: Spec[] = [
       "fatima-zahra",
       "tw-dana",
     ],
-    muted: ["tw-dana"],
+    muted: ["amara-okonkwo", "fatima-zahra", "tw-dana"],
     startedMinutesAgo: 4,
     hasAudio: true,
     nest: [
@@ -262,6 +266,57 @@ const SPECS: Spec[] = [
   },
 
   /* --------------------------------------------------------------- twetch */
+  {
+    /* Real file behind it, and the one first run drops you into. Two voices:
+       Neil opens and hands over to Nick about a minute and a quarter in, so
+       both are unmuted and the room around them is listening. */
+    id: "cc-censorship-millions",
+    frequency: 93.5,
+    ecosystem: "twetch",
+    title: "Censorship killed millions",
+    topic: "Four groups, one open microphone, and everyone answering for their own words.",
+    hostId: "tw-neil",
+    occupantIds: [
+      "tw-neil",
+      "nick-hudson",
+      "tw-marisol",
+      "tw-brid",
+      "fenna-de-wit",
+      "nils-andersen",
+    ],
+    muted: ["tw-marisol", "tw-brid", "fenna-de-wit", "nils-andersen"],
+    startedMinutesAgo: 2,
+    recording: true,
+    hasAudio: true,
+    nest: [
+      {
+        url: "https://pandata.org",
+        title: "PANDA, the group Nick chairs",
+        site: "PANDA",
+        postedById: "nick-hudson",
+      },
+    ],
+  },
+  {
+    /* Real file behind it. One host, no second speaker: an AMA before the
+       first question lands, which is why the whole room is muted. */
+    id: "cc-kurt-ama",
+    frequency: 106.7,
+    ecosystem: "twetch",
+    title: "Ask me anything, live",
+    topic: "Kurt opens the floor, once he has decided about the headphones.",
+    hostId: "tw-kurt",
+    occupantIds: [
+      "tw-kurt",
+      "tw-devon",
+      "kofi-mensah",
+      "elias-weber",
+    ],
+    muted: ["tw-devon", "kofi-mensah", "elias-weber"],
+    startedMinutesAgo: 8,
+    recording: true,
+    hasAudio: true,
+  },
   {
     id: "cc-1sat-indexers",
     frequency: 99.3,

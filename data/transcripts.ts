@@ -12,7 +12,7 @@
  * spoken for, and the ring around that person's avatar thickens for exactly
  * that long.
  */
-import { AUDIO_LINES } from "./audio";
+import { STATION_AUDIO } from "./audio";
 import type { TranscriptLine } from "./schema";
 
 /** How long one line is "spoken" for, in milliseconds. */
@@ -23,13 +23,20 @@ const SEEDED = 4;
 
 type Script = [personId: string, text: string][];
 
+/**
+ * The stations with a recording behind them do not get a script written here.
+ * Their turns are the transcribed ones, so the words you read, the person the
+ * ring is around, and the bars beside them all describe the same recording.
+ */
+const TRANSCRIBED: Record<string, Script> = Object.fromEntries(
+  Object.entries(STATION_AUDIO).map(([id, audio]) => [
+    id,
+    audio.lines.map((line) => [line.personId, line.text] as [string, string]),
+  ]),
+);
+
 export const SCRIPTS: Record<string, Script> = {
-  /* The audio station's turns come from the file rather than from here, so
-     there is one set of words: the transcript you read and the level meter
-     beside it are describing the same recording. */
-  "cc-ordinals-wallets": AUDIO_LINES.map(
-    (line) => [line.personId, line.text] as [string, string],
-  ),
+  ...TRANSCRIBED,
 
   "cc-overlay-topics": [
     ["darren-kellenschwiler", "Right, we are on. The question was what an overlay actually stores."],

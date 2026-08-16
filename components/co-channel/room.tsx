@@ -165,7 +165,7 @@ export function OccupantGrid({
   /* One meter reading for the grid: exactly one person speaks at a time, so
      six hooks would be five of them idling. */
   const level = useSpeakingLevel(speakingId !== null, {
-    fromAudio: room.hasAudio,
+    stationId: room.hasAudio ? room.id : undefined,
   });
 
   return (

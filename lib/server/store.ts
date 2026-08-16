@@ -63,7 +63,7 @@ interface State {
  * and the first thing to read it throws. Versioning the key makes a shape
  * change reseed instead of half-applying.
  */
-const STATE_VERSION = 2;
+const STATE_VERSION = 3;
 
 const globalRef = globalThis as unknown as {
   __freeRadio?: { version: number; state: State };
