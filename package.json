@@ -12,6 +12,7 @@
     "verify": "bun run typecheck && bun run lint && bun run check"
   },
   "dependencies": {
+    "@bsv/sdk": "^2.4.1",
     "@phosphor-icons/react": "^2.1.10",
     "agentation": "^3.0.2",
     "boring-avatars": "^2",

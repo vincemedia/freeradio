@@ -54,16 +54,21 @@ export default function SettingsPage() {
         <h2 className="text-[11px] font-medium uppercase tracking-[0.06em] text-muted-foreground">
           You
         </h2>
-        {session ? (
+        {!session ? (
+          <Skeleton className="h-[4.75rem] w-full rounded-lg" />
+        ) : session.me ? (
           <div className="flex items-center gap-3 rounded-lg border border-border bg-card p-4">
             <Avatar person={session.me} size={44} />
             <div className="min-w-0">
-              <p className="truncate text-sm font-medium">{session.me.name}</p>
+              <p className="text-sm font-medium">{session.me.name}</p>
               <Identity person={session.me} className="text-[11px]" />
             </div>
           </div>
         ) : (
-          <Skeleton className="h-[4.75rem] w-full rounded-lg" />
+          <p className="rounded-lg border border-dashed border-border p-4 text-sm text-muted-foreground">
+            Nothing is connected. Connect a wallet from the top bar to join a
+            Co-Channel, speak in one, or start your own.
+          </p>
         )}
         <p className="text-xs text-muted-foreground">
           Your handle comes from your wallet, so it is changed there rather than

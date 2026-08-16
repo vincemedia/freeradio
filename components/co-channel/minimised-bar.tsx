@@ -1,7 +1,14 @@
 "use client";
 
 import { usePathname, useRouter } from "next/navigation";
-import { CornersOut, Microphone, MicrophoneSlash, X } from "@phosphor-icons/react";
+import {
+  CornersOut,
+  Microphone,
+  MicrophoneSlash,
+  SpeakerHigh,
+  SpeakerSlash,
+  X,
+} from "@phosphor-icons/react";
 import { Facepile } from "@/components/identity";
 import { Lamp } from "@/components/instrument/parts";
 import { useRadio } from "@/lib/store";
@@ -27,15 +34,26 @@ export function MinimisedBar() {
   const pathname = usePathname();
   const room = useRadio((s) => s.room);
   const session = useRadio((s) => s.session);
+  const tunedTo = useRadio((s) => s.tunedTo);
   const toggleMute = useRadio((s) => s.toggleMute);
   const leave = useRadio((s) => s.leave);
+  const tuneOut = useRadio((s) => s.tuneOut);
+  const listening = useRadio((s) => s.listening);
+  const setListening = useRadio((s) => s.setListening);
 
-  if (!room || !session?.coChannelId) return null;
+  if (!room || !tunedTo) return null;
   if (pathname === `/co-channel/${room.id}`) return null;
 
+  /* Everybody but you, when there is a you. Listening without a wallet means
+     nobody in this list is you, and all of them show. */
   const others = room.occupants
-    .filter((o) => o.personId !== session.me.id)
+    .filter((o) => o.personId !== session?.me?.id)
     .map((o) => o.person);
+
+  /* In the room, so there is a microphone of yours to switch. Merely tuned to
+     it and there is not, and the control that would mean something is the
+     volume instead. */
+  const inThisRoom = session?.coChannelId === room.id;
 
   const href = `/co-channel/${room.id}`;
   const open = () => navigateWithTransition(() => router.push(href), href);
@@ -80,20 +98,37 @@ export function MinimisedBar() {
         </button>
 
         <div className="flex shrink-0 items-center gap-1">
-          <button
-            type="button"
-            onClick={() => void toggleMute()}
-            aria-label={session.muted ? "Unmute" : "Mute"}
-            aria-pressed={!session.muted}
-            className={cn(
-              "flex size-9 items-center justify-center rounded-md transition-colors",
-              session.muted
-                ? "text-muted-foreground hover:bg-muted"
-                : "bg-primary text-primary-foreground",
-            )}
-          >
-            {session.muted ? <MicrophoneSlash /> : <Microphone />}
-          </button>
+          {inThisRoom ? (
+            <button
+              type="button"
+              onClick={() => void toggleMute()}
+              aria-label={session?.muted ? "Unmute" : "Mute"}
+              aria-pressed={!session?.muted}
+              className={cn(
+                "flex size-9 items-center justify-center rounded-md transition-colors",
+                session?.muted
+                  ? "text-muted-foreground hover:bg-muted"
+                  : "bg-primary text-primary-foreground",
+              )}
+            >
+              {session?.muted ? <MicrophoneSlash /> : <Microphone />}
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setListening(!listening)}
+              aria-label={listening ? "Turn the sound off" : "Turn the sound on"}
+              aria-pressed={listening}
+              className={cn(
+                "flex size-9 items-center justify-center rounded-md transition-colors",
+                listening
+                  ? "bg-primary text-primary-foreground"
+                  : "text-muted-foreground hover:bg-muted",
+              )}
+            >
+              {listening ? <SpeakerHigh /> : <SpeakerSlash />}
+            </button>
+          )}
           <button
             type="button"
             onClick={open}
@@ -104,8 +139,8 @@ export function MinimisedBar() {
           </button>
           <button
             type="button"
-            onClick={() => void leave()}
-            aria-label="Leave the Co-Channel"
+            onClick={() => (inThisRoom ? void leave() : tuneOut())}
+            aria-label={inThisRoom ? "Leave the Co-Channel" : "Stop listening"}
             className="flex size-9 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
           >
             <X />

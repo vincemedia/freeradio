@@ -1,6 +1,6 @@
 "use client";
 
-import { Dialog as D, Tooltip as T } from "radix-ui";
+import { Dialog as D, Popover as P, Tooltip as T } from "radix-ui";
 import { Question, X } from "@phosphor-icons/react";
 import { cn } from "@/lib/utils";
 
@@ -57,6 +57,42 @@ export function DialogContent({
 }
 
 export const DialogClose = D.Close;
+
+/* ---------------------------------------------------------------- popover */
+
+/**
+ * A small panel anchored to the thing that opened it.
+ *
+ * Distinct from a dialog: it does not take the screen, it does not dim what is
+ * behind it, and dismissing it costs one click anywhere. Used for the identity
+ * card, which is a thing you glance at rather than a task you complete.
+ */
+export const Popover = P.Root;
+export const PopoverTrigger = P.Trigger;
+
+export function PopoverContent({
+  className,
+  align = "end",
+  sideOffset = 8,
+  ...props
+}: React.ComponentProps<typeof P.Content>) {
+  return (
+    <P.Portal>
+      <P.Content
+        align={align}
+        sideOffset={sideOffset}
+        collisionPadding={8}
+        className={cn(
+          "z-50 rounded-lg border border-border bg-popover p-3 text-popover-foreground shadow-[var(--shadow-overlay)]",
+          "data-[state=open]:animate-in data-[state=open]:fade-in data-[state=open]:zoom-in-95",
+          "data-[state=closed]:animate-out data-[state=closed]:fade-out data-[state=closed]:zoom-out-95",
+          className,
+        )}
+        {...props}
+      />
+    </P.Portal>
+  );
+}
 
 /* ---------------------------------------------------------------- tooltip */
 

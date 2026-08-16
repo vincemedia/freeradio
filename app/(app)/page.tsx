@@ -50,7 +50,7 @@ export default function OnAirPage() {
           neither of them read as the one thing to do. */}
       <PageHeader
         title="On air"
-        subtitle={`Stations on ${band?.name ?? "this band"} right now. Anyone in a Co-Channel can hear you, so there is no listening quietly.`}
+        subtitle={`Stations on ${band?.name ?? "this band"} right now. Listen to any of them; connect a wallet to be in one.`}
       />
 
       <ContactsOnAir />

@@ -36,6 +36,11 @@ export const people: Person[] = [
     registeredAt: "2021-03-04T09:00:00.000Z",
     expertise: ["Engineering", "First principles"],
     attestations: 11,
+    /* The demo account's own key. Presented by the no-wallet path so the
+       session records a real-shaped identity either way, and matched by
+       `resolveIdentity` so connecting this key is not an adoption. */
+    publicKey:
+      "02c5f1b6c1e6c6f4a1d0b1e8a3f4c7d2b9e0a5c8f3d6b1e4a7c0d3b6e9a2c5f8d1",
   },
   {
     id: "rhea-mensah",

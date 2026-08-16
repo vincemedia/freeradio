@@ -1,6 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 import { useEffect, useMemo, useState } from "react";
 import {
   ArrowLeft,
@@ -9,6 +10,7 @@ import {
   Coins,
   LockKey,
   Microphone,
+  Plug,
   Prohibit,
   Record,
   ShieldCheck,
@@ -95,13 +97,13 @@ function pickSweep(rooms: CoChannelView[]): CoChannelView[] {
 const RULES = [
   {
     icon: UsersThree,
-    title: "Nobody listens quietly",
-    body: "Everyone in a Co-Channel shows their handle and avatar. There is no anonymous audience.",
+    title: "Everyone in a room is named",
+    body: "Anyone who joins a Co-Channel shows their handle and avatar. You can listen from outside without a wallet; you cannot be in one anonymously.",
   },
   {
     icon: Microphone,
     title: "You arrive muted",
-    body: "Mute state is visible on every occupant, always, so you can see who is about to speak.",
+    body: "Joining takes a wallet and puts you in the room muted. Mute state shows on every occupant, always, so you can see who is about to speak.",
   },
   {
     icon: Broadcast,
@@ -160,14 +162,22 @@ export default function WelcomePage() {
   const next = () => setStep(STEPS[Math.min(index + 1, STEPS.length - 1)]);
   const back = () => setStep(STEPS[Math.max(index - 1, 0)]);
   const join = useRadio((s) => s.join);
+  const tuneIn = useRadio((s) => s.tuneIn);
+  const connect = useRadio((s) => s.connect);
+  const connecting = useRadio((s) => s.connecting);
 
   /**
-   * Finish by putting them in a station rather than in front of a list.
+   * Finish in a station rather than in front of a list.
    *
    * The product is people talking; a directory is not that. So the last step
-   * tunes them in, muted, and the hint on "On air" is what tells them there is
-   * a whole band behind it. If the station has closed, or its door refuses
-   * them, this falls back to the list rather than stranding them.
+   * puts them on a frequency and the hint on "On air" is what tells them there
+   * is a whole band behind it.
+   *
+   * Which of the two it does depends on whether they connected. With an
+   * identity they join, muted, and appear in the room. Without one they
+   * listen, which is the whole of what a wallet-less visitor can do and is not
+   * a degraded version of anything. Either way, if the station has closed this
+   * falls back to the list rather than stranding them.
    */
   const finish = async () => {
     if (!followed.includes(useRadio.getState().ecosystem)) {
@@ -175,8 +185,12 @@ export default function WelcomePage() {
     }
     setOnboarded(true);
 
-    const landed = await join(FIRST_RUN_STATION);
-    if (!landed.ok) {
+    const connected = useRadio.getState().session?.connected === true;
+    const landed = connected
+      ? (await join(FIRST_RUN_STATION)).ok
+      : await tuneIn(FIRST_RUN_STATION);
+
+    if (!landed) {
       router.replace("/");
       return;
     }
@@ -463,17 +477,51 @@ export default function WelcomePage() {
                   The band is open
                 </h1>
                 <p className="max-w-sm text-sm leading-relaxed text-balance text-muted-foreground">
-                  Scan for something worth hearing, or open a Co-Channel and take
-                  a frequency of your own. You arrive muted either way.
+                  Listening needs nothing. Connect a wallet when you want to be
+                  in a room rather than beside it — to speak, to pin a link, or
+                  to take a frequency of your own.
                 </p>
               </div>
-              <Button
-                variant="primary"
-                className="w-full"
-                onClick={() => void finish()}
-              >
-                Start listening
-              </Button>
+
+              {/* Both ways out of the last step, with the wallet on top
+                  because it is the one that opens the rest of the product.
+                  Skipping is not a lesser path: the band, the stations and
+                  their audio all work without an identity, and pretending
+                  otherwise would be a gate with nothing behind it. */}
+              <div className="space-y-2">
+                <Button
+                  variant="primary"
+                  className="w-full"
+                  disabled={connecting}
+                  onClick={() => {
+                    void connect().then((result) => {
+                      if (!result.ok) {
+                        toast.error("Your wallet did not connect", {
+                          description: result.error,
+                        });
+                        return;
+                      }
+                      if (!result.usedWallet) {
+                        toast("Connected as the demo identity", {
+                          description:
+                            "No BRC-100 wallet answered in this browser.",
+                        });
+                      }
+                      void finish();
+                    });
+                  }}
+                >
+                  <Plug size={15} />
+                  {connecting ? "Connecting" : "Connect a wallet"}
+                </Button>
+                <Button
+                  variant="ghost"
+                  className="w-full"
+                  onClick={() => void finish()}
+                >
+                  Just listen for now
+                </Button>
+              </div>
             </>
           )}
         </div>

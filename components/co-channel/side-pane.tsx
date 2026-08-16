@@ -17,6 +17,7 @@ import { Button } from "@/components/ui/button";
 import { Help } from "@/components/ui/overlays";
 import { Badge, Input } from "@/components/ui/primitives";
 import { getEcosystem } from "@/data/ecosystems";
+import { useRadio } from "@/lib/store";
 import { getToken } from "@/data/tokens";
 import type { CoChannelView, Person } from "@/data/schema";
 import { GATE_HELP, GATE_LABEL } from "@/lib/gates";
@@ -34,6 +35,7 @@ type ContactRow = { person: Person; coChannel: { id: string } | null };
  * that, which is why it is a plain panel and owns no positioning of its own.
  */
 export function SidePane({ room }: { room: CoChannelView }) {
+  const connected = useRadio((s) => s.session?.connected) === true;
   const [q, setQ] = useState("");
   const { data: contacts } = useFetch<ContactRow[]>("/api/contacts");
 
@@ -113,8 +115,9 @@ export function SidePane({ room }: { room: CoChannelView }) {
 
         {room.primaryGate === "open" ? (
           <p className="text-sm text-muted-foreground">
-            Anyone on {band?.name} can join. Everyone in a Co-Channel is
-            visible, so nobody is listening quietly.
+            Anyone on {band?.name} with a wallet can join, and everyone who
+            joins is visible in the list above. Listening from outside needs
+            nothing.
           </p>
         ) : (
           <ul className="space-y-2 text-sm">
@@ -196,6 +199,9 @@ export function SidePane({ room }: { room: CoChannelView }) {
       </section>
 
       {/* ---- invite ---- */}
+      {/* An invitation comes from somebody. With nothing connected there is
+          nobody for it to come from. */}
+      {connected && (
       <section className="space-y-3">
         <h3 className="text-[11px] font-medium uppercase tracking-[0.06em] text-muted-foreground">
           Invite
@@ -254,6 +260,7 @@ export function SidePane({ room }: { room: CoChannelView }) {
           </ul>
         )}
       </section>
+      )}
     </div>
   );
 }

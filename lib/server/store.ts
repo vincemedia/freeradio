@@ -579,18 +579,53 @@ export function listContacts(): {
 
 /* --------------------------------------------------------------- session */
 
-export function getSession() {
-  const at = currentCoChannelId();
-  const occupant = state.occupants.find((o) => o.personId === ME_ID);
+/**
+ * The session, as the browser needs to see it.
+ *
+ * `connected: false` is an ordinary state rather than an error: the band, the
+ * stations and their audio are all readable without a wallet, and only the
+ * things that put you in a room ask for one.
+ *
+ * `adopted` says a real wallet key resolved to the demo account. The UI shows
+ * it, because a product about signing with your own key should never let
+ * somebody believe the data on screen is theirs when it is not.
+ */
+export function sessionFor(
+  connected: { person: Person; adopted: boolean } | null,
+) {
+  if (!connected) {
+    return {
+      connected: false as const,
+      me: null,
+      coChannelId: null,
+      muted: true,
+      adopted: false,
+      holdings: null,
+    };
+  }
+  const { person, adopted } = connected;
+  const occupant = state.occupants.find((o) => o.personId === person.id);
   return {
-    me: peopleById.get(ME_ID)!,
-    coChannelId: at,
+    connected: true as const,
+    me: person,
+    coChannelId: occupant?.coChannelId ?? null,
     muted: occupant?.muted ?? true,
+    adopted,
     holdings: MY_HOLDINGS,
   };
 }
 
-/** Whether the signed-in user may open a given room's door. */
-export function gateCheck(channel: CoChannel) {
+/**
+ * Whether the connected identity may open a given room's door.
+ *
+ * With nobody connected there is nothing to weigh the gate against, so the
+ * terms come back unjudged: the badge still says what the door asks for, and
+ * the answer to "would I get in" waits until there is an identity to ask
+ * about.
+ */
+export function gateCheck(channel: CoChannel, connected: boolean) {
+  if (!connected) {
+    return { passes: false, reasons: ["Connect a wallet to check this door."] };
+  }
   return evaluateGates(channel.gates, MY_HOLDINGS, shortName);
 }

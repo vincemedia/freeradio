@@ -22,10 +22,20 @@ import * as player from "@/lib/player";
  * at and who is speaking right now.
  */
 
+/**
+ * What the server says about who is connected.
+ *
+ * `connected: false` is ordinary rather than an error. The band, the stations
+ * and their audio are all readable without a wallet; only the things that put
+ * you in a room ask for one.
+ */
 interface Session {
-  me: Person;
+  connected: boolean;
+  me: Person | null;
   coChannelId: string | null;
   muted: boolean;
+  /** a real wallet key resolved to the demo account */
+  adopted: boolean;
 }
 
 /**
@@ -82,6 +92,17 @@ interface RadioState {
   transcript: TranscriptLineView[];
   speakingId: string | null;
   /**
+   * The station you are listening to.
+   *
+   * Distinct from the one you are in. Joining sets it, but so does pressing
+   * Listen without a wallet: hearing a room and being in it are different
+   * acts, and only the second one needs an identity.
+   */
+  tunedTo: string | null;
+  /** true only for the wallet path, so the UI can say which one happened */
+  usedWallet: boolean;
+  connecting: boolean;
+  /**
    * Where the current turn sits in its recording, in seconds.
    *
    * Only set in a room with a file behind it. It is what lets the level meter
@@ -103,6 +124,12 @@ interface RadioState {
   dismissOnAirHint: () => void;
 
   refreshSession: () => Promise<void>;
+  /** hand the wallet's identity key to the server; falls back to the demo */
+  connect: (opts?: { demo?: boolean }) => Promise<{ ok: boolean; usedWallet: boolean; error?: string }>;
+  disconnect: () => Promise<void>;
+  /** listen to a station without being in it */
+  tuneIn: (id: string) => Promise<boolean>;
+  tuneOut: () => void;
   openRoom: (id: string) => Promise<void>;
   join: (id: string) => Promise<{ ok: boolean; error?: string; reasons?: string[] }>;
   leave: () => Promise<void>;
@@ -125,6 +152,9 @@ export const useRadio = create<RadioState>()(
       listening: true,
 
       session: null,
+      tunedTo: null,
+      usedWallet: false,
+      connecting: false,
       room: null,
       transcript: [],
       speakingId: null,
@@ -168,7 +198,102 @@ export const useRadio = create<RadioState>()(
         set({ session });
         if (session.coChannelId && !get().room) {
           await get().openRoom(session.coChannelId);
+          set({ tunedTo: session.coChannelId });
         }
+      },
+
+      /**
+       * Connect.
+       *
+       * Asks the browser's wallet for an identity key and hands it to the
+       * server. A missing wallet is not a failure — it is the normal case for
+       * most visitors — so it falls through to the demo identity, and the
+       * caller is told which of the two happened so it can be said out loud.
+       * A wallet that answers and then refuses IS a failure, and is reported.
+       */
+      connect: async (opts = {}) => {
+        set({ connecting: true });
+        try {
+          let usedWallet = false;
+          let body: { mode: "wallet" | "demo"; publicKey?: string } = {
+            mode: "demo",
+          };
+
+          if (!opts.demo) {
+            try {
+              const { connectWallet } = await import("@/lib/wallet");
+              const identity = await connectWallet();
+              body = { mode: "wallet", publicKey: identity.publicKey };
+              usedWallet = true;
+            } catch (e) {
+              /* No wallet in this browser. Carry on as the demo identity;
+                 anything else is refusing to show the product to the people
+                 most likely to be looking at it. */
+              if ((e as Error)?.name !== "NoWalletError") {
+                set({ connecting: false });
+                return { ok: false, usedWallet: false, error: (e as Error).message };
+              }
+            }
+          }
+
+          const session = await apiPost<Session>("/api/session", body);
+          set({ session, usedWallet });
+          if (session.coChannelId) await get().openRoom(session.coChannelId);
+          return { ok: true, usedWallet };
+        } catch (e) {
+          const error =
+            e instanceof ApiError ? e.message : "Your wallet did not connect.";
+          return { ok: false, usedWallet: false, error };
+        } finally {
+          set({ connecting: false });
+        }
+      },
+
+      disconnect: async () => {
+        const session = await apiFetch<Session>("/api/session", {
+          method: "DELETE",
+        });
+        /* Whatever you were listening to stops with you: the dock represents a
+           room you are in, and you are not in one any more. */
+        set({
+          session,
+          usedWallet: false,
+          tunedTo: null,
+          room: null,
+          transcript: [],
+          speakingId: null,
+          speakingAt: null,
+        });
+      },
+
+      /**
+       * Listen to a station without being in it.
+       *
+       * No server write, because nothing about the room changes: you do not
+       * appear in the occupant list and nobody is told. It is a receiver
+       * pointed at a frequency, which is the one thing this product lets you
+       * do without an identity.
+       */
+      tuneIn: async (id) => {
+        try {
+          await get().openRoom(id);
+        } catch {
+          return false;
+        }
+        if (!get().room) return false;
+        set({ tunedTo: id });
+        return true;
+      },
+
+      tuneOut: () => {
+        set({
+          tunedTo: null,
+          room: null,
+          transcript: [],
+          speakingId: null,
+          speakingAt: null,
+          audioBlocked: false,
+        });
       },
 
       openRoom: async (id) => {
@@ -196,6 +321,8 @@ export const useRadio = create<RadioState>()(
           await apiPost(`/api/co-channels/${id}/join`);
           await get().refreshSession();
           await get().openRoom(id);
+          /* Being in a room implies hearing it. */
+          set({ tunedTo: id });
           const room = get().room;
           if (room) {
             /* Newest first, deduped, capped. A recent list that grows without
@@ -225,8 +352,8 @@ export const useRadio = create<RadioState>()(
       },
 
       leave: async () => {
-        await apiFetch("/api/session", { method: "DELETE" });
-        set({ room: null, transcript: [], speakingId: null });
+        await apiPost(`/api/co-channels/${get().room?.id ?? ""}/leave`);
+        set({ room: null, transcript: [], speakingId: null, tunedTo: null });
         await get().refreshSession();
       },
 

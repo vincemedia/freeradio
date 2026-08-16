@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import type { EcosystemId, Gates } from "@/data/schema";
+import { requireIdentity } from "@/lib/server/require-identity";
 import { createCoChannel, listCoChannels } from "@/lib/server/store";
 
 export async function GET(request: Request) {
@@ -12,6 +13,11 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
+  /* Starting a station makes you its host, which is a thing only somebody
+     can be. */
+  const who = await requireIdentity();
+  if (!who.ok) return who.response;
+
   const body = (await request.json()) as {
     title?: string;
     ecosystem?: EcosystemId;
@@ -33,7 +39,7 @@ export async function POST(request: Request) {
     frequency: body.frequency,
     topic: body.topic,
     gates: body.gates,
-  });
+  }, who.personId);
 
   if (!result.ok) {
     return NextResponse.json(

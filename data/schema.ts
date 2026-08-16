@@ -80,6 +80,15 @@ export interface Person {
   isContact?: boolean;
   /** peer attestations of the handle-to-key binding, per BRC-169 section 10 */
   attestations?: number;
+  /**
+   * Their BRC-100 identity key, where one is known.
+   *
+   * Only the demo account has one, because these fixtures were written before
+   * any real wallet existed. A connecting key that matches nobody is adopted
+   * into that account rather than minting an empty one; see
+   * `lib/server/identity`.
+   */
+  publicKey?: string;
 }
 
 /* ------------------------------------------------------------------- gates */

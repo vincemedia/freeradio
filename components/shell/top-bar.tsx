@@ -9,6 +9,7 @@ import { BandSwitch } from "@/components/shell/band-switch";
 import { MobileMenu } from "@/components/shell/mobile-menu";
 import { CommandBar } from "@/components/shell/command-bar";
 import { NewCoChannelDialog } from "@/components/co-channel/new-co-channel";
+import { WalletButton } from "@/components/shell/wallet-button";
 import { Button } from "@/components/ui/button";
 import { HintTooltip } from "@/components/ui/overlays";
 import { useRadio } from "@/lib/store";
@@ -36,6 +37,7 @@ export function TopBar() {
   const seenOnAirHint = useRadio((s) => s.seenOnAirHint);
   const dismissOnAirHint = useRadio((s) => s.dismissOnAirHint);
   const inAStation = useRadio((s) => s.session?.coChannelId) != null;
+  const connected = useRadio((s) => s.session?.connected) === true;
   /* The tooltip portals to the body, so it escapes the `hidden md:flex` on
      the nav and would otherwise float in the top-left corner of a phone,
      pointing at nothing and with no way to dismiss it: the link it is
@@ -130,26 +132,35 @@ export function TopBar() {
                 Icon-only below sm, where the label will not fit. Starting a
                 station is the point of the product, so it stays on the top
                 bar at every width rather than moving into the menu. */}
-            <Button
-              size="icon-sm"
-              variant="secondary"
-              aria-label="Start a station"
-              onClick={() => setCreate(true)}
-              className="sm:hidden"
-            >
-              <Plus size={15} />
-            </Button>
+            {/* Starting a station makes you its host, so with nothing
+                connected the honest control in this slot is the one that
+                would let you be one. */}
+            {connected ? (
+              <>
+                <Button
+                  size="icon-sm"
+                  variant="secondary"
+                  aria-label="Start a station"
+                  onClick={() => setCreate(true)}
+                  className="sm:hidden"
+                >
+                  <Plus size={15} />
+                </Button>
 
-            <Button
-              size="sm"
-              variant="secondary"
-              onClick={() => setCreate(true)}
-              className="hidden sm:inline-flex"
-            >
-              <Plus size={15} />
-              <span className="hidden lg:inline">Start a station</span>
-              <span className="lg:hidden">Open</span>
-            </Button>
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  onClick={() => setCreate(true)}
+                  className="hidden sm:inline-flex"
+                >
+                  <Plus size={15} />
+                  <span className="hidden lg:inline">Start a station</span>
+                  <span className="lg:hidden">Open</span>
+                </Button>
+              </>
+            ) : null}
+
+            <WalletButton />
 
             <MobileMenu
               onSearch={() => setSearch(true)}

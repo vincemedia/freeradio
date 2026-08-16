@@ -50,11 +50,19 @@ export default function CoChannelPage() {
   const audioBlocked = useRadio((s) => s.audioBlocked);
   const setListening = useRadio((s) => s.setListening);
   const resumeAudio = useRadio((s) => s.resumeAudio);
+  const connected = useRadio((s) => s.session?.connected) === true;
+  const tunedTo = useRadio((s) => s.tunedTo);
+  const tuneIn = useRadio((s) => s.tuneIn);
+  const tuneOut = useRadio((s) => s.tuneOut);
+  const connect = useRadio((s) => s.connect);
 
   const { data: preview, loading, error } = useFetch<RoomResponse>(`/api/co-channels/${id}`);
 
   const inThisRoom = session?.coChannelId === id;
-  const view = inThisRoom && room ? room : preview;
+  /* Listening is not membership. You can hear this room without a wallet and
+     without appearing in it; joining is the thing that puts you in the list. */
+  const listeningHere = tunedTo === id;
+  const view = (inThisRoom || listeningHere) && room ? room : preview;
 
   /* The room empties before the route changes, so leaving is something you
      watch happen rather than a page that vanishes. */
@@ -129,8 +137,13 @@ export default function CoChannelPage() {
 
   if (!view) return null;
 
-  const isHost = view.host.id === session?.me.id;
-  const locked = !inThisRoom && preview && !preview.gateCheck.passes;
+  const isHost = view.host.id === session?.me?.id;
+  /* Only ever means a door refused *you*. With nothing connected there is no
+     you to refuse, so an open room must not announce that you cannot join it —
+     the control already says the actual reason, which is that you have not
+     connected. */
+  const locked =
+    connected && !inThisRoom && preview && !preview.gateCheck.passes;
 
   return (
     <div className="flex gap-6">
@@ -297,14 +310,70 @@ export default function CoChannelPage() {
                 </>
               ) : (
                 <>
+                  {/* Two different things, and the difference is the point.
+                      Listening needs nothing. Joining needs a wallet, because
+                      it puts your handle in a room full of named people. */}
+                  {connected ? (
+                    <Button
+                      variant="primary"
+                      size="sm"
+                      onClick={() => void handleJoin()}
+                      disabled={joining || Boolean(locked)}
+                    >
+                      {joining ? "Joining" : locked ? "Locked" : "Join"}
+                    </Button>
+                  ) : (
+                    <Button
+                      variant="primary"
+                      size="sm"
+                      onClick={() => {
+                        void connect().then((r) => {
+                          if (!r.ok) {
+                            toast.error("Your wallet did not connect", {
+                              description: r.error,
+                            });
+                            return;
+                          }
+                          if (!r.usedWallet) {
+                            toast("Connected as the demo identity", {
+                              description:
+                                "No BRC-100 wallet answered in this browser.",
+                            });
+                          }
+                        });
+                      }}
+                    >
+                      Connect to join
+                    </Button>
+                  )}
+
                   <Button
-                    variant="primary"
+                    variant={listeningHere ? "secondary" : "secondary"}
                     size="sm"
-                    onClick={() => void handleJoin()}
-                    disabled={joining || Boolean(locked)}
+                    aria-pressed={listeningHere}
+                    onClick={() => {
+                      if (listeningHere) {
+                        tuneOut();
+                        return;
+                      }
+                      void tuneIn(id).then((ok) => {
+                        if (!ok) toast.error("That station has closed");
+                      });
+                    }}
                   >
-                    {joining ? "Joining" : locked ? "Locked" : "Join"}
+                    {listeningHere ? (
+                      <>
+                        <SpeakerSlash size={15} />
+                        Stop listening
+                      </>
+                    ) : (
+                      <>
+                        <SpeakerHigh size={15} />
+                        Listen
+                      </>
+                    )}
                   </Button>
+
                   <Button
                     variant="ghost"
                     size="icon-sm"
@@ -358,9 +427,11 @@ export default function CoChannelPage() {
                 max={4}
                 size={22}
               />
-              {/* Both consequences of pressing Join, said before you press it
-                  rather than in a toast afterwards. */}
-              Everyone can see your handle and avatar. You join muted.
+              {/* What each of the two controls does, said before either is
+                  pressed rather than in a toast afterwards. */}
+              {connected
+                ? "Joining shows your handle and avatar to everyone here. You arrive muted. Listening shows nothing."
+                : "Listening needs no wallet and shows nothing. Joining puts your handle in the room, muted."}
             </p>
           )}
         </Panel>
@@ -378,11 +449,14 @@ export default function CoChannelPage() {
           <OccupantGrid room={view} leaving={leaving} />
         </div>
         <div data-settle style={{ "--settle-index": 2 } as React.CSSProperties}>
-          {inThisRoom ? (
+          {/* The transcript follows the room, not your membership of it.
+              Anyone listening is hearing the same words, so withholding them
+              from a listener would be hiding what is already audible. */}
+          {inThisRoom || listeningHere ? (
             <Transcript lines={transcript} />
           ) : (
             <p className="rounded-lg border border-dashed border-border px-4 py-6 text-center text-sm text-muted-foreground">
-              Join to follow the transcript as people talk.
+              Listen, or join, to follow the transcript as people talk.
             </p>
           )}
         </div>
