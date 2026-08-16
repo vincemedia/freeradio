@@ -13,11 +13,13 @@ import {
 import { Avatar, Identity } from "@/components/identity";
 import { PersonCard } from "@/components/person-card";
 import { Grille, Lamp, SpeakingRing } from "@/components/instrument/parts";
+import { LevelMeter } from "@/components/instrument/level-meter";
 import { Button } from "@/components/ui/button";
 import { Help } from "@/components/ui/overlays";
 import { Badge, Input } from "@/components/ui/primitives";
 import type { CoChannelView, TranscriptLineView } from "@/data/schema";
 import { formatClock } from "@/lib/format";
+import { useSpeakingLevel } from "@/lib/use-level";
 import { useRadio } from "@/lib/store";
 import { cn } from "@/lib/utils";
 
@@ -160,6 +162,11 @@ export function OccupantGrid({
   const speakingId = useRadio((s) => s.speakingId);
   const me = useRadio((s) => s.session?.me.id);
   const count = room.occupants.length;
+  /* One meter reading for the grid: exactly one person speaks at a time, so
+     six hooks would be five of them idling. */
+  const level = useSpeakingLevel(speakingId !== null, {
+    fromAudio: room.hasAudio,
+  });
 
   return (
     <section className="relative overflow-hidden rounded-lg border border-border bg-card">
@@ -191,23 +198,30 @@ export function OccupantGrid({
                   <Avatar person={o.person} size={56} />
                 </SpeakingRing>
 
-                {/* Mute state, for every occupant, always. */}
+                {/* Mute state, for every occupant, always. While somebody is
+                    speaking the badge becomes their level, since a microphone
+                    icon and a meter say the same thing and only one of them
+                    says how loudly. */}
                 <span
                   className={cn(
-                    "absolute -bottom-0.5 -right-0.5 z-10 flex size-5 items-center justify-center rounded-full border-2 border-card",
-                    o.muted
-                      ? "bg-muted text-muted-foreground"
-                      : "bg-primary text-primary-foreground",
+                    "absolute -bottom-0.5 -right-0.5 z-10 flex items-center justify-center rounded-full border-2 border-card transition-[width] duration-150",
+                    speaking ? "h-5 w-[26px] bg-card" : "size-5",
+                    !speaking &&
+                      (o.muted
+                        ? "bg-muted text-muted-foreground"
+                        : "bg-primary text-primary-foreground"),
                   )}
-                  title={o.muted ? "Muted" : "Unmuted"}
+                  title={o.muted ? "Muted" : speaking ? "Speaking" : "Unmuted"}
                 >
-                  {o.muted ? (
+                  {speaking ? (
+                    <LevelMeter level={level} className="h-3.5" />
+                  ) : o.muted ? (
                     <MicrophoneSlash size={10} weight="fill" />
                   ) : (
                     <Microphone size={10} weight="fill" />
                   )}
                   <span className="sr-only">
-                    {o.muted ? "Muted" : "Unmuted"}
+                    {o.muted ? "Muted" : speaking ? "Speaking" : "Unmuted"}
                   </span>
                 </span>
 
