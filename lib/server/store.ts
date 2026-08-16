@@ -62,7 +62,7 @@ interface State {
  * and the first thing to read it throws. Versioning the key makes a shape
  * change reseed instead of half-applying.
  */
-const STATE_VERSION = 4;
+const STATE_VERSION = 5;
 
 const globalRef = globalThis as unknown as {
   __freeRadio?: { version: number; state: State };
@@ -124,7 +124,7 @@ export function toView(channel: CoChannel): CoChannelView {
   const occ = occupantsOf(channel.id);
   return {
     ...channel,
-    host: peopleById.get(channel.hostId)!,
+    host: peopleById.get(channel.hostId) ?? null,
     occupants: occ,
     occupantCount: occ.length,
     contactCount: occ.filter((o) => o.person.isContact).length,
@@ -153,7 +153,7 @@ export function listCoChannels(opts: ListOptions = {}): CoChannelView[] {
       (c) =>
         c.title.toLowerCase().includes(q) ||
         (c.topic ?? "").toLowerCase().includes(q) ||
-        c.host.handle.toLowerCase().includes(q) ||
+        (c.host?.handle.toLowerCase().includes(q) ?? false) ||
         c.frequency.toFixed(1) === q ||
         c.occupants.some((o) => o.person.handle.toLowerCase().includes(q)),
     );
@@ -305,8 +305,9 @@ export function join(coChannelId: string, personId: string): JoinResult {
   }
 
   /* The host is exempt from their own door, so a room cannot lock out the
-     person holding it. Everyone else is evaluated. */
-  if (personId !== channel.hostId) {
+     person holding it. Everyone else is evaluated. An unclaimed station has
+     no host to exempt, and no door either. */
+  if (!channel.hostId || personId !== channel.hostId) {
     const verdict = { passes: true, reasons: [] as string[] };
     if (!verdict.passes) {
       return {
@@ -324,7 +325,7 @@ export function join(coChannelId: string, personId: string): JoinResult {
     id: nextId("occ"),
     coChannelId,
     personId,
-    role: channel.hostId === personId ? "host" : "speaker",
+    role: channel.hostId && channel.hostId === personId ? "host" : "speaker",
     /* You arrive muted. Joining a live conversation with an open microphone
        is a mistake the room hears before you do. */
     muted: true,

@@ -185,6 +185,15 @@ export interface CoChannel {
    */
   frequency: number;
   ecosystem: EcosystemId;
+  /**
+   * Who runs it, or `""` when nobody does yet.
+   *
+   * A station somebody opened has a host from the moment it exists. An open
+   * station seeded by the app has none: naming one would put somebody's face
+   * and handle on a room they have never been in, which is the kind of small
+   * lie that makes everything next to it suspect. So it is empty, and the
+   * first person to walk into an empty one claims it.
+   */
   hostId: string;
   /** ISO; drives the running time in the header */
   startedAt: string;
@@ -288,7 +297,8 @@ export interface Recording {
  * queries there is nothing in the UI to rewrite.
  */
 export interface CoChannelView extends CoChannel {
-  host: Person;
+  /** null while an open station is unclaimed */
+  host: Person | null;
   occupants: (Occupant & { person: Person })[];
   occupantCount: number;
   /** how many occupants are in the signed-in user's contacts */

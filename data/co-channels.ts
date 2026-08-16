@@ -535,6 +535,15 @@ const SPECS: Spec[] = [
  * faces in a room that cannot hear anybody. They exist so the band is not
  * bare — somewhere to go that works — and they are open, because a door with
  * terms is no use to a stranger testing whether the microphone works.
+ *
+ * Hostless for the same reason the occupant list is empty. These used to name
+ * a host, which read as a promise that a particular person was in there, and
+ * they never were. An open station belongs to whoever turns up: walk into an
+ * empty one and it is yours until you leave.
+ *
+ * The topics are the actual invitation. "Nothing scheduled" is honest and
+ * gets silence; a question somebody already has an opinion about is what
+ * makes a stranger unmute, so each of these is one.
  */
 const LIVE_SEEDS: Spec[] = [
   {
@@ -543,8 +552,8 @@ const LIVE_SEEDS: Spec[] = [
     frequency: 95.5,
     ecosystem: "nexus",
     title: "Open mic",
-    topic: "Nothing scheduled. Turn up, unmute, say something.",
-    hostId: "darren-kellenschwiler",
+    topic: "No subject and no schedule. Whoever is here decides what it is about.",
+    hostId: "",
     occupantIds: [],
     muted: [],
     startedMinutesAgo: 0,
@@ -555,8 +564,8 @@ const LIVE_SEEDS: Spec[] = [
     frequency: 88.3,
     ecosystem: "twetch",
     title: "First contact",
-    topic: "The room to test whether your microphone works. Somebody usually answers.",
-    hostId: "tw-kurt",
+    topic: "Where to find out whether your microphone works. Say anything and somebody usually answers.",
+    hostId: "",
     occupantIds: [],
     muted: [],
     startedMinutesAgo: 0,
@@ -567,8 +576,8 @@ const LIVE_SEEDS: Spec[] = [
     frequency: 103.1,
     ecosystem: "nexus",
     title: "The late shift",
-    topic: "On air whenever somebody is. No subject, no host in particular.",
-    hostId: "rhea-mensah",
+    topic: "The small hours. Quieter, slower, and more honest than the daytime band.",
+    hostId: "",
     occupantIds: [],
     muted: [],
     startedMinutesAgo: 0,
@@ -579,12 +588,77 @@ const LIVE_SEEDS: Spec[] = [
     frequency: 91.3,
     ecosystem: "twetch",
     title: "Workshop",
-    topic: "Bring a problem. Somebody here has probably had it.",
-    hostId: "tw-neil",
+    topic: "Bring a problem you are stuck on. Somebody here has probably had it, and the fastest way to find out is to say it out loud.",
+    hostId: "",
+    occupantIds: [],
+    muted: [],
+    startedMinutesAgo: 0,
+  },  {
+    id: "cc-unpopular-opinion",
+    kind: "live",
+    frequency: 97.5,
+    ecosystem: "nexus",
+    title: "Unpopular opinion",
+    topic:
+      "Say the thing you believe that your own side would argue with. One rule: you have to defend it.",
+    hostId: "",
     occupantIds: [],
     muted: [],
     startedMinutesAgo: 0,
   },
+  {
+    id: "cc-what-broke",
+    kind: "live",
+    frequency: 92.9,
+    ecosystem: "nexus",
+    title: "What broke this week",
+    topic:
+      "Outages, bad deploys, the bug that took three days. Post-mortems out loud, no blame and no polish.",
+    hostId: "",
+    occupantIds: [],
+    muted: [],
+    startedMinutesAgo: 0,
+  },
+  {
+    id: "cc-show-your-work",
+    kind: "live",
+    frequency: 89.9,
+    ecosystem: "twetch",
+    title: "Show your work",
+    topic:
+      "Ten minutes each on whatever you are building. Describe it out loud and the hole in it usually turns up by minute three.",
+    hostId: "",
+    occupantIds: [],
+    muted: [],
+    startedMinutesAgo: 0,
+  },
+  {
+    id: "cc-changed-my-mind",
+    kind: "live",
+    frequency: 105.3,
+    ecosystem: "mycelia",
+    title: "Changed my mind",
+    topic:
+      "Something you were sure about and no longer are. What actually moved you, rather than the argument you now give for it.",
+    hostId: "",
+    occupantIds: [],
+    muted: [],
+    startedMinutesAgo: 0,
+  },
+  {
+    id: "cc-first-hour",
+    kind: "live",
+    frequency: 96.7,
+    ecosystem: "mycelia",
+    title: "The first hour",
+    topic:
+      "New to any of this and want it explained by a person instead of a document. No question is too basic here, which is the whole point of the room.",
+    hostId: "",
+    occupantIds: [],
+    muted: [],
+    startedMinutesAgo: 0,
+  },
+
 ];
 
 const ALL: Spec[] = [...LIVE_SEEDS, ...SPECS];
@@ -610,7 +684,7 @@ export const occupants: Occupant[] = ALL.flatMap((s) =>
     id: `occ-${s.id}-${personId}`,
     coChannelId: s.id,
     personId,
-    role: personId === s.hostId ? ("host" as const) : ("speaker" as const),
+    role: s.hostId && personId === s.hostId ? ("host" as const) : ("speaker" as const),
     muted: s.muted.includes(personId),
     /* Joined in listed order, the host first and earliest. */
     joinedAt: minutesAgo(Math.max(0, s.startedMinutesAgo - i * 3)),

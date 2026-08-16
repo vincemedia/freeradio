@@ -167,10 +167,18 @@ export default function CoChannelPage() {
               )}
 
               <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs text-muted-foreground">
-                <span className="flex items-center gap-1.5">
-                  Host
-                  <Identity person={view.host} className="text-xs" />
-                </span>
+                {/* An open station has no host until somebody walks in, and
+                    says so rather than leaving the label with nothing after
+                    it. It is also the invitation: the room is yours if you
+                    are the one in it. */}
+                {view.host ? (
+                  <span className="flex items-center gap-1.5">
+                    Host
+                    <Identity person={view.host} className="text-xs" />
+                  </span>
+                ) : (
+                  <span>Open station — whoever is here runs it</span>
+                )}
                 <span className="readout">{formatDuration(elapsed)}</span>
                 <span>{view.occupantCount} in the room</span>
               </div>

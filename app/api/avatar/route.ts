@@ -1,6 +1,4 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { del, put } from "@vercel/blob";
-import sharp from "sharp";
 import { connectedPerson, avatarCookieName } from "@/lib/server/identity";
 
 export const dynamic = "force-dynamic";
@@ -90,6 +88,16 @@ export async function POST(request: NextRequest) {
 
   const input = Buffer.from(await file.arrayBuffer());
 
+  /* Imported here rather than at the top of the file. sharp is a native
+     binary and @vercel/blob wants its token at construction; loading either
+     at module scope makes an unauthenticated request crash the route before
+     any of its own checks have run, which is how refusing a stranger turned
+     into a 500. */
+  const [{ default: sharp }, { del, put }] = await Promise.all([
+    import("sharp"),
+    import("@vercel/blob"),
+  ]);
+
   let output: Buffer;
   try {
     const image = sharp(input, {
@@ -159,7 +167,10 @@ export async function DELETE(request: NextRequest) {
   }
 
   const current = request.cookies.get(avatarCookieName())?.value;
-  if (current) await del(current).catch(() => {});
+  if (current) {
+    const { del } = await import("@vercel/blob");
+    await del(current).catch(() => {});
+  }
 
   const response = NextResponse.json({ url: null });
   response.cookies.delete(avatarCookieName());

@@ -39,7 +39,15 @@ for (const p of people) {
 
 const frequencies = new Map<string, string>();
 for (const c of coChannels) {
-  if (!personIds.has(c.hostId)) fail(`${c.id}: unknown host ${c.hostId}`);
+  /* An open station is allowed to have nobody: `""` means unclaimed, and the
+     first person into an empty room becomes its host. Anything else has to
+     name somebody who exists. */
+  if (c.hostId && !personIds.has(c.hostId)) {
+    fail(`${c.id}: unknown host ${c.hostId}`);
+  }
+  if (!c.hostId && c.kind !== "live") {
+    fail(`${c.id}: a recorded station must name its host`);
+  }
   if (!bandIds.has(c.ecosystem)) fail(`${c.id}: unknown band ${c.ecosystem}`);
   if (c.frequency < BAND.min || c.frequency > BAND.max)
     fail(`${c.id}: ${c.frequency} is off the dial`);

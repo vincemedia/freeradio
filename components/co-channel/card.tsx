@@ -239,8 +239,14 @@ export function CoChannelCard({
           responds to the card's own hover, which is what group-hover is for. */}
       <div className="flex min-w-0 items-center justify-between gap-3 border-t border-border pt-2.5 text-[11px]">
         <span className="flex min-w-0 items-center gap-1.5">
-          <span className="shrink-0 text-muted-foreground">Host</span>
-          <Identity person={coChannel.host} className="min-w-0 text-[11px]" />
+          {coChannel.host ? (
+            <>
+              <span className="shrink-0 text-muted-foreground">Host</span>
+              <Identity person={coChannel.host} className="min-w-0 text-[11px]" />
+            </>
+          ) : (
+            <span className="text-muted-foreground">Open — no host yet</span>
+          )}
         </span>
 
         <span

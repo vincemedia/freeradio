@@ -236,6 +236,37 @@ export async function activeSession(
   }
 }
 
+export interface SessionParticipant {
+  custom_participant_id: string;
+  display_name?: string;
+  preset_name?: string;
+  joined_at?: string;
+  /** null while they are still in the room */
+  left_at?: string | null;
+}
+
+/**
+ * Everybody a session has seen, including the ones who have left.
+ *
+ * `left_at` is what separates the two, so callers that mean "who is in this
+ * room right now" have to filter — the endpoint is a history, not a roster.
+ */
+export async function sessionParticipants(
+  config: RealtimeConfig,
+  sessionId: string,
+): Promise<SessionParticipant[]> {
+  try {
+    const body = await call<{ participants?: SessionParticipant[] }>(
+      config,
+      `/sessions/${sessionId}/participants`,
+    );
+    return body.participants ?? [];
+  } catch (e) {
+    if (e instanceof RealtimeError && e.status === 404) return [];
+    throw e;
+  }
+}
+
 /** Remove everybody. Used when a station ends under them. */
 export function kickAll(config: RealtimeConfig, meetingId: string) {
   return call<unknown>(config, `/meetings/${meetingId}/active-session/kick-all`, {

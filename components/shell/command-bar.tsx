@@ -95,7 +95,7 @@ export function CommandBar({
             {here.map((c) => (
               <Command.Item
                 key={c.id}
-                value={`${c.title} ${c.topic ?? ""} ${formatFrequency(c.frequency)} ${c.host.handle}`}
+                value={`${c.title} ${c.topic ?? ""} ${formatFrequency(c.frequency)} ${c.host?.handle ?? ""}`}
                 onSelect={() => go(`/co-channel/${c.id}`)}
                 className="flex cursor-pointer items-center gap-2.5 rounded-md px-2 py-2 text-sm data-[selected=true]:bg-muted"
               >
@@ -120,7 +120,7 @@ export function CommandBar({
             {elsewhere.map((c) => (
               <Command.Item
                 key={c.id}
-                value={`${c.title} ${c.topic ?? ""} ${formatFrequency(c.frequency)} ${c.host.handle}`}
+                value={`${c.title} ${c.topic ?? ""} ${formatFrequency(c.frequency)} ${c.host?.handle ?? ""}`}
                 onSelect={() => go(`/co-channel/${c.id}`)}
                 className="flex cursor-pointer items-center gap-2.5 rounded-md px-2 py-2 text-sm data-[selected=true]:bg-muted"
               >
