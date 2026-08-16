@@ -10,10 +10,13 @@
     "typecheck": "tsc --noEmit",
     "check": "bun run scripts/check-fixtures.ts",
     "verify": "bun run typecheck && bun run lint && bun run check",
-    "icons": "bun run scripts/render-icons.ts"
+    "icons": "bun run scripts/render-icons.ts",
+    "realtime:bootstrap": "bun --env-file=.env.local run scripts/bootstrap-realtime.ts"
   },
   "dependencies": {
     "@bsv/sdk": "^2.4.1",
+    "@cloudflare/realtimekit": "^2.0.1",
+    "@cloudflare/realtimekit-react": "^2.0.1",
     "@phosphor-icons/react": "^2.1.10",
     "agentation": "^3.0.2",
     "boring-avatars": "^2",
