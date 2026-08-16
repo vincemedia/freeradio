@@ -38,6 +38,19 @@ export const TERMS: Clause[] = [
     ],
   },
   {
+    heading: "What you may not do here",
+    body: [
+      "The general rule is short: do not use Free Radio to do something that would be a crime if you did it anywhere else. Speech being live and unmoderated is not a defence, and nothing below is made lawful by having happened on a frequency.",
+      "Specifically, and without limiting that: do not use this service to plan, carry out, solicit or assist any criminal offence. Do not threaten violence against anybody, or incite it. Do not harass, stalk, or target a person or group with abuse, and do not encourage others to.",
+      "Do not share, describe or solicit sexual content involving children, in any form, ever. Do not distribute intimate images of anybody without their consent.",
+      "Do not use this service for fraud, deception for gain, market manipulation, laundering the proceeds of crime, or the sale of anything whose sale is unlawful — including controlled substances, weapons, and stolen credentials or data.",
+      "Do not broadcast material you have no right to broadcast, whether that is somebody else's copyrighted work or somebody else's private information. Do not record or publish a person's private details in order to expose them.",
+      "Do not impersonate another person, and do not claim a station is operated by somebody it is not. Do not attempt to break, overload or gain unauthorised access to this service or any part of it, and do not automate participation in rooms.",
+      "None of this is enforced before it happens, because none of it can be — audio is live and reaches other people before anybody could review it. It is enforced afterwards, by removing access, and by cooperating with a lawful request from an authority where one is made.",
+      "Where the law of your country is stricter than this list, the law of your country is what binds you. Using this service where doing so is itself unlawful is your decision and your responsibility.",
+    ],
+  },
+  {
     heading: "You are responsible for what you hear",
     body: [
       "Rooms are open. You may encounter views you find wrong, offensive or distressing, from people nobody has vetted. Leaving is one click and is the remedy.",
@@ -73,7 +86,7 @@ export const TERMS: Clause[] = [
     heading: "Ending things",
     body: [
       "A station closes when the last person leaves, and in any case two hours after it starts. Its frequency then returns to the pool for somebody else.",
-      "Access may be withdrawn at any time, for any reason, including none.",
+      "Access may be withdrawn at any time, for any reason, including none — and will be, without notice, for anything in the list above.",
     ],
   },
 ];

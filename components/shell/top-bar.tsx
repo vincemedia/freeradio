@@ -57,13 +57,14 @@ export function TopBar() {
         <div className="mx-auto flex h-14 max-w-[1200px] items-center gap-2 px-4 sm:px-6">
           {/* The wordmark is small and sits on a neutral field. The mark comes
               along on wider screens; below sm the band switch needs the room
-              more than the logo does. */}
+              more than the logo does, and the name contracts to the call
+              sign for the same reason. */}
           <Link
             href="/"
             aria-label="Free Radio, on air"
             className="mr-1 shrink-0 rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           >
-            <Wordmark showMark={false} className="sm:hidden" />
+            <Wordmark short showMark={false} className="sm:hidden" />
             <Wordmark markSize={26} className="hidden sm:inline-flex" />
           </Link>
 

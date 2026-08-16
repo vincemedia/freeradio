@@ -26,6 +26,13 @@ import { PlayButton } from "@/components/co-channel/play-button";
  * The microphone is the only primary here. Everything else — leaving, copying
  * a link, recording — is secondary, because in a room the one thing you are
  * deciding, over and over, is whether to be heard.
+ *
+ * On a phone the labelled ones lose their labels. A host has the most controls
+ * of anybody — microphone, music, record, copy, leave — and five labelled
+ * buttons do not fit across a phone; they wrapped onto a second row that
+ * pushed the room down the page, or ran off the edge. The icons are the ones
+ * everybody already knows from every other call they have been in, and the
+ * label survives as the accessible name, so nothing is lost but the width.
  */
 export function LiveControls({
   live,
@@ -88,7 +95,7 @@ export function LiveControls({
         <Tooltip label="Connect a wallet to speak here">
           <span className="inline-flex items-center gap-1.5 rounded-md bg-muted px-2.5 py-1.5 text-[13px] font-medium text-muted-foreground">
             <MicrophoneSlash size={15} />
-            Listening
+            <span className="max-sm:hidden">Listening</span>
           </span>
         </Tooltip>
       ) : (
@@ -96,17 +103,19 @@ export function LiveControls({
           variant={live.micOn ? "primary" : "secondary"}
           size="sm"
           aria-pressed={live.micOn}
+          aria-label={live.micOn ? "Mute yourself" : "Unmute yourself"}
           onClick={() => void live.toggleMic()}
+          className="max-sm:w-9 max-sm:px-0"
         >
           {live.micOn ? (
             <>
               <Microphone size={15} />
-              Live
+              <span className="max-sm:hidden">Live</span>
             </>
           ) : (
             <>
               <MicrophoneSlash size={15} />
-              Unmute
+              <span className="max-sm:hidden">Unmute</span>
             </>
           )}
         </Button>
@@ -132,10 +141,14 @@ export function LiveControls({
           variant={live.recording ? "destructive" : "secondary"}
           size="sm"
           aria-pressed={live.recording}
+          aria-label={live.recording ? "Stop recording" : "Start recording"}
           onClick={() => void live.toggleRecording()}
+          className="max-sm:w-9 max-sm:px-0"
         >
           <Record size={15} weight={live.recording ? "fill" : "regular"} />
-          {live.recording ? "Stop" : "Record"}
+          <span className="max-sm:hidden">
+            {live.recording ? "Stop" : "Record"}
+          </span>
         </Button>
       )}
 

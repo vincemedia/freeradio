@@ -38,13 +38,14 @@ export function BedPicker({ control }: { control: BedControl }) {
           variant="secondary"
           size="sm"
           aria-label={`Background music: ${current.label}`}
+          className="max-sm:w-9 max-sm:px-0"
         >
           {control.playing ? (
             <MusicNotes size={15} weight="fill" className="animate-pulse" />
           ) : (
             <MusicNotesSimple size={15} />
           )}
-          <span className="hidden sm:inline">{current.label}</span>
+          <span className="max-sm:hidden">{current.label}</span>
         </Button>
       </PopoverTrigger>
 

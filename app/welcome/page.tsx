@@ -564,8 +564,9 @@ export default function WelcomePage() {
                     >
                       privacy policy
                     </Link>
-                    . Rooms are not moderated, what you say is yours, and
-                    anyone in a room can record it.
+                    . Rooms are not moderated, what you say is yours, anyone
+                    in a room can record it, and unlawful use ends your
+                    access.
                   </span>
                 </label>
               </div>
