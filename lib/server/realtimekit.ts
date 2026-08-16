@@ -14,10 +14,14 @@ import "server-only";
  *   /accounts/{account}/realtime/kit/{app}/meetings
  *   /accounts/{account}/realtime/kit/{app}/meetings/{id}/participants
  *
- * with a plain `Authorization: Bearer`. Every response is wrapped in the v4
- * envelope — `{ success, result, errors }` — so a failed call still arrives as
- * HTTP 200 with `success: false`, which is why `call` checks the body rather
- * than only the status.
+ * with a plain `Authorization: Bearer`.
+ *
+ * The envelope is `{ success, data, paging }` rather than the `{ success,
+ * result, errors }` the rest of the v4 API uses — RealtimeKit came in through
+ * an acquisition and kept its own shape. `result` is read as a fallback in
+ * case that is ever tidied up, and a failed call can still arrive as HTTP 200
+ * with `success: false`, which is why `call` checks the body and not only the
+ * status.
  */
 
 const BASE = "https://api.cloudflare.com/client/v4";
@@ -75,20 +79,22 @@ async function call<T>(
 
   const body = (await response.json().catch(() => null)) as {
     success?: boolean;
+    data?: T;
     result?: T;
+    error?: unknown;
     errors?: unknown;
   } | null;
 
   if (!response.ok || !body?.success) {
-    const detail = JSON.stringify(body?.errors ?? null);
+    const problem = body?.errors ?? body?.error ?? null;
     throw new RealtimeError(
-      `RealtimeKit ${init.method ?? "GET"} ${path} failed: ${detail}`,
+      `RealtimeKit ${init.method ?? "GET"} ${path} failed: ${JSON.stringify(problem)}`,
       response.status,
-      body?.errors ?? null,
+      problem,
     );
   }
 
-  return body.result as T;
+  return (body.data ?? body.result) as T;
 }
 
 /* ------------------------------------------------------------------ types */

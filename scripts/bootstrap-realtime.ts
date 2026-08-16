@@ -48,17 +48,21 @@ async function api<T>(path: string, init: RequestInit = {}): Promise<T> {
       ...init.headers,
     },
   });
+  /* RealtimeKit answers with `data`, not the `result` the rest of the v4 API
+     uses. Both are read, so this keeps working either way. */
   const body = (await response.json().catch(() => null)) as {
     success?: boolean;
+    data?: T;
     result?: T;
+    error?: unknown;
     errors?: unknown;
   } | null;
   if (!response.ok || !body?.success) {
     throw new Error(
-      `${init.method ?? "GET"} ${path} → ${response.status} ${JSON.stringify(body?.errors ?? body)}`,
+      `${init.method ?? "GET"} ${path} → ${response.status} ${JSON.stringify(body?.errors ?? body?.error ?? body)}`,
     );
   }
-  return body.result as T;
+  return (body.data ?? body.result) as T;
 }
 
 /** Shared by every preset: an audio room, no video anywhere. */
@@ -70,6 +74,43 @@ const CONFIG = {
     audio: { enable_high_bitrate: true, enable_stereo: false },
     video: { frame_rate: 24, quality: "vga" as const },
     screenshare: { frame_rate: 24, quality: "vga" as const },
+  },
+};
+
+/**
+ * Required by the API, and very nearly pointless here.
+ *
+ * This product never renders RealtimeKit's own interface — every control on
+ * screen is ours — but a preset will not validate without a full set of
+ * tokens. So they are the app's real palette rather than filler: if a
+ * RealtimeKit surface ever does appear, it will at least be the right colour.
+ */
+const DESIGN_TOKENS = {
+  theme: "dark",
+  border_radius: "rounded",
+  border_width: "thin",
+  spacing_base: 4,
+  colors: {
+    brand: {
+      300: "#f7dd7a",
+      400: "#f0c93d",
+      500: "#eab300",
+      600: "#c99a00",
+      700: "#a37e00",
+    },
+    background: {
+      600: "#4a4846",
+      700: "#3a3836",
+      800: "#2c2b29",
+      900: "#262523",
+      1000: "#201f1e",
+    },
+    danger: "#cc2e1d",
+    success: "#2f8f5b",
+    warning: "#c98a1f",
+    text: "#f4f2ef",
+    text_on_brand: "#201f1e",
+    video_bg: "#201f1e",
   },
 };
 
@@ -109,14 +150,21 @@ function permissions(role: "host" | "speaker" | "listener") {
     can_edit_display_name: false,
     transcription_enabled: true,
     waiting_room_type: "SKIP",
-    recorder_type: "SFU",
+    recorder_type: "NONE",
     /* The Nest is ours, not RealtimeKit's chat. */
     chat: {
+      /* Asymmetric on purpose, and not by choice: the API accepts
+         `can_receive` on a private chat and rejects it on a public one. */
       public: { can_send: false, text: false, files: false },
-      private: { can_send: false, text: false, files: false },
+      private: { can_send: false, can_receive: false, text: false, files: false },
     },
     polls: { can_create: false, can_vote: false, can_view: false },
-    plugins: { can_close: false, can_start: false, can_edit_config: false },
+    plugins: {
+      can_close: false,
+      can_start: false,
+      can_edit_config: false,
+      config: {},
+    },
     connected_meetings: {
       can_alter_connected_meetings: false,
       can_switch_connected_meetings: false,
@@ -159,6 +207,11 @@ async function main() {
         name,
         config: CONFIG,
         permissions: permissions(role),
+        /* Required by the API even though this product never renders
+           RealtimeKit's own interface: every control on screen is ours, so
+           the tokens it insists on are the app's own colours and go no
+           further than satisfying the schema. */
+        ui: { design_tokens: DESIGN_TOKENS },
       }),
     });
     console.log(`preset     ${name}  (created)`);
