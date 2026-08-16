@@ -70,14 +70,6 @@ export interface Person {
   avatarColors: string[];
   registeredAt?: string;
   expertise?: string[];
-  /**
-   * Whether this person is in the signed-in user's contacts.
-   *
-   * Contacts are owned by another app in the suite. Free Radio only reads the
-   * flag, which is why it lives on the person rather than in a table of its
-   * own: this app never adds or removes one.
-   */
-  isContact?: boolean;
   /** peer attestations of the handle-to-key binding, per BRC-169 section 10 */
   attestations?: number;
   /** their BRC-100 identity key, for the connected user */
@@ -301,8 +293,6 @@ export interface CoChannelView extends CoChannel {
   host: Person | null;
   occupants: (Occupant & { person: Person })[];
   occupantCount: number;
-  /** how many occupants are in the signed-in user's contacts */
-  contactCount: number;
   nest: (NestLink & { postedBy: Person })[];
   /** the single gate to show as a badge, when several are on */
   primaryGate: GateKind;

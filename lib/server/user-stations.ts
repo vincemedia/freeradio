@@ -51,6 +51,17 @@ export function encodeStation(station: Encoded): string {
   return PREFIX + JSON.stringify(station);
 }
 
+/**
+ * A station out of a meeting title, for callers holding only the title.
+ *
+ * Live sessions come back naming their meeting and nothing else, so this is
+ * how "what is on air" becomes stations without a request per room.
+ */
+export function stationFromTitle(title: string): CoChannel | null {
+  const value = decode(title);
+  return value ? toStation(value, undefined) : null;
+}
+
 function decode(title: string): Encoded | null {
   if (!title.startsWith(PREFIX)) return null;
   try {

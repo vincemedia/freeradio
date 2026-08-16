@@ -236,6 +236,34 @@ export async function activeSession(
   }
 }
 
+export interface Session {
+  id: string;
+  meeting_display_name?: string;
+  status?: string;
+  live_participants?: number;
+}
+
+/**
+ * Sessions, newest first, optionally only the ones happening now.
+ *
+ * `meeting_display_name` carries the meeting's title, which is how a station
+ * is named here, so a caller wanting "what is on air" needs one request
+ * rather than one per station.
+ */
+export async function listSessions(
+  config: RealtimeConfig,
+  opts: { live?: boolean; perPage?: number } = {},
+): Promise<Session[]> {
+  const query = new URLSearchParams();
+  if (opts.live) query.set("status", "LIVE");
+  query.set("per_page", String(opts.perPage ?? 100));
+  const body = await call<{ sessions?: Session[] }>(
+    config,
+    `/sessions?${query}`,
+  );
+  return body.sessions ?? [];
+}
+
 export interface SessionParticipant {
   custom_participant_id: string;
   display_name?: string;

@@ -11,7 +11,6 @@ export async function GET() {
         ...e,
         coChannelCount: rows.length,
         occupantCount: rows.reduce((n, c) => n + c.occupantCount, 0),
-        contactCount: rows.reduce((n, c) => n + c.contactCount, 0),
       };
     }),
   );

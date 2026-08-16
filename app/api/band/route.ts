@@ -40,7 +40,6 @@ export async function GET(request: Request) {
       frequency: s.frequency,
       title: s.title,
       occupantCount: 0,
-      contactCount: 0,
       primaryGate: "open" as const,
       recording: false,
     })),

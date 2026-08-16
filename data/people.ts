@@ -2,8 +2,9 @@
  * table: people — everyone addressable in Free Radio.
  *
  * Carried over from the Nexus app unchanged, because a handle has to mean the
- * same person in both. `isContact` is read-only here: contacts are owned by
- * another app in the suite and this one never adds or removes one.
+ * same person in both. Nobody here is a contact of yours — contacts are the
+ * people you have actually met in a room, and they live in your own browser
+ * (see `lib/contacts`) rather than in a table somebody else wrote.
  */
 import type { Person } from "./schema";
 
@@ -29,7 +30,6 @@ export const people: Person[] = [
     avatarColors: ["#7c3aed","#4353ff","#0ea5e9"],
     registeredAt: "2022-09-14T09:00:00.000Z",
     expertise: ["SPV proofs","Overlay topics","Spec review"],
-    isContact: true,
   },
   {
     id: "tomas-lindqvist",
@@ -44,7 +44,6 @@ export const people: Person[] = [
     avatarColors: ["#16a34a","#0891b2","#4353ff"],
     registeredAt: "2023-01-20T09:00:00.000Z",
     expertise: ["Micropayments","Batching","Fees"],
-    isContact: true,
   },
   {
     id: "amara-okonkwo",
@@ -102,7 +101,6 @@ export const people: Person[] = [
     registeredAt: "2019-06-11T09:00:00.000Z",
     expertise: ["Distributed systems","Project management","Teranode"],
     attestations: 21,
-    isContact: true,
   },
   {
     id: "darren-kellenschwiler",
@@ -118,7 +116,6 @@ export const people: Person[] = [
     registeredAt: "2020-02-19T09:00:00.000Z",
     expertise: ["SDKs","Developer experience","Application protocols"],
     attestations: 18,
-    isContact: true,
   },
   {
     id: "asgeir-oskarsson",
@@ -149,7 +146,6 @@ export const people: Person[] = [
     registeredAt: "2019-11-27T09:00:00.000Z",
     expertise: ["Systems thinking","Governance","Advocacy","Stewardship"],
     attestations: 24,
-    isContact: true,
   },
   {
     id: "mohammad-jaber",
@@ -165,7 +161,6 @@ export const people: Person[] = [
     registeredAt: "2021-08-16T09:00:00.000Z",
     expertise: ["Infrastructure","Development","Project management"],
     attestations: 11,
-    isContact: true,
   },
   {
     id: "austin-rappaport",
@@ -211,7 +206,6 @@ export const people: Person[] = [
     registeredAt: "2021-04-13T09:00:00.000Z",
     expertise: ["Infrastructure","Bitcoin","Development"],
     attestations: 12,
-    isContact: true,
   },
   {
     id: "mark-frederiks",
@@ -226,7 +220,6 @@ export const people: Person[] = [
     avatarColors: ["#00b34c","#0074b4","#ffd41f"],
     registeredAt: "2023-02-15T09:00:00.000Z",
     expertise: ["Food networks","Regional coordination"],
-    isContact: true,
   },
   {
     id: "sanne-verhoeven",
@@ -283,7 +276,6 @@ export const people: Person[] = [
     avatarColors: ["#00b34c","#5b1d99","#ffd41f"],
     registeredAt: "2022-06-08T09:00:00.000Z",
     expertise: ["Soil biology","Nutrient density"],
-    isContact: true,
   },
   {
     id: "marcel-van-silfhout",
@@ -326,7 +318,6 @@ export const people: Person[] = [
     avatarColors: ["#ffd41f","#fc6e3d","#0074b4"],
     registeredAt: "2023-08-19T09:00:00.000Z",
     expertise: ["Product","Shelf labelling"],
-    isContact: true,
   },
   {
     id: "tc-thoth",
@@ -343,7 +334,6 @@ export const people: Person[] = [
     registeredAt: "2021-06-02T09:00:00.000Z",
     expertise: ["Protocol design"],
     attestations: 4,
-    isContact: true,
   },
   {
     id: "tc-kuro",
@@ -360,7 +350,6 @@ export const people: Person[] = [
     registeredAt: "2021-08-30T09:00:00.000Z",
     expertise: ["Fee markets","Privacy chains"],
     attestations: 6,
-    isContact: true,
   },
   {
     id: "tc-cranker",
@@ -377,7 +366,6 @@ export const people: Person[] = [
     registeredAt: "2022-02-14T09:00:00.000Z",
     expertise: ["Homesteading","Self-reliance"],
     attestations: 9,
-    isContact: true,
   },
   {
     id: "tc-pxl272",
@@ -474,7 +462,6 @@ export const people: Person[] = [
     registeredAt: "2019-11-02T09:00:00.000Z",
     expertise: ["Data ownership","Founding Twetch"],
     attestations: 34,
-    isContact: true,
   },
   {
     id: "tw-shruggr",
@@ -491,7 +478,6 @@ export const people: Person[] = [
     registeredAt: "2020-01-15T09:00:00.000Z",
     expertise: ["Overlays","1Sat","Indexers"],
     attestations: 17,
-    isContact: true,
   },
   {
     id: "tw-mikey",
@@ -604,7 +590,6 @@ export const people: Person[] = [
     registeredAt: "2019-11-02T09:00:00.000Z",
     expertise: ["UTXO forensics","Tracing"],
     attestations: 28,
-    isContact: true,
   },
   {
     id: "tw-a",
@@ -668,7 +653,6 @@ export const people: Person[] = [
     registeredAt: "2020-10-05T09:00:00.000Z",
     expertise: ["Messageboxes","Payment rails"],
     attestations: 12,
-    isContact: true,
   },
   {
     id: "hc-nadia",
@@ -684,7 +668,6 @@ export const people: Person[] = [
     registeredAt: "2021-03-22T09:00:00.000Z",
     expertise: ["Delegation","Certificates"],
     attestations: 7,
-    isContact: true,
   },
   {
     id: "hc-samir",
@@ -776,7 +759,6 @@ export const people: Person[] = [
     avatarColors: ["#7c3aed","#4353ff","#0ea5e9"],
     registeredAt: "2022-01-01T09:00:00.000Z",
     expertise: ["Overlay topics","Indexing"],
-    isContact: true,
   },
   {
     id: "tomasz-wojcik",
@@ -805,7 +787,6 @@ export const people: Person[] = [
     avatarColors: ["#f59e0b","#db2777","#7c3aed"],
     registeredAt: "2024-03-03T09:00:00.000Z",
     expertise: ["Docs","Developer experience"],
-    isContact: true,
   },
   {
     id: "henrik-sorensen",
@@ -848,7 +829,6 @@ export const people: Person[] = [
     avatarColors: ["#eab300","#f97316","#db2777"],
     registeredAt: "2023-12-06T09:00:00.000Z",
     expertise: ["Extension","UX"],
-    isContact: true,
   },
   {
     id: "fatima-zahra",
@@ -919,7 +899,6 @@ export const people: Person[] = [
     avatarColors: ["#f59e0b","#db2777","#7c3aed"],
     registeredAt: "2024-11-11T09:00:00.000Z",
     expertise: ["Product","Payments"],
-    isContact: true,
   },
   {
     id: "yusuf-demir",
@@ -976,7 +955,6 @@ export const people: Person[] = [
     avatarColors: ["#0ea5e9","#6366f1","#16a34a"],
     registeredAt: "2024-03-15T09:00:00.000Z",
     expertise: ["Support","Spend caps"],
-    isContact: true,
   },
   {
     id: "marek-novak",
@@ -1005,7 +983,6 @@ export const people: Person[] = [
     avatarColors: ["#7c3aed","#4353ff","#0ea5e9"],
     registeredAt: "2022-05-17T09:00:00.000Z",
     expertise: ["Grower liaison","Regional hubs"],
-    isContact: true,
   },
   {
     id: "bram-visser",
@@ -1076,7 +1053,6 @@ export const people: Person[] = [
     avatarColors: ["#eab300","#f97316","#db2777"],
     registeredAt: "2023-04-22T09:00:00.000Z",
     expertise: ["Field trials","Protocols"],
-    isContact: true,
   },
   {
     id: "carmen-ortiz",
@@ -1163,7 +1139,6 @@ export const people: Person[] = [
     avatarColors: ["#0891b2","#16a34a","#4353ff"],
     registeredAt: "2025-10-01T09:00:00.000Z",
     expertise: ["Radio","Antennas"],
-    isContact: true,
   },
   {
     id: "tc-aoife",
@@ -1239,7 +1214,6 @@ export const people: Person[] = [
     avatarColors: ["#7c3aed","#4353ff","#0ea5e9"],
     registeredAt: "2022-09-06T09:00:00.000Z",
     expertise: ["Photography","Prints"],
-    isContact: true,
   },
   {
     id: "tw-otto",
@@ -1371,7 +1345,6 @@ export const people: Person[] = [
     registeredAt: "2019-06-21T04:43:30.000Z",
     expertise: ["Mining", "BSV history", "Broadcasting"],
     attestations: 41,
-    isContact: true,
   },
 
   /* Listeners, so the two new rooms have an audience rather than a panel

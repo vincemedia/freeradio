@@ -49,11 +49,11 @@ type Step = (typeof STEPS)[number];
 /* Marks for the scale before the real rooms arrive, so the dial is never an
    empty ruler. They carry no titles because they are not rooms. */
 const PLACEHOLDER_STATIONS: Station[] = [
-  { id: "d1", frequency: 89.5, title: "", occupantCount: 3, contactCount: 1, primaryGate: "open", recording: false },
-  { id: "d2", frequency: 94.1, title: "", occupantCount: 5, contactCount: 0, primaryGate: "open", recording: false },
-  { id: "d3", frequency: 98.7, title: "", occupantCount: 6, contactCount: 2, primaryGate: "open", recording: true },
-  { id: "d4", frequency: 101.3, title: "", occupantCount: 4, contactCount: 0, primaryGate: "token", recording: false },
-  { id: "d5", frequency: 104.9, title: "", occupantCount: 3, contactCount: 1, primaryGate: "vouch", recording: false },
+  { id: "d1", frequency: 89.5, title: "", occupantCount: 3, primaryGate: "open", recording: false },
+  { id: "d2", frequency: 94.1, title: "", occupantCount: 5, primaryGate: "open", recording: false },
+  { id: "d3", frequency: 98.7, title: "", occupantCount: 6, primaryGate: "open", recording: true },
+  { id: "d4", frequency: 101.3, title: "", occupantCount: 4, primaryGate: "token", recording: false },
+  { id: "d5", frequency: 104.9, title: "", occupantCount: 3, primaryGate: "vouch", recording: false },
 ];
 
 /** How many rooms the sweep visits before it repeats. */

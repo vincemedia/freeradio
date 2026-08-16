@@ -11,6 +11,7 @@ import type { CoChannelView, GateKind, Gates, Token } from "@/data/schema";
 import { GATE_HELP, GATE_LABEL } from "@/lib/gates";
 import { formatFrequency } from "@/lib/format";
 import { useRadio } from "@/lib/store";
+import { useContactsByRoom } from "@/lib/use-on-air";
 import { cn } from "@/lib/utils";
 import {
   coChannelTransitionName,
@@ -143,6 +144,9 @@ export function CoChannelCard({
   className?: string;
 }) {
   const router = useRouter();
+  /* Counted here rather than sent by the server, which cannot know: contacts
+     live in this browser and are never uploaded. */
+  const known = useContactsByRoom()[coChannel.id] ?? 0;
   const people = coChannel.occupants.map((o) => o.person);
   const inThisRoom = useRadio((s) => s.session?.coChannelId) === coChannel.id;
   const href = `/co-channel/${coChannel.id}`;
@@ -221,9 +225,9 @@ export function CoChannelCard({
           <span className="block truncate">
             {coChannel.occupantCount} in the room
           </span>
-          {coChannel.contactCount > 0 && (
+          {known > 0 && (
             <span className="block truncate text-foreground">
-              {coChannel.contactCount} you know
+              {known} you know
             </span>
           )}
         </span>

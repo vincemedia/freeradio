@@ -127,7 +127,6 @@ export function toView(channel: CoChannel): CoChannelView {
     host: peopleById.get(channel.hostId) ?? null,
     occupants: occ,
     occupantCount: occ.length,
-    contactCount: occ.filter((o) => o.person.isContact).length,
     nest: state.nest
       .filter((n) => n.coChannelId === channel.id)
       .map((n) => ({ ...n, postedBy: peopleById.get(n.postedById)! }))
@@ -187,7 +186,6 @@ export function bandOccupancy(ecosystem: EcosystemId) {
     frequency: c.frequency,
     title: c.title,
     occupantCount: c.occupantCount,
-    contactCount: c.contactCount,
     primaryGate: c.primaryGate,
     recording: c.recording,
   }));
@@ -541,46 +539,6 @@ export function listRecordings(ecosystem?: EcosystemId): Recording[] {
 
 export function getRecording(id: string): Recording | undefined {
   return state.recordings.find((r) => r.id === id);
-}
-
-/* -------------------------------------------------------------- contacts */
-
-/**
- * The user's contacts, and where each of them is.
- *
- * Contacts are owned by another app; this only reads the flag and answers the
- * one question Free Radio can answer about them, which is whether you can
- * hear them right now.
- */
-export function listContacts(): {
-  person: Person;
-  coChannel: { id: string; title: string; frequency: number; ecosystem: EcosystemId } | null;
-}[] {
-  return people
-    .filter((p) => p.isContact)
-    .map((person) => {
-      const at = state.occupants.find((o) => o.personId === person.id);
-      const channel = at
-        ? state.channels.find((c) => c.id === at.coChannelId)
-        : undefined;
-      return {
-        person,
-        coChannel: channel
-          ? {
-              id: channel.id,
-              title: channel.title,
-              frequency: channel.frequency,
-              ecosystem: channel.ecosystem,
-            }
-          : null,
-      };
-    })
-    .sort((a, b) => {
-      /* On air first: the only reason to open this list is to find somebody
-         you can hear right now. */
-      if (!!a.coChannel !== !!b.coChannel) return a.coChannel ? -1 : 1;
-      return a.person.name.localeCompare(b.person.name);
-    });
 }
 
 /* --------------------------------------------------------------- session */

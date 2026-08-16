@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { usePrefersReducedMotion } from "@/lib/use-reduced-motion";
 import type { GateKind } from "@/data/schema";
 import { formatFrequency } from "@/lib/format";
+import { useContactsByRoom } from "@/lib/use-on-air";
 import { cn } from "@/lib/utils";
 
 /** Horizontal padding of the rails inside the track, in pixels. */
@@ -57,7 +58,6 @@ export interface Station {
   frequency: number;
   title: string;
   occupantCount: number;
-  contactCount: number;
   primaryGate: GateKind;
   recording: boolean;
 }
@@ -107,6 +107,9 @@ export function TuningScale({
 }) {
   const trackRef = useRef<HTMLDivElement>(null);
   const dragging = useRef(false);
+  /* A mark brightens when somebody you know is on that frequency. Read from
+     this browser, because that is the only place contacts exist. */
+  const known = useContactsByRoom();
 
   const pct = ((value - min) / (max - min)) * 100;
   /* Only the digits count. The needle, the marks and the announced value all
@@ -308,10 +311,10 @@ export function TuningScale({
                     width: isTuned ? 8 : 3,
                     backgroundColor: isTuned
                       ? "var(--primary)"
-                      : s.contactCount > 0
+                      : known[s.id]
                         ? "var(--tick-major)"
                         : "var(--tick)",
-                    opacity: isTuned ? 1 : s.contactCount > 0 ? 0.85 : 0.45,
+                    opacity: isTuned ? 1 : known[s.id] ? 0.85 : 0.45,
                   }}
                 />
                 {s.recording && (

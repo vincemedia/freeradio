@@ -19,7 +19,6 @@ export async function GET(
         host: null as never,
         occupants: [],
         occupantCount: 0,
-        contactCount: 0,
         nest: [],
         primaryGate: "open",
       };

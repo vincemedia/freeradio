@@ -2,12 +2,12 @@
 
 import { useState } from "react";
 import { Coins, LockKey, MagnifyingGlass, Prohibit, ShieldCheck } from "@phosphor-icons/react";
-import useFetch from "@/lib/use-fetch";
 import { Avatar, Identity } from "@/components/identity";
 import { Help } from "@/components/ui/overlays";
 import { Input } from "@/components/ui/primitives";
 import { tokens } from "@/data/tokens";
 import type { Gates, Person } from "@/data/schema";
+import { useContacts } from "@/lib/contacts";
 import { GATE_HELP } from "@/lib/gates";
 import { cn } from "@/lib/utils";
 
@@ -27,7 +27,6 @@ const LOCK_TERMS = [
   { label: "1 year", days: 365 },
 ] as const;
 
-type ContactRow = { person: Person };
 
 /**
  * The door, when you are the one building it.
@@ -47,8 +46,25 @@ export function GateEditor({
   gates: Gates;
   onChange: (next: Gates) => void;
 }) {
-  const { data: contacts } = useFetch<ContactRow[]>("/api/contacts");
-  const people = (contacts ?? []).map((c) => c.person);
+  /* Whose word a door listens to is chosen from people you have actually
+     met, which is now the only list of people this app has. Before contacts
+     were real it offered a seeded roster, so a host could put a stranger's
+     name on their own door. */
+  const { contacts } = useContacts();
+  const people: Person[] = contacts.map((c) => ({
+    id: c.key,
+    name: c.name,
+    handle: c.name,
+    ecosystem: "nexus",
+    keyIdentity: true,
+    publicKey: c.key,
+    role: "",
+    bio: "",
+    organization: null,
+    city: "",
+    photo: c.photo ?? null,
+    avatarColors: ["#eab300", "#cc2e1d", "#4353ff"],
+  }));
 
   const set = (patch: Partial<Gates>) => onChange({ ...gates, ...patch });
 

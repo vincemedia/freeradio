@@ -39,7 +39,6 @@ export async function GET(request: Request) {
       host: null,
       occupants: [],
       occupantCount: 0,
-      contactCount: 0,
       nest: [],
       primaryGate: "open" as const,
     }));

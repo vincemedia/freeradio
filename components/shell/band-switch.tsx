@@ -6,12 +6,12 @@ import useSWRLike from "@/lib/use-fetch";
 import { EcosystemMark } from "@/components/identity";
 import type { Ecosystem } from "@/data/schema";
 import { useRadio } from "@/lib/store";
+import { useOnAir } from "@/lib/use-on-air";
 import { cn } from "@/lib/utils";
 
 type Band = Ecosystem & {
   coChannelCount: number;
   occupantCount: number;
-  contactCount: number;
 };
 
 /**
@@ -27,6 +27,13 @@ export function BandSwitch({ className }: { className?: string }) {
   const ecosystem = useRadio((s) => s.ecosystem);
   const setEcosystem = useRadio((s) => s.setEcosystem);
   const followed = useRadio((s) => s.followed);
+
+  /* How many people you know are on each band, counted from your own
+     contacts. The server has no idea and should not: contacts never leave
+     this browser. */
+  const onAir = useOnAir();
+  const known: Record<string, number> = {};
+  for (const { room } of onAir) known[room.ecosystem] = (known[room.ecosystem] ?? 0) + 1;
 
   const current = bands?.find((b) => b.id === ecosystem);
 
@@ -91,7 +98,7 @@ export function BandSwitch({ className }: { className?: string }) {
                         {b.coChannelCount === 0
                           ? "Nothing on air"
                           : `${b.coChannelCount} on air, ${b.occupantCount} talking`}
-                        {b.contactCount > 0 && `, ${b.contactCount} you know`}
+                        {(known[b.id] ?? 0) > 0 && `, ${known[b.id]} you know`}
                       </span>
                     </span>
                     {b.id === ecosystem && (
