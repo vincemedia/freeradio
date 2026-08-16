@@ -5,18 +5,13 @@ import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import {
   CaretLeft,
-  Copy,
-  CornersIn,
-  Microphone,
-  MicrophoneSlash,
-  Record,
-  SignOut,
   Sliders,
-  SpeakerHigh,
-  SpeakerSlash,
 } from "@phosphor-icons/react";
 import useFetch from "@/lib/use-fetch";
 import { Nest, OccupantGrid, RoomStatus, Transcript } from "@/components/co-channel/room";
+import { LiveControls, RecordedControls } from "@/components/co-channel/live-controls";
+import { LiveOccupants } from "@/components/co-channel/live-occupants";
+import { useLiveRoom } from "@/lib/use-live-room";
 import { SidePane } from "@/components/co-channel/side-pane";
 import { GateBadge } from "@/components/co-channel/card";
 import { EcosystemMark, Facepile, Identity } from "@/components/identity";
@@ -40,22 +35,16 @@ export default function CoChannelPage() {
   const session = useRadio((s) => s.session);
   const room = useRadio((s) => s.room);
   const transcript = useRadio((s) => s.transcript);
-  const join = useRadio((s) => s.join);
-  const leave = useRadio((s) => s.leave);
-  const toggleMute = useRadio((s) => s.toggleMute);
-  const toggleRecording = useRadio((s) => s.toggleRecording);
-  const joining = useRadio((s) => s.joining);
-  const listening = useRadio((s) => s.listening);
-  const audioBlocked = useRadio((s) => s.audioBlocked);
-  const setListening = useRadio((s) => s.setListening);
-  const resumeAudio = useRadio((s) => s.resumeAudio);
   const connected = useRadio((s) => s.session?.connected) === true;
   const tunedTo = useRadio((s) => s.tunedTo);
-  const tuneIn = useRadio((s) => s.tuneIn);
-  const tuneOut = useRadio((s) => s.tuneOut);
   const connect = useRadio((s) => s.connect);
 
   const { data: preview, loading, error } = useFetch<RoomResponse>(`/api/co-channels/${id}`);
+
+  /* A live station is a real meeting with real microphones in it. A recorded
+     one already happened: there is nobody to join and something to play. */
+  const isLive = preview?.kind === "live";
+  const live = useLiveRoom(isLive ? id : null);
 
   const inThisRoom = session?.coChannelId === id;
   /* Listening is not membership. You can hear this room without a wallet and
@@ -63,9 +52,8 @@ export default function CoChannelPage() {
   const listeningHere = tunedTo === id;
   const view = (inThisRoom || listeningHere) && room ? room : preview;
 
-  /* The room empties before the route changes, so leaving is something you
-     watch happen rather than a page that vanishes. */
-  const [leaving, setLeaving] = useState(false);
+  /* Kept for the recorded grid's stagger, which still animates in. */
+  const leaving = false;
   const [elapsed, setElapsed] = useState(0);
   useEffect(() => {
     if (!view) return;
@@ -74,31 +62,6 @@ export default function CoChannelPage() {
     const t = setInterval(update, 1000);
     return () => clearInterval(t);
   }, [view]);
-
-  const handleJoin = async () => {
-    const result = await join(id);
-    if (!result.ok) {
-      toast.error(result.error ?? "Could not join", {
-        description: result.reasons?.join(" "),
-      });
-      return;
-    }
-    toast.success("You are in", {
-      description: "Unmute when you want to talk.",
-    });
-  };
-
-  const LEAVE_MS = 260;
-  const handleLeave = async () => {
-    const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    if (!reduced) {
-      setLeaving(true);
-      await new Promise((r) => setTimeout(r, LEAVE_MS));
-    }
-    await leave();
-    toast("You left the Co-Channel");
-    router.push("/");
-  };
 
   const copyLink = async () => {
     await navigator.clipboard.writeText(
@@ -136,7 +99,6 @@ export default function CoChannelPage() {
 
   if (!view) return null;
 
-  const isHost = view.host.id === session?.me?.id;
   /* A gated room is described rather than judged now: holdings belong to a
      wallet and this app does not read them, so the badge says what the door
      asks for and the door itself answers when you try it. */
@@ -212,174 +174,23 @@ export default function CoChannelPage() {
 
             {/* ---- controls ---- */}
             <div className="flex shrink-0 flex-wrap items-center gap-1.5">
-              {inThisRoom ? (
-                <>
-                  <Button
-                    variant={session?.muted ? "secondary" : "primary"}
-                    size="sm"
-                    onClick={() => void toggleMute()}
-                    aria-pressed={!session?.muted}
-                  >
-                    {session?.muted ? (
-                      <>
-                        <MicrophoneSlash size={15} />
-                        Unmute
-                      </>
-                    ) : (
-                      <>
-                        <Microphone size={15} />
-                        Mute
-                      </>
-                    )}
-                  </Button>
-
-                  {/* Sound, which is not the same switch as your microphone.
-                      When the browser has refused to start audio the control
-                      says so and is the gesture that unblocks it, because a
-                      silent room with no explanation reads as broken. */}
-                  {view.hasAudio && (
-                    <Button
-                      variant={audioBlocked ? "primary" : "secondary"}
-                      size={audioBlocked ? "sm" : "icon-sm"}
-                      aria-label={listening ? "Turn the sound off" : "Turn the sound on"}
-                      aria-pressed={listening && !audioBlocked}
-                      onClick={() => {
-                        if (audioBlocked) {
-                          void resumeAudio();
-                          return;
-                        }
-                        setListening(!listening);
-                      }}
-                    >
-                      {audioBlocked ? (
-                        <>
-                          <SpeakerHigh size={15} />
-                          Listen
-                        </>
-                      ) : listening ? (
-                        <SpeakerHigh />
-                      ) : (
-                        <SpeakerSlash />
-                      )}
-                    </Button>
-                  )}
-
-                  {isHost && (
-                    <Button
-                      variant={view.recording ? "destructive" : "secondary"}
-                      size="sm"
-                      onClick={() => void toggleRecording()}
-                      aria-pressed={view.recording}
-                    >
-                      <Record size={15} weight={view.recording ? "fill" : "regular"} />
-                      {view.recording ? "Stop" : "Record"}
-                    </Button>
-                  )}
-
-                  <Button
-                    variant="ghost"
-                    size="icon-sm"
-                    aria-label="Minimise the Co-Channel"
-                    onClick={() => {
-                      router.push("/");
-                    }}
-                  >
-                    <CornersIn />
-                  </Button>
-
-                  <Button
-                    variant="ghost"
-                    size="icon-sm"
-                    aria-label="Copy Co-Channel link"
-                    onClick={copyLink}
-                  >
-                    <Copy />
-                  </Button>
-
-                  <Button
-                    variant="ghost"
-                    size="icon-sm"
-                    aria-label="Leave the Co-Channel"
-                    onClick={() => void handleLeave()}
-                  >
-                    <SignOut />
-                  </Button>
-                </>
-              ) : (
-                <>
-                  {/* Two different things, and the difference is the point.
-                      Listening needs nothing. Joining needs a wallet, because
-                      it puts your handle in a room full of named people. */}
-                  {connected ? (
-                    <Button
-                      variant="primary"
-                      size="sm"
-                      onClick={() => void handleJoin()}
-                      disabled={joining || Boolean(locked)}
-                    >
-                      {joining ? "Joining" : locked ? "Locked" : "Join"}
-                    </Button>
-                  ) : (
-                    <Button
-                      variant="primary"
-                      size="sm"
-                      onClick={() => {
-                        void connect().then((r) => {
-                          if (!r.ok) {
-                            toast.error("Your wallet did not connect", {
-                              description: r.error,
-                            });
-                            return;
-                          }
-                          if (!r.usedWallet) {
-                            toast("Connected as the demo identity", {
-                              description:
-                                "No BRC-100 wallet answered in this browser.",
-                            });
-                          }
+              {isLive ? (
+                <LiveControls
+                  live={live}
+                  connected={connected}
+                  onConnect={() => {
+                    void connect().then((r) => {
+                      if (!r.ok) {
+                        toast.error("Your wallet did not connect", {
+                          description: r.error,
                         });
-                      }}
-                    >
-                      Connect to join
-                    </Button>
-                  )}
-
-                  <Button
-                    variant={listeningHere ? "secondary" : "secondary"}
-                    size="sm"
-                    aria-pressed={listeningHere}
-                    onClick={() => {
-                      if (listeningHere) {
-                        tuneOut();
-                        return;
                       }
-                      void tuneIn(id).then((ok) => {
-                        if (!ok) toast.error("That station has closed");
-                      });
-                    }}
-                  >
-                    {listeningHere ? (
-                      <>
-                        <SpeakerSlash size={15} />
-                        Stop listening
-                      </>
-                    ) : (
-                      <>
-                        <SpeakerHigh size={15} />
-                        Listen
-                      </>
-                    )}
-                  </Button>
-
-                  <Button
-                    variant="ghost"
-                    size="icon-sm"
-                    aria-label="Copy Co-Channel link"
-                    onClick={copyLink}
-                  >
-                    <Copy />
-                  </Button>
-                </>
+                    });
+                  }}
+                  onCopy={copyLink}
+                />
+              ) : (
+                <RecordedControls room={view} onCopy={copyLink} />
               )}
 
               {/* The sidepane docks at xl; below that it is a sheet. */}
@@ -431,17 +242,24 @@ export default function CoChannelPage() {
           <Nest room={view} canPost={inThisRoom} />
         </div>
         <div data-settle style={{ "--settle-index": 1 } as React.CSSProperties}>
-          <OccupantGrid room={view} leaving={leaving} />
+          {isLive ? (
+            <LiveOccupants live={live} canModerate={live.role === "host"} />
+          ) : (
+            /* Who was in it, which is history rather than a claim about now. */
+            <OccupantGrid room={view} leaving={leaving} />
+          )}
         </div>
         <div data-settle style={{ "--settle-index": 2 } as React.CSSProperties}>
           {/* The transcript follows the room, not your membership of it.
               Anyone listening is hearing the same words, so withholding them
               from a listener would be hiding what is already audible. */}
-          {inThisRoom || listeningHere ? (
+          {isLive ? null : view.hasAudio ? (
             <Transcript lines={transcript} />
           ) : (
             <p className="rounded-lg border border-dashed border-border px-4 py-6 text-center text-sm text-muted-foreground">
-              Listen, or join, to follow the transcript as people talk.
+              No recording was kept of this broadcast, so there is no
+              transcript either. The frequency and who was on it are all that
+              survived.
             </p>
           )}
         </div>
