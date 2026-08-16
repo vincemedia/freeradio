@@ -25,9 +25,14 @@ const buttonVariants = cva(
            for thickness, and an inner highlight along the top where the light
            lands. Pressing swaps in the pressed set so the piece squashes
            rather than slides. Everything else in the system stays flat, which
-           is what leaves this reading as the thing to press. */
+           is what leaves this reading as the thing to press.
+
+           The corner comes from the base above, not from a radius of its own:
+           a primary and a secondary sitting next to each other are the same
+           key in two finishes, and two different corners made them look like
+           parts from two different products. */
         primary:
-          "rounded-[var(--radius-clay)] bg-primary text-primary-foreground shadow-[var(--shadow-clay-primary)] hover:bg-[var(--primary-hover)] active:scale-[0.98] active:shadow-[var(--shadow-clay-primary-pressed)]",
+          "bg-primary text-primary-foreground shadow-[var(--shadow-clay-primary)] hover:bg-[var(--primary-hover)] active:scale-[0.98] active:shadow-[var(--shadow-clay-primary-pressed)]",
         secondary:
           "border border-border bg-card text-foreground hover:bg-muted active:scale-[0.98]",
         ghost:
@@ -37,7 +42,7 @@ const buttonVariants = cva(
            primary, because stopping a recording is as much a call to action as
            starting one, and the two are the same kind of control. */
         destructive:
-          "rounded-[var(--radius-clay)] bg-destructive text-destructive-foreground shadow-[var(--shadow-clay-destructive)] hover:brightness-110 active:scale-[0.98] active:shadow-[var(--shadow-clay-destructive-pressed)]",
+          "bg-destructive text-destructive-foreground shadow-[var(--shadow-clay-destructive)] hover:brightness-110 active:scale-[0.98] active:shadow-[var(--shadow-clay-destructive-pressed)]",
       },
       size: {
         default: "h-11 px-4",

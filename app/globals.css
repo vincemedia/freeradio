@@ -82,8 +82,11 @@
      above the panel, an inner shadow along the bottom edge for thickness, and
      an inner highlight along the top where the light lands. Pressing swaps in
      the pressed set, which pulls the drop shadow in and deepens the bottom
-     inset, so the piece squashes instead of sliding. */
-  --radius-clay: 8px;
+     inset, so the piece squashes instead of sliding.
+
+     There is no radius of its own: clay is a finish, not a shape, and a
+     moulded key sitting beside a flat one has to have the same corner or the
+     two read as parts from different products. */
 
   --shadow-clay-primary:
     0 12px 24px -10px oklch(0.72 0.15 89 / 0.65),
@@ -172,7 +175,6 @@
 
   --shadow-raised: 0 1px 2px oklch(0 0 0 / 0.3), 0 2px 8px oklch(0 0 0 / 0.24);
   --shadow-overlay: 0 8px 30px oklch(0 0 0 / 0.45);
-  --radius-clay: 8px;
 
   --shadow-clay-primary:
     0 12px 26px -10px oklch(0.72 0.15 89 / 0.4),
@@ -249,7 +251,6 @@
   --shadow-overlay: var(--shadow-overlay);
   --shadow-clay-primary: var(--shadow-clay-primary);
   --shadow-clay-destructive: var(--shadow-clay-destructive);
-  --radius-clay: var(--radius-clay);
 
   --ease-out-quint: cubic-bezier(0.16, 1, 0.3, 1);
   /* How long the header takes to morph out of the card. The rest of the room

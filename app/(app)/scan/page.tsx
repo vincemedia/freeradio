@@ -2,7 +2,8 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { Broadcast, CaretLeft, CaretRight, LockKey } from "@phosphor-icons/react";
+import { Broadcast, CaretLeft, CaretRight, LockKey, Shuffle } from "@phosphor-icons/react";
+import { toast } from "sonner";
 import useFetch from "@/lib/use-fetch";
 import { CoChannelCard } from "@/components/co-channel/card";
 import { NewCoChannelDialog } from "@/components/co-channel/new-co-channel";
@@ -51,6 +52,9 @@ type BandResponse = {
 export default function ScanPage() {
   const router = useRouter();
   const ecosystem = useRadio((s) => s.ecosystem);
+  const join = useRadio((s) => s.join);
+  const joining = useRadio((s) => s.joining);
+  const currentRoomId = useRadio((s) => s.session?.coChannelId);
 
   /* Where the needle sits is derived, not stored, until somebody moves it.
      Switching band would otherwise leave it in a gap on the new band, and
@@ -89,6 +93,36 @@ export default function ScanPage() {
     if (next) setFrequency(next.frequency);
   };
 
+  /* Anything on this band you are not already in. A random pick that can land
+     you where you already are is not random enough to be worth pressing. */
+  const pickable = stations.filter((s) => s.id !== currentRoomId);
+
+  /**
+   * Tune in somewhere at random.
+   *
+   * Moves the needle first so the dial is visibly the thing that chose, then
+   * joins. If the door turns out to be shut it says which one it tried and
+   * leaves the needle there rather than silently rolling again: two failures
+   * in a row with no explanation reads as a broken button.
+   */
+  const surpriseMe = async () => {
+    if (pickable.length === 0) return;
+    const pick = pickable[Math.floor(Math.random() * pickable.length)];
+    setFrequency(pick.frequency);
+
+    const result = await join(pick.id);
+    if (!result.ok) {
+      toast.error(`${formatFrequency(pick.frequency)} would not let you in`, {
+        description: result.reasons?.join(" ") ?? result.error,
+      });
+      return;
+    }
+    toast.success(`Tuned in to ${formatFrequency(pick.frequency)}`, {
+      description: `${pick.title}. You joined muted.`,
+    });
+    router.push(`/co-channel/${pick.id}`);
+  };
+
   const bandInfo = getEcosystem(ecosystem);
 
   return (
@@ -119,6 +153,25 @@ export default function ScanPage() {
             <CaretLeft size={14} />
             Scan down
           </Button>
+          {/* Between the two directions, because it is the third thing you
+              can do with a dial and it is the one worth doing when you do not
+              know what you are looking for. Primary: on a page whose whole
+              job is finding something, "find me something" is the action.
+
+              It joins rather than tuning. Scanning past a station and landing
+              in one are different acts, and a button called Surprise me that
+              only moved the needle would be the timid version. */}
+          <Button
+            variant="primary"
+            size="sm"
+            onClick={() => void surpriseMe()}
+            disabled={joining || pickable.length === 0}
+            aria-label="Join a station at random on this band"
+          >
+            <Shuffle size={14} />
+            {joining ? "Tuning in" : "Surprise me"}
+          </Button>
+
           <Button
             size="sm"
             onClick={() => scan(1)}
