@@ -91,7 +91,7 @@ export default function ScanPage() {
      set makes while it does. `sweeping` is where it is on the way; the page's
      own frequency only changes on arrival, so nothing downstream refetches for
      every station passed over. */
-  const tuner = useTuner(frequency, "/audio/fm-tuning.mp3");
+  const tuner = useTuner(frequency);
   const needle = tuner.sweeping ?? frequency;
 
   const scan = (direction: 1 | -1) => {
@@ -116,11 +116,20 @@ export default function ScanPage() {
     const pick = pickable[Math.floor(Math.random() * pickable.length)];
     /* Travels there first, and only then opens the room. Arriving before the
        dial has moved would make the dial decorative — the whole point is that
-       the thing on screen is what chose. */
-    tuner.tuneTo(pick.frequency, () => {
-      setFrequency(pick.frequency);
-      router.push(`/co-channel/${pick.id}`);
-    });
+       the thing on screen is what chose.
+
+       The noise carries on past the needle, because the journey does: joining
+       a room takes a second or two of nothing, and cutting the sound at the
+       end of the sweep would put the silence in the wrong place — right where
+       there is nothing else to listen to. The room stops it when it is in. */
+    tuner.tuneTo(
+      pick.frequency,
+      () => {
+        setFrequency(pick.frequency);
+        router.push(`/co-channel/${pick.id}`);
+      },
+      true,
+    );
   };
 
   const bandInfo = getEcosystem(ecosystem);

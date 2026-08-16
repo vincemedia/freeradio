@@ -1,11 +1,13 @@
 import "server-only";
 
 import {
+  activeRecording,
   activeSession,
   kickAll,
   listMeetings,
   realtimeConfig,
   renameMeeting,
+  stopRecording,
   type RealtimeConfig,
 } from "@/lib/server/realtimekit";
 
@@ -44,6 +46,23 @@ const GRACE_MS = 10 * 60 * 1000;
 /** The hard cap. A station is over two hours after it began, either way. */
 export const MAX_STATION_MS = 2 * 60 * 60 * 1000;
 
+/**
+ * The hard cap on one recording, and the reason this sweep grew a second job.
+ *
+ * A recording is the one thing here that keeps costing after everybody has
+ * gone. Nothing stops one except the host pressing stop, and a host who
+ * closes their tab never presses anything — so a recording could run on an
+ * empty room, writing silence, until something else happened to end the
+ * station. On the seeded stations, which are permanent and never reaped,
+ * nothing else ever would. That is unbounded, and it is unbounded in the one
+ * resource that cannot be reclaimed: RealtimeKit has no delete for a
+ * recording, so every minute written is paid for permanently.
+ *
+ * So: a recording on an empty room is stopped, and no recording outlives the
+ * longest a station may.
+ */
+const MAX_RECORDING_MS = MAX_STATION_MS;
+
 const LIVE_PREFIX = "freeradio:v1:";
 const ENDED_PREFIX = "freeradio:ended:";
 
@@ -63,16 +82,31 @@ export async function endStation(
   meetingId: string,
   title: string,
 ) {
+  /* Before anything else. A station whose recording is still running when it
+     ends leaves the recording running, and a recording nobody can stop is a
+     bill nobody can stop. */
+  await stopAnyRecording(config, meetingId);
   await kickAll(config, meetingId).catch(() => {
     /* Nobody in it, which is the usual case for a reap. */
   });
   await renameMeeting(config, meetingId, ENDED_PREFIX + title.slice(LIVE_PREFIX.length));
 }
 
+/** Stop whatever is being recorded here, if anything. */
+async function stopAnyRecording(config: RealtimeConfig, meetingId: string) {
+  try {
+    const running = await activeRecording(config, meetingId);
+    if (running?.id) await stopRecording(config, running.id);
+  } catch {
+    /* No active recording is the common case and 404s. Nothing to do. */
+  }
+}
+
 export interface SweepResult {
   checked: number;
   endedEmpty: number;
   endedExpired: number;
+  recordingsStopped: number;
 }
 
 /**
@@ -84,7 +118,9 @@ export interface SweepResult {
  */
 export async function sweepStations(): Promise<SweepResult> {
   const config = realtimeConfig();
-  if (!config) return { checked: 0, endedEmpty: 0, endedExpired: 0 };
+  if (!config) {
+    return { checked: 0, endedEmpty: 0, endedExpired: 0, recordingsStopped: 0 };
+  }
 
   const meetings = await listMeetings(config, {
     search: LIVE_PREFIX,
@@ -119,7 +155,63 @@ export async function sweepStations(): Promise<SweepResult> {
     }
   }
 
-  return { checked: meetings.length, endedEmpty, endedExpired };
+  const recordingsStopped = await sweepRecordings(config);
+
+  return {
+    checked: meetings.length,
+    endedEmpty,
+    endedExpired,
+    recordingsStopped,
+  };
+}
+
+/**
+ * Stop every recording that should not still be running.
+ *
+ * Separate from the station sweep because it has to cover the seeded rooms as
+ * well, and those are deliberately never ended — they are the band. A
+ * permanent room is exactly where a forgotten recording would run longest.
+ *
+ * Two reasons to stop one: nobody is in the room, so it is recording nothing;
+ * or it has been running longer than a station is allowed to exist, so
+ * whatever it was recording is over.
+ */
+async function sweepRecordings(config: RealtimeConfig): Promise<number> {
+  let stopped = 0;
+
+  /* Every meeting this app has made, seeded and started alike. */
+  const meetings = await listMeetings(config, {
+    search: "freeradio:",
+    perPage: 100,
+  }).catch(() => []);
+
+  const now = Date.now();
+
+  for (const meeting of meetings) {
+    let running;
+    try {
+      running = await activeRecording(config, meeting.id);
+    } catch {
+      continue;
+    }
+    if (!running?.id) continue;
+
+    const began = Date.parse(running.started_time ?? "");
+    const tooLong = Number.isFinite(began) && now - began > MAX_RECORDING_MS;
+
+    let empty = false;
+    if (!tooLong) {
+      const session = await activeSession(config, meeting.id).catch(() => null);
+      empty = !session || (session.live_participants ?? 0) === 0;
+    }
+
+    if (tooLong || empty) {
+      await stopRecording(config, running.id).catch(() => {});
+      stopped++;
+    }
+  }
+
+  return stopped;
 }
 
 /** Whether a station that began at this time is still within its two hours. */

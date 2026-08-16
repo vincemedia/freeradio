@@ -7,6 +7,7 @@ import { MagnifyingGlass, Trash, UsersThree } from "@phosphor-icons/react";
 import Avatar from "boring-avatars";
 import { EcosystemMark } from "@/components/identity";
 import { Lamp } from "@/components/instrument/parts";
+import { RecentPeople } from "@/components/co-channel/recent-people";
 import { PageHeader } from "@/components/shell/page-header";
 import { Button } from "@/components/ui/button";
 import { EmptyState, Input, Skeleton } from "@/components/ui/primitives";
@@ -78,10 +79,14 @@ function Contacts() {
       />
 
       {contacts.length === 0 ? (
-        <EmptyState title="Nobody yet" icon={<UsersThree size={28} />}>
-          Join a station and add the people you hear. They will show up here,
-          and on the front page whenever they are on air.
-        </EmptyState>
+        <div className="space-y-6">
+          <EmptyState title="Nobody yet" icon={<UsersThree size={28} />}>
+            Join a station and add the people you hear. They will show up here,
+            and on the front page whenever they are on air.
+          </EmptyState>
+          {/* Or start from the people who have actually been here. */}
+          <RecentPeople />
+        </div>
       ) : (
         <>
           <div className="relative sm:max-w-sm">

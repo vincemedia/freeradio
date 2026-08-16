@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { startTuning, stopTuning } from "@/lib/tuning-sound";
 
 /**
  * Travelling to a frequency the way a radio does.
@@ -19,7 +20,11 @@ import { useCallback, useEffect, useRef, useState } from "react";
  * a moment.
  *
  * The noise is the same idea in the other medium. It runs while the needle is
- * moving and stops when it lands, so the silence at the end is the arrival.
+ * moving and stops when it lands, so the silence at the end is the arrival —
+ * unless the caller says the journey is not over, which is what Surprise me
+ * does: there, arriving means being in the room, and the room is a page away.
+ * The sound itself lives in `lib/tuning-sound` for that reason, outliving any
+ * component that starts it.
  *
  * ## What it does not do
  *
@@ -40,47 +45,63 @@ const MIN_MS = 140;
 export interface Tuner {
   /** where the needle is while travelling, or null when it is still */
   sweeping: number | null;
-  /** send the needle somewhere, then do something when it arrives */
-  tuneTo: (frequency: number, arrive?: () => void) => void;
+  /**
+   * Send the needle somewhere, then do something when it arrives.
+   *
+   * `keepSound` leaves the noise running past the arrival, for a caller whose
+   * journey continues somewhere this hook cannot see. Whoever passes it owns
+   * stopping it; `lib/tuning-sound` has a backstop in case they never do.
+   */
+  tuneTo: (
+    frequency: number,
+    arrive?: () => void,
+    keepSound?: boolean,
+  ) => void;
   /** stop where you are — dragging the dial should win over a sweep */
   cancel: () => void;
 }
 
-export function useTuner(from: number, soundSrc: string): Tuner {
+export function useTuner(from: number): Tuner {
   const [sweeping, setSweeping] = useState<number | null>(null);
 
   const frame = useRef<number | null>(null);
-  const audio = useRef<HTMLAudioElement | null>(null);
   const arrival = useRef<(() => void) | null>(null);
+  /* Whether this journey's noise is somebody else's to stop. */
+  const handOver = useRef(false);
   /* The live position, so a second press mid-journey turns from where the
      needle actually is rather than from where it started. */
   const at = useRef(from);
-
-  const stopSound = useCallback(() => {
-    const el = audio.current;
-    if (!el) return;
-    el.pause();
-    el.currentTime = 0;
-  }, []);
 
   const cancel = useCallback(() => {
     if (frame.current !== null) cancelAnimationFrame(frame.current);
     frame.current = null;
     arrival.current = null;
-    stopSound();
+    handOver.current = false;
+    stopTuning();
     setSweeping(null);
-  }, [stopSound]);
+  }, []);
 
-  /* A sweep left running into an unmount is a sound with nobody listening. */
-  useEffect(() => cancel, [cancel]);
+  /* A sweep left running into an unmount is a sound with nobody listening —
+     unless it was handed over on the way out, which is the whole point of
+     handing it over. */
+  useEffect(
+    () => () => {
+      if (frame.current !== null) cancelAnimationFrame(frame.current);
+      frame.current = null;
+      arrival.current = null;
+      if (!handOver.current) stopTuning();
+    },
+    [],
+  );
 
   const tuneTo = useCallback(
-    (target: number, arrive?: () => void) => {
+    (target: number, arrive?: () => void, keepSound = false) => {
       if (frame.current !== null) cancelAnimationFrame(frame.current);
 
       const start = sweeping ?? from;
       at.current = start;
       arrival.current = arrive ?? null;
+      handOver.current = keepSound;
 
       const distance = Math.abs(target - start);
       const duration = (distance / RATE) * 1000;
@@ -95,18 +116,14 @@ export function useTuner(from: number, soundSrc: string): Tuner {
       if (reduced || duration < MIN_MS) {
         setSweeping(null);
         arrival.current = null;
+        /* No journey, but a caller who is still going somewhere gets the
+           noise anyway: it is covering the connecting now, not the travel. */
+        if (keepSound) startTuning();
         arrive?.();
         return;
       }
 
-      if (!audio.current) {
-        audio.current = new Audio(soundSrc);
-        audio.current.loop = true;
-        audio.current.volume = 0.35;
-      }
-      /* Started by a click, so the browser allows it. A refusal is not worth
-         reporting: the needle still moves and the page still works. */
-      void audio.current.play().catch(() => {});
+      startTuning();
 
       const began = performance.now();
       const step = (now: number) => {
@@ -125,7 +142,9 @@ export function useTuner(from: number, soundSrc: string): Tuner {
         }
 
         frame.current = null;
-        stopSound();
+        /* The arrival is the end of the noise, unless somebody else is
+           carrying the journey on from here. */
+        if (!handOver.current) stopTuning();
         setSweeping(null);
         const done = arrival.current;
         arrival.current = null;
@@ -134,7 +153,7 @@ export function useTuner(from: number, soundSrc: string): Tuner {
 
       frame.current = requestAnimationFrame(step);
     },
-    [from, sweeping, soundSrc, stopSound],
+    [from, sweeping],
   );
 
   return { sweeping, tuneTo, cancel };

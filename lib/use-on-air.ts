@@ -13,7 +13,11 @@ import { useContacts, type Contact } from "@/lib/contacts";
  * nothing, and being wrong about it costs a wasted click.
  *
  * Nothing is requested when you know nobody, which is the state most readers
- * are in, so the common case is no network at all.
+ * are in, so the common case is no network at all. And nothing is requested
+ * while the tab is in the background: a page left open in another window has
+ * no rail for anybody to be glancing at, and polling it forever is the kind
+ * of waste that is invisible precisely because nobody is looking. It catches
+ * up the moment the tab comes back.
  */
 
 export interface OnAirRoom {
@@ -81,11 +85,28 @@ export function useOnAir(): OnAir[] {
       }
     };
 
-    void check();
-    const timer = setInterval(check, EVERY_MS);
+    let timer: ReturnType<typeof setInterval> | null = null;
+
+    const start = () => {
+      if (timer !== null) return;
+      void check();
+      timer = setInterval(check, EVERY_MS);
+    };
+    const stop = () => {
+      if (timer === null) return;
+      clearInterval(timer);
+      timer = null;
+    };
+
+    const onVisibility = () => (document.hidden ? stop() : start());
+
+    if (!document.hidden) start();
+    document.addEventListener("visibilitychange", onVisibility);
+
     return () => {
       cancelled = true;
-      clearInterval(timer);
+      stop();
+      document.removeEventListener("visibilitychange", onVisibility);
     };
   }, [keys]);
 

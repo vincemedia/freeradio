@@ -12,6 +12,7 @@ import { Nest, OccupantGrid, RoomStatus, Transcript } from "@/components/co-chan
 import { LiveControls, RecordedControls } from "@/components/co-channel/live-controls";
 import { LiveOccupants } from "@/components/co-channel/live-occupants";
 import { useLive } from "@/components/live-room-provider";
+import { stopTuning } from "@/lib/tuning-sound";
 import { useBed } from "@/lib/use-bed";
 import { SidePane } from "@/components/co-channel/side-pane";
 import { GateBadge } from "@/components/co-channel/card";
@@ -62,6 +63,22 @@ export default function CoChannelPage() {
   /* What plays under an empty room. The station's own choice to begin with,
      and the host's to change while it is running. */
   const bed = useBed(live, preview?.bed);
+
+  /* Surprise me leaves the tuning noise running while this page connects, so
+     the silence lands on arrival rather than on the sweep ending. Stopped
+     here, on any settled outcome — being in the room, or finding out there is
+     no room to be in. `lib/tuning-sound` has its own backstop for the case
+     where neither ever happens. */
+  useEffect(() => {
+    if (
+      live.status === "live" ||
+      live.status === "unavailable" ||
+      live.status === "error" ||
+      !isLive
+    ) {
+      stopTuning();
+    }
+  }, [live.status, isLive]);
 
   const view = preview;
 
