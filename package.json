@@ -9,7 +9,8 @@
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
     "check": "bun run scripts/check-fixtures.ts",
-    "verify": "bun run typecheck && bun run lint && bun run check"
+    "verify": "bun run typecheck && bun run lint && bun run check",
+    "icons": "bun run scripts/render-icons.ts"
   },
   "dependencies": {
     "@bsv/sdk": "^2.4.1",

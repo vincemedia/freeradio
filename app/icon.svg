@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" role="img" aria-label="Free Radio">
+  <!--
+    The set, reduced to what survives at 16 pixels.
+
+    The full mark is a photographed panel: a numbered scale, a ring of ticks, a
+    brushed-aluminium knob, a grille of forty dots and two words of type. At the
+    size a tab actually renders, every one of those becomes grey noise and the
+    result reads as a smudge rather than as an object.
+
+    So this is the same thing drawn with four shapes and one accent, which is
+    all the resolution there is to spend: panel, dial, needle, knob. Drop any
+    one and it stops being a radio.
+
+    Dark ground on purpose. The panel is off-white in the original, which
+    disappears against a light tab strip; the shell colour is the one value
+    that holds on both light and dark browser chrome.
+
+    Proportions are set at 16px rather than at full size, where almost anything
+    looks fine. The knob is deliberately small — sized to look right large, it
+    eats the dial and the whole mark reads as a doughnut — and the needle runs
+    nearly to the dial edge, because its length is the only thing telling you
+    the dial is pointing somewhere.
+  -->
+  <rect width="32" height="32" rx="7.5" fill="#201F1E"/>
+
+  <!-- The dial, inset far enough that a ring of panel survives around it. -->
+  <circle cx="16" cy="16" r="9.6" fill="#F4F2EF"/>
+
+  <!-- The needle, at the angle the original sits at, drawn from the centre so
+       the knob caps its root. Round-capped: a taper to a point is invisible
+       below about 32px and only softens the tip. -->
+  <path d="M16 16 L20.6 8.5" stroke="#CC2E1D" stroke-width="2.5" stroke-linecap="round"/>
+
+  <!-- The knob, last, so it sits over the needle's root the way it does on the
+       real thing. -->
+  <circle cx="16" cy="16" r="3.4" fill="#BFBBB5"/>
+  <circle cx="16" cy="16" r="3.4" fill="none" stroke="#201F1E" stroke-opacity="0.3" stroke-width="0.55"/>
+</svg>

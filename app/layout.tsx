@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Inter, Inter_Tight } from "next/font/google";
 import { Agentation } from "agentation";
 import { Providers } from "@/components/providers";
+import { SITE_URL } from "@/lib/site";
 import "./globals.css";
 
 /* Two families only. Inter Tight carries the panel legends and page titles;
@@ -20,11 +21,11 @@ const display = Inter_Tight({
   display: "swap",
 });
 
-const SITE =
-  process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
-
 export const metadata: Metadata = {
-  metadataBase: new URL(SITE),
+  /* Resolved from the deployment rather than hardcoded: every absolute URL in
+     this object is built from it, and a card pointing at localhost is a card
+     that renders perfectly and shares as nothing. */
+  metadataBase: new URL(SITE_URL),
   title: {
     default: "Free Radio",
     template: "%s · Free Radio",
@@ -36,7 +37,7 @@ export const metadata: Metadata = {
     title: "Free Radio",
     description:
       "Live voice rooms on a frequency. Scan a band, find a Co-Channel, and talk.",
-    url: SITE,
+    url: SITE_URL,
     siteName: "Free Radio",
     type: "website",
   },
