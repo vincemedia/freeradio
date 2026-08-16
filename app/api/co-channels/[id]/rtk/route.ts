@@ -1,3 +1,4 @@
+import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { connectedPerson, participantIdentity } from "@/lib/server/identity";
 import { meetingFor } from "@/lib/server/meetings";
@@ -6,6 +7,7 @@ import {
   addParticipant,
   realtimeConfig,
   sessionParticipants,
+  type SessionParticipant,
 } from "@/lib/server/realtimekit";
 import { getCoChannel } from "@/lib/server/store";
 
@@ -42,7 +44,25 @@ export const dynamic = "force-dynamic";
  * preset is fixed for the length of a connection — so the promotion lands on
  * the next person through the door, which in a room that has just lost its
  * host is usually soon.
+ *
+ * ## Two limits
+ *
+ * A room holds two hundred people. Not a product decision so much as a floor
+ * under the bill: nothing here needs more than that, and a script pointed at
+ * an open station could otherwise open connections until somebody noticed.
+ *
+ * And a listener gets the same participant id every time this browser asks.
+ * Without that, every refresh minted a new one and left the old sitting in
+ * the session until RealtimeKit timed it out, so a reader who reloaded twice
+ * appeared as three people and the room's own occupant count lied.
  */
+
+/** The ceiling on one room, and a cost control rather than a rule. */
+const MAX_IN_ROOM = 200;
+
+/** Names this browser's listener seat, so refreshing reuses it. */
+const LISTENER_COOKIE = "fr_listener";
+
 export async function POST(
   _request: Request,
   { params }: { params: Promise<{ id: string }> },
@@ -72,22 +92,44 @@ export async function POST(
     );
   }
 
+  const roster = await presentIn(meetingId);
+  if (roster && roster.length >= MAX_IN_ROOM) {
+    return NextResponse.json(
+      { error: "This station is full. Try again in a moment." },
+      { status: 503 },
+    );
+  }
+
   const connected = await connectedPerson();
 
   /* No wallet, no identity to put in the room: a listener is anonymous to
-     RealtimeKit as well as to the occupant list, so the id is per browser
-     rather than per person and carries nothing about them. */
+     RealtimeKit as well as to the occupant list, so the id carries nothing
+     about them. It is per browser rather than per visit, though, so that
+     reloading the page returns to the same seat instead of leaving the last
+     one occupied by a ghost until it times out. */
   if (!connected) {
+    const store = await cookies();
+    const seat =
+      store.get(LISTENER_COOKIE)?.value ?? `listener-${crypto.randomUUID()}`;
+
     const participant = await addParticipant(realtimeConfig()!, meetingId, {
       name: "Listener",
       presetName: "free-radio-listener",
-      customParticipantId: `listener-${crypto.randomUUID()}`,
+      customParticipantId: seat,
     });
-    return NextResponse.json({
+
+    const response = NextResponse.json({
       meetingId,
       authToken: participant.token,
       role: "listener" as const,
     });
+    response.cookies.set(LISTENER_COOKIE, seat, {
+      httpOnly: true,
+      sameSite: "lax",
+      path: "/",
+      maxAge: 60 * 60 * 24 * 30,
+    });
+    return response;
   }
 
   const identity = participantIdentity(connected);
@@ -95,7 +137,7 @@ export async function POST(
     ? room.hostId === connected.person.id
       ? "host"
       : "speaker"
-    : await claimable(meetingId)
+    : roster && !roster.some((p) => p.preset_name === "free-radio-host")
       ? "host"
       : "speaker";
 
@@ -114,27 +156,24 @@ export async function POST(
 }
 
 /**
- * Whether an unclaimed station currently has nobody running it.
+ * Who is in this room right now, or null if that could not be established.
  *
- * Two people arriving at the same empty room within the same second can both
- * be told yes. Two hosts in an open room is a far smaller problem than none —
- * they can both mute a troll and neither can do anything the other cannot —
- * so this is left as a race rather than paid for with a lock.
- *
- * A network failure answers no. Handing out the ability to remove people
- * because a request timed out is the wrong way to be wrong.
+ * Null rather than an empty array, because the two mean opposite things and
+ * both callers care which they got: an empty room is claimable and has space,
+ * an unknown one is neither. A network failure must not hand somebody the
+ * power to remove people, and must not lock everybody out of a working
+ * station either — so the cap treats null as "no evidence it is full" and the
+ * host claim treats it as "no evidence it is free".
  */
-async function claimable(meetingId: string): Promise<boolean> {
+async function presentIn(meetingId: string): Promise<SessionParticipant[] | null> {
   const config = realtimeConfig();
-  if (!config) return false;
+  if (!config) return null;
   try {
     const session = await activeSession(config, meetingId);
-    if (!session) return true;
-    const present = await sessionParticipants(config, session.id);
-    return !present.some(
-      (p) => !p.left_at && p.preset_name === "free-radio-host",
-    );
+    if (!session) return [];
+    const seen = await sessionParticipants(config, session.id);
+    return seen.filter((p) => !p.left_at);
   } catch {
-    return false;
+    return null;
   }
 }

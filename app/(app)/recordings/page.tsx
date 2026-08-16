@@ -24,7 +24,8 @@ import {
 import { useRadio } from "@/lib/store";
 
 type Row = Recording & {
-  host: Person;
+  /** null when the station it came from was an open one nobody had claimed */
+  host: Person | null;
   occupantsResolved: Person[];
   priceUsd: number;
   platformFee: number;
@@ -92,7 +93,7 @@ export default function RecordingsPage() {
                       onClick={() => {
                         setBought((b) => new Set(b).add(r.id));
                         toast.success("Unlocked", {
-                          description: `${priceLabel(r.priceUsd)} to ${formatIdentity(r.host)}, less a ${Math.round(r.platformFee * 100)}% platform fee.`,
+                          description: `${priceLabel(r.priceUsd)} to ${r.host ? formatIdentity(r.host) : "the host"}, less a ${Math.round(r.platformFee * 100)}% platform fee.`,
                         });
                       }}
                     >
@@ -123,7 +124,13 @@ export default function RecordingsPage() {
                     </h2>
                   </div>
                   <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-muted-foreground">
-                    <Identity person={r.host} className="text-[11px]" />
+                    {r.host ? (
+                      <Identity person={r.host} className="text-[11px]" />
+                    ) : (
+                      <span className="text-[11px] text-muted-foreground">
+                        Open station
+                      </span>
+                    )}
                     <span className="readout">{formatDuration(r.duration)}</span>
                     <span>{formatAgo(r.recordedAt)}</span>
                     <span>{formatCount(r.plays)} plays</span>

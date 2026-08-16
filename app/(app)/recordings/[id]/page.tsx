@@ -23,7 +23,8 @@ import {
 } from "@/lib/format";
 
 type Row = Recording & {
-  host: Person;
+  /** null when the station it came from was an open one nobody had claimed */
+  host: Person | null;
   occupantsResolved: Person[];
   priceUsd: number;
   platformFee: number;
@@ -133,10 +134,14 @@ export default function RecordingPage() {
             </h1>
 
             <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs text-muted-foreground">
-              <span className="flex items-center gap-1.5">
-                Host
-                <Identity person={data.host} className="text-xs" />
-              </span>
+              {data.host ? (
+                <span className="flex items-center gap-1.5">
+                  Host
+                  <Identity person={data.host} className="text-xs" />
+                </span>
+              ) : (
+                <span>From an open station</span>
+              )}
               <span className="readout">{formatDuration(data.duration)}</span>
               <span>{formatCount(data.plays)} plays</span>
             </div>
@@ -152,7 +157,7 @@ export default function RecordingPage() {
                 onClick={() => {
                   setBought(true);
                   toast.success("Unlocked", {
-                    description: `${priceLabel(data.priceUsd)} to ${formatIdentity(data.host)}, less a ${Math.round(data.platformFee * 100)}% platform fee.`,
+                    description: `${priceLabel(data.priceUsd)} to ${data.host ? formatIdentity(data.host) : "the host"}, less a ${Math.round(data.platformFee * 100)}% platform fee.`,
                   });
                 }}
               >
@@ -201,7 +206,7 @@ export default function RecordingPage() {
                 </span>
                 <Identity person={p} className="text-[11px]" />
               </span>
-              {p.id === data.hostId && (
+              {data.hostId && p.id === data.hostId && (
                 <Badge variant="muted" className="shrink-0">
                   Host
                 </Badge>

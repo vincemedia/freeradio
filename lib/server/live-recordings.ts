@@ -84,8 +84,11 @@ export async function liveRecordings(): Promise<Recording[]> {
         started && stopped ? Math.max(1, Math.round((stopped - started) / 1000)) : 0,
       /* Who was in it is a session question, not a recording one, and
          answering it costs a request per row. The host is what a row needs to
-         be attributable, and that is on the station. */
-      occupantIds: [station.hostId],
+         be attributable, and that is on the station — except for an open
+         station, which had no host until somebody walked in, and whose
+         recording is therefore attributed to the room rather than to a
+         person. */
+      occupantIds: station.hostId ? [station.hostId] : [],
       plays: 0,
       audioSrc: r.download_url,
     });

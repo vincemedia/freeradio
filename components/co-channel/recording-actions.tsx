@@ -18,7 +18,7 @@ import { formatFrequency } from "@/lib/format";
 export function RecordingActions({
   recording,
 }: {
-  recording: Recording & { host: Person };
+  recording: Recording & { host: Person | null };
 }) {
   const url = () => `${window.location.origin}/recordings/${recording.id}`;
 

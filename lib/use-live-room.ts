@@ -153,6 +153,31 @@ export function useLiveRoom(coChannelId: string | null): LiveRoom {
         meeting.participants.joined.on(event, sync);
       }
       meeting.self.on("audioUpdate", sync);
+
+      /* Leaving is not always your idea. The host can remove you, the station
+         can hit its two hours and be ended under you, and a connection can
+         simply go. Without this the hook stays in `live` holding a meeting
+         that is not connected to anything: the occupant list freezes at
+         whoever was there when it died, the microphone button still claims to
+         work, and nothing says the room has gone. So the SDK's own word for
+         it is what ends the session, whoever caused it. */
+      meeting.self.on("roomLeft", ({ state }) => {
+        if (meetingRef.current !== meeting) return;
+        meetingRef.current = null;
+        setRole(null);
+        setParticipants([]);
+        setMicOn(false);
+        setRecording(false);
+        setStatus("idle");
+        if (state === "kicked") {
+          setError("The host removed you from this station.");
+        } else if (state === "ended") {
+          setError("This station has ended.");
+        } else if (state === "disconnected") {
+          setError("You were disconnected from this station.");
+        }
+        void meeting.leave().catch(() => {});
+      });
       meeting.recording?.on?.("recordingUpdate", () => {
         setRecording(meeting.recording?.recordingState === "RECORDING");
       });
