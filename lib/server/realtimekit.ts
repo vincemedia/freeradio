@@ -126,15 +126,19 @@ export interface RecordingRow {
 
 export function createMeeting(
   config: RealtimeConfig,
-  input: { title: string; preferredRegion?: string },
+  input: { title: string },
 ): Promise<Meeting> {
   return call<Meeting>(config, "/meetings", {
     method: "POST",
     body: JSON.stringify({
       title: input.title,
-      preferred_region: input.preferredRegion ?? "ap-south-1",
       record_on_start: false,
       live_stream_on_start: false,
+      /* Transcription on, because this product already shows a transcript and
+         inventing one beside real audio would be the worst of both. */
+      transcribe_on_end: true,
+      summarize_on_end: false,
+      ai_config: { transcription: { language: "en-US" } },
     }),
   });
 }
@@ -176,16 +180,27 @@ export function listParticipants(config: RealtimeConfig, meetingId: string) {
 
 /* ------------------------------------------------------------- recordings */
 
+/**
+ * Start recording.
+ *
+ * Asks for MP3 rather than taking the default, which is a video container: a
+ * station is audio, and a recordings page that hands somebody an MP4 of a
+ * black rectangle is not what anybody meant by "recording".
+ */
 export function startRecording(config: RealtimeConfig, meetingId: string) {
   return call<RecordingRow>(config, "/recordings", {
     method: "POST",
-    body: JSON.stringify({ meeting_id: meetingId }),
+    body: JSON.stringify({
+      meeting_id: meetingId,
+      audio_config: { channel: "mono", codec: "MP3", export_file: true },
+    }),
   });
 }
 
+/** Stop, pause or resume. PUT rather than PATCH, per the v4 API. */
 export function stopRecording(config: RealtimeConfig, recordingId: string) {
   return call<RecordingRow>(config, `/recordings/${recordingId}`, {
-    method: "PATCH",
+    method: "PUT",
     body: JSON.stringify({ action: "stop" }),
   });
 }
