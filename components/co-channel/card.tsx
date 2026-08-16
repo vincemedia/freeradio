@@ -168,12 +168,16 @@ export function CoChannelCard({
             } as React.CSSProperties)
       }
       className={cn(
-        /* Hovering lifts the card off the panel rather than tinting it. A
-           Braun front panel is one surface with things standing proud of it;
-           the way it answers a finger is by having depth, not by changing
-           colour. So the card rises a hair and takes a shadow, and pressing
-           it puts it back down flush. */
-        "group relative flex flex-col gap-3 rounded-lg border border-border bg-card p-4 transition-[transform,box-shadow,border-color] duration-150 ease-[var(--ease-out-quint)] hover:-translate-y-0.5 hover:border-foreground/15 hover:shadow-[var(--shadow-raised)] active:translate-y-0 active:shadow-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background motion-reduce:transition-none motion-reduce:hover:translate-y-0",
+        /* Hovering lifts the card off the panel rather than tinting it: a
+           Braun front panel is one surface with things standing proud of it,
+           and it answers a finger with depth, not with colour.
+
+           Made of the same clay as the buttons — same radius, same
+           three-shadow construction, same 2% squash on press — only
+           untinted. A card that rose with a plain drop shadow while the Join
+           inside it was moulded read as two different materials in one
+           component. */
+        "group relative flex flex-col gap-3 rounded-[var(--radius-clay)] border border-border bg-card p-4 transition-[transform,box-shadow,border-color] duration-150 ease-[var(--ease-out-quint)] hover:-translate-y-0.5 hover:border-transparent hover:shadow-[var(--shadow-clay-surface)] active:translate-y-0 active:scale-[0.995] active:shadow-[var(--shadow-clay-surface-pressed)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background motion-reduce:transition-none motion-reduce:hover:translate-y-0",
         className,
       )}
     >

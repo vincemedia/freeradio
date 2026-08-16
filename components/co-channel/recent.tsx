@@ -26,10 +26,9 @@ export function RecentCoChannels() {
   const liveIds = new Set((live ?? []).map((c) => c.id));
 
   return (
-    <section className="space-y-2">
-      <h2 className="text-[11px] font-medium uppercase tracking-[0.06em] text-muted-foreground">
-        You were in
-      </h2>
+    /* No heading of its own: this sits behind a tab now, and the tab is the
+       heading. Two names for one list is one too many. */
+    <div>
       <ul className="flex flex-wrap gap-2">
         {recent.map((r) => {
           const stillOn = liveIds.has(r.id);
@@ -70,6 +69,6 @@ export function RecentCoChannels() {
           );
         })}
       </ul>
-    </section>
+    </div>
   );
 }

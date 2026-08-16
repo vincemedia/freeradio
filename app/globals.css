@@ -102,6 +102,19 @@
     0 4px 10px -8px oklch(0.51 0.196 29 / 0.45),
     inset 0 -3px 8px -4px oklch(0.32 0.14 29 / 0.55),
     inset 0 5px 14px -5px oklch(0.32 0.14 29 / 0.4);
+
+  /* The same material in neutral, for a surface that rises when you point at
+     it. Identical three-shadow construction to the buttons above, only
+     untinted, so a lifted card and a call to action are made of the same
+     stuff rather than two unrelated hover effects. */
+  --shadow-clay-surface:
+    0 12px 24px -12px oklch(0.22 0.004 85 / 0.22),
+    inset 0 -5px 10px -6px oklch(0.22 0.004 85 / 0.09),
+    inset 0 7px 12px -8px oklch(1 0 0 / 0.95);
+  --shadow-clay-surface-pressed:
+    0 3px 8px -7px oklch(0.22 0.004 85 / 0.2),
+    inset 0 -2px 6px -4px oklch(0.22 0.004 85 / 0.1),
+    inset 0 4px 12px -5px oklch(0.22 0.004 85 / 0.08);
 }
 
 .dark {
@@ -178,6 +191,15 @@
     0 4px 10px -8px oklch(0.58 0.2 29 / 0.3),
     inset 0 -3px 8px -4px oklch(0.3 0.14 29 / 0.65),
     inset 0 5px 14px -5px oklch(0.3 0.14 29 / 0.45);
+
+  --shadow-clay-surface:
+    0 12px 26px -12px oklch(0 0 0 / 0.55),
+    inset 0 -5px 10px -6px oklch(0 0 0 / 0.4),
+    inset 0 7px 12px -8px oklch(1 0 0 / 0.1);
+  --shadow-clay-surface-pressed:
+    0 3px 8px -7px oklch(0 0 0 / 0.45),
+    inset 0 -2px 6px -4px oklch(0 0 0 / 0.35),
+    inset 0 4px 12px -5px oklch(0 0 0 / 0.3);
 }
 
 @theme inline {
