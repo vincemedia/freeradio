@@ -26,6 +26,17 @@ export const BAND = { min: 87.5, max: 108.0 } as const;
 /** The dial moves in tenths, so a band holds 206 addressable frequencies. */
 export const FREQUENCY_STEP = 0.1;
 
+/**
+ * How many stations a band carries at once.
+ *
+ * Well under what the dial could hold, and deliberately. A band you can read
+ * in one pass is the point of drawing a scale instead of a list — past a
+ * couple of dozen markers the gaps stop being legible and the instrument
+ * becomes a crowded ruler. Scarcity is also what makes a frequency worth
+ * holding, which the rest of the product is built on.
+ */
+export const MAX_STATIONS_PER_BAND = 25;
+
 export const ecosystems: Ecosystem[] = [
   {
     id: "nexus",

@@ -1,10 +1,13 @@
 import { NextResponse } from "next/server";
+import { MAX_STATIONS_PER_BAND, getEcosystem } from "@/data/ecosystems";
 import type { EcosystemId, Gates } from "@/data/schema";
 import { connectedPerson } from "@/lib/server/identity";
 import { listCoChannels } from "@/lib/server/store";
 import { createUserStation, userStations } from "@/lib/server/user-stations";
 
 export const dynamic = "force-dynamic";
+
+const bandName = (id: EcosystemId) => getEcosystem(id)?.name ?? id;
 
 export async function GET(request: Request) {
   const url = new URL(request.url);
@@ -67,6 +70,24 @@ export async function POST(request: Request) {
     return NextResponse.json(
       { error: "A station needs a name and a band." },
       { status: 400 },
+    );
+  }
+
+  const onBand = [
+    ...(await userStations()).filter((s) => s.ecosystem === body.ecosystem),
+    ...listCoChannels({ ecosystem: body.ecosystem }).filter((s) => s.kind === "live"),
+  ];
+
+  /* A full band is a full band: the answer is no, and the reason is not the
+     applicant's fault, so it says what is actually true rather than blaming
+     the request. */
+  if (onBand.length >= MAX_STATIONS_PER_BAND) {
+    return NextResponse.json(
+      {
+        error: `${bandName(body.ecosystem)} is full — ${MAX_STATIONS_PER_BAND} stations are on air. Try another band, or wait for one to close.`,
+        field: "ecosystem",
+      },
+      { status: 409 },
     );
   }
 

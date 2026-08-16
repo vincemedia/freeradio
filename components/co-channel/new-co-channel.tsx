@@ -18,7 +18,7 @@ import { Input, Label } from "@/components/ui/primitives";
 import { GateEditor, OPEN_GATES } from "@/components/co-channel/gate-editor";
 import type { CoChannelView, EcosystemId, Gates } from "@/data/schema";
 import { validateGates } from "@/lib/gates";
-import { getEcosystem } from "@/data/ecosystems";
+import { MAX_STATIONS_PER_BAND, getEcosystem } from "@/data/ecosystems";
 import { apiPost } from "@/lib/api";
 import { ApiError } from "@/lib/api";
 import { formatFrequency } from "@/lib/format";
@@ -28,7 +28,7 @@ type BandInfo = {
   min: number;
   max: number;
   nextFree: number | null;
-  stations: { frequency: number }[];
+  stations: { frequency: number; kind?: "live" | "recorded" }[];
 };
 
 /**
@@ -51,7 +51,6 @@ export function NewCoChannelDialog({
 }) {
   const router = useRouter();
   const ecosystem = useRadio((s) => s.ecosystem);
-  const refreshSession = useRadio((s) => s.refreshSession);
 
   /* Controllable, because the mobile menu needs to open this and then close
      itself. A dialog rendered inside the menu would unmount with it. */
@@ -89,6 +88,9 @@ export function NewCoChannelDialog({
   };
 
   const taken = new Set((band?.stations ?? []).map((s) => s.frequency.toFixed(1)));
+  /* Live stations only: a recorded broadcast is not occupying anything. */
+  const liveCount = (band?.stations ?? []).filter((s) => s.kind === "live").length;
+  const bandFull = liveCount >= MAX_STATIONS_PER_BAND;
 
   const shuffle = () => {
     if (!band) return;
@@ -114,7 +116,6 @@ export function NewCoChannelDialog({
         frequency: frequency ?? undefined,
         gates,
       });
-      await refreshSession();
       onOpenChange(false);
       toast.success("You are on air", {
         description: (
@@ -123,9 +124,13 @@ export function NewCoChannelDialog({
       });
       router.push(`/co-channel/${created.id}`);
     } catch (err) {
-      setError(
-        err instanceof ApiError ? err.message : "Could not start the station.",
-      );
+      const message =
+        err instanceof ApiError ? err.message : "Could not start the station.";
+      setError(message);
+      /* Also as a toast: a band filling up between opening this dialog and
+         submitting it is the one refusal that is nobody's mistake, and it
+         should be as loud as a success would have been. */
+      toast.error("Could not start the station", { description: message });
     } finally {
       setBusy(false);
     }
@@ -208,6 +213,14 @@ export function NewCoChannelDialog({
                 {formatFrequency(frequency!)} is taken on this band. Try another.
               </p>
             )}
+            {/* Said before the form is filled in rather than after it is
+                submitted: a full band is not something a better title fixes. */}
+            {bandFull && (
+              <p className="text-xs text-destructive">
+                This band is full — {MAX_STATIONS_PER_BAND} stations are on air.
+                Switch bands from the top bar, or wait for one to close.
+              </p>
+            )}
           </div>
 
           <div className="space-y-1.5">
@@ -237,7 +250,7 @@ export function NewCoChannelDialog({
               type="submit"
               variant="primary"
               size="sm"
-              disabled={busy || title.trim().length < 3 || frequencyTaken || gateProblem !== null}
+              disabled={busy || bandFull || title.trim().length < 3 || frequencyTaken || gateProblem !== null}
             >
               {busy ? "Opening" : "Go on air"}
             </Button>

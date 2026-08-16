@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { useEffect, useMemo, useState } from "react";
@@ -171,6 +172,9 @@ export default function WelcomePage() {
   const [name, setName] = useState("");
   const [nameError, setNameError] = useState<string | null>(null);
   const [nameSaved, setNameSaved] = useState(false);
+  /* Unticked to begin with, and nothing past this step happens without it.
+     A pre-ticked box is not agreement, it is a screenshot of one. */
+  const [agreed, setAgreed] = useState(false);
 
   const saveName = async () => {
     const result = await setUsername(name);
@@ -525,6 +529,39 @@ export default function WelcomePage() {
                   {nameError ??
                     "Shown to everyone in a room. Without one you appear as your identity key, shortened."}
                 </p>
+
+                {/* The agreement, next to the thing being agreed to rather
+                    than buried under a button. Both documents are one tap
+                    away and open in their own tab, so reading them does not
+                    cost somebody their place in first run. */}
+                <label className="mt-4 flex cursor-pointer items-start gap-2.5 text-xs leading-relaxed text-muted-foreground">
+                  <input
+                    type="checkbox"
+                    checked={agreed}
+                    onChange={(e) => setAgreed(e.target.checked)}
+                    className="mt-0.5 size-4 shrink-0 rounded-sm border-border accent-[var(--primary)]"
+                  />
+                  <span>
+                    I agree to the{" "}
+                    <Link
+                      href="/terms"
+                      target="_blank"
+                      className="text-foreground underline underline-offset-2"
+                    >
+                      terms of use
+                    </Link>{" "}
+                    and the{" "}
+                    <Link
+                      href="/privacy"
+                      target="_blank"
+                      className="text-foreground underline underline-offset-2"
+                    >
+                      privacy policy
+                    </Link>
+                    . Rooms are not moderated, what you say is yours, and a
+                    host may record.
+                  </span>
+                </label>
               </div>
 
               {/* Both ways out of the last step, with the wallet on top
@@ -536,7 +573,7 @@ export default function WelcomePage() {
                 <Button
                   variant="primary"
                   className="w-full"
-                  disabled={connecting}
+                  disabled={connecting || !agreed}
                   onClick={() => {
                     void connect().then((result) => {
                       if (!result.ok) {
@@ -555,6 +592,7 @@ export default function WelcomePage() {
                 <Button
                   variant="ghost"
                   className="w-full"
+                  disabled={!agreed}
                   onClick={() => void finish()}
                 >
                   Just listen for now
