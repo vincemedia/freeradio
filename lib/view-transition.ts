@@ -25,29 +25,59 @@ export function navigateWithTransition(push: () => void, href: string): void {
 
   const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
-  if (!start || reduced) {
+  /* Already here: there is nothing to morph between, and wrapping a
+     navigation that will not change the URL is how the callback ends up
+     waiting for a change that never comes. */
+  if (!start || reduced || window.location.pathname === href) {
     push();
     return;
   }
 
-  start(
+  const transition = start(
     () =>
       new Promise<void>((resolve) => {
-        const deadline = Date.now() + SETTLE_TIMEOUT_MS;
+        let settled = false;
+        const finish = () => {
+          if (settled) return;
+          settled = true;
+          clearTimeout(ceiling);
+          resolve();
+        };
+
+        /* The ceiling is a timer, not a frame count. requestAnimationFrame
+           stops firing in a backgrounded tab and can stall under load, so a
+           deadline checked only inside rAF is a deadline that may never be
+           reached: the callback then hangs until the browser gives up on its
+           own and reports the transition as timed out. */
+        const ceiling = setTimeout(finish, SETTLE_TIMEOUT_MS);
+
         push();
 
         const settle = () => {
-          if (window.location.pathname === href || Date.now() > deadline) {
+          if (settled) return;
+          if (window.location.pathname === href) {
             /* One more frame so the new route has painted before the browser
                takes its "after" snapshot. */
-            requestAnimationFrame(() => resolve());
+            requestAnimationFrame(finish);
             return;
           }
           requestAnimationFrame(settle);
         };
         requestAnimationFrame(settle);
       }),
-  );
+  ) as {
+    finished?: Promise<unknown>;
+    ready?: Promise<unknown>;
+    updateCallbackDone?: Promise<unknown>;
+  };
+
+  /* An abandoned transition is not a failure worth surfacing: the navigation
+     still happened, only the animation did not. These promises reject when a
+     transition is interrupted or skipped, and unhandled they arrive as a
+     runtime error over a page that is working perfectly well. */
+  void transition?.finished?.catch(() => {});
+  void transition?.ready?.catch(() => {});
+  void transition?.updateCallbackDone?.catch(() => {});
 }
 
 /**

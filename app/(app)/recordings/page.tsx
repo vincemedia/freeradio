@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useState } from "react";
 import { LockKey, Pause, Play, Record } from "@phosphor-icons/react";
 import { toast } from "sonner";
@@ -86,7 +87,7 @@ export default function RecordingsPage() {
                     onClick={() => {
                       setBought((b) => new Set(b).add(r.id));
                       toast.success("Unlocked", {
-                        description: `${r.priceUsd} to ${formatIdentity(r.host)}, less a ${Math.round(r.platformFee * 100)}% platform fee.`,
+                        description: `$${r.priceUsd} to ${formatIdentity(r.host)}, less a ${Math.round(r.platformFee * 100)}% platform fee.`,
                       });
                     }}
                     className="shrink-0"
@@ -111,7 +112,14 @@ export default function RecordingsPage() {
                       {formatFrequency(r.frequency)}
                     </span>
                     <h2 className="min-w-0 truncate text-sm font-medium">
-                      {r.title}
+                      {/* Each recording has its own address now, so a row is
+                          somewhere to go rather than a dead end. */}
+                      <Link
+                        href={`/recordings/${r.id}`}
+                        className="rounded-sm hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                      >
+                        {r.title}
+                      </Link>
                     </h2>
                   </div>
                   <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-muted-foreground">

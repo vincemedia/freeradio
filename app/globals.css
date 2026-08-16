@@ -75,6 +75,10 @@
   --shadow-raised: 0 1px 2px oklch(0.22 0.004 85 / 0.06),
     0 2px 8px oklch(0.22 0.004 85 / 0.05);
   --shadow-overlay: 0 8px 30px oklch(0.22 0.004 85 / 0.12);
+  /* The third and last: a hard offset with no blur, for the one built control
+     on a screen. It is not a shadow in the lighting sense, it is the depth of
+     a key standing off the panel, which is why it does not soften. */
+  --shadow-key: 3px 3px 0 0 var(--foreground);
 }
 
 .dark {
@@ -132,6 +136,7 @@
 
   --shadow-raised: 0 1px 2px oklch(0 0 0 / 0.3), 0 2px 8px oklch(0 0 0 / 0.24);
   --shadow-overlay: 0 8px 30px oklch(0 0 0 / 0.45);
+  --shadow-key: 3px 3px 0 0 var(--foreground);
 }
 
 @theme inline {
@@ -179,6 +184,7 @@
 
   --shadow-raised: var(--shadow-raised);
   --shadow-overlay: var(--shadow-overlay);
+  --shadow-key: var(--shadow-key);
 
   --ease-out-quint: cubic-bezier(0.16, 1, 0.3, 1);
   --ease-in-out-quint: cubic-bezier(0.65, 0, 0.35, 1);

@@ -15,18 +15,28 @@ import { cn } from "@/lib/utils";
  * goes icon-only, never a second line.
  */
 const buttonVariants = cva(
-  "inline-flex shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-[background-color,color,border-color,transform] duration-150 ease-[var(--ease-out-quint)] active:scale-[0.98] disabled:pointer-events-none disabled:opacity-45 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background [&_svg]:shrink-0",
+  "inline-flex shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-[background-color,color,border-color,transform,box-shadow] duration-150 ease-[var(--ease-out-quint)] disabled:pointer-events-none disabled:opacity-45 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background [&_svg]:shrink-0",
   {
     variants: {
       variant: {
-        primary: "bg-primary text-primary-foreground hover:bg-[var(--primary-hover)]",
+        /* The one call to action on a screen, and the only control that is
+           built rather than drawn: a hard border and a hard offset shadow with
+           no blur, so it reads as a physical key sitting proud of the panel.
+           Pressing it moves the key onto the shadow, which is the whole trick
+           and the reason the offset has to be a real distance rather than a
+           soft edge. Everything else in the system stays flat. */
+        primary:
+          "border-2 border-foreground bg-primary text-primary-foreground shadow-[var(--shadow-key)] hover:bg-[var(--primary-hover)] active:translate-x-[3px] active:translate-y-[3px] active:shadow-none motion-reduce:active:translate-x-0 motion-reduce:active:translate-y-0",
         secondary:
-          "border border-border bg-card text-foreground hover:bg-muted",
-        ghost: "text-muted-foreground hover:bg-muted hover:text-foreground",
+          "border border-border bg-card text-foreground hover:bg-muted active:scale-[0.98]",
+        ghost:
+          "text-muted-foreground hover:bg-muted hover:text-foreground active:scale-[0.98]",
         /* Destructive is a red one step darker than the on-air lamp, so a
-           confirmation never reads as a recording indicator. */
+           confirmation never reads as a recording indicator. It takes the same
+           built treatment as primary, because stopping a recording is as much
+           a call to action as starting one. */
         destructive:
-          "bg-destructive text-destructive-foreground hover:brightness-110",
+          "border-2 border-foreground bg-destructive text-destructive-foreground shadow-[var(--shadow-key)] hover:brightness-110 active:translate-x-[3px] active:translate-y-[3px] active:shadow-none motion-reduce:active:translate-x-0 motion-reduce:active:translate-y-0",
       },
       size: {
         default: "h-11 px-4",

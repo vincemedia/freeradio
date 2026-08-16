@@ -160,6 +160,13 @@ components:
     rounded: "{rounded.md}"
     padding: 12px
     height: 44px
+    # The one built control on a screen: a hard border and a hard offset with
+    # no blur, so the key stands off the panel rather than sitting printed on
+    # it. Pressing moves the key onto its own shadow.
+    borderWidth: 2px
+    borderColor: "{colors.light.on-surface}"
+    shadow: "{shadows.key}"
+    pressTranslate: 3px
   button-primary-hover:
     backgroundColor: "{colors.light.primary-hover}"
   button-secondary:
@@ -336,8 +343,11 @@ Depth is **tonal layering plus one inset highlight**, never shadow drama. The pa
 
 - **Raised** (cards on hover, dropdowns): `0 1px 2px oklch(0.22 0.004 85 / 0.06), 0 2px 8px oklch(0.22 0.004 85 / 0.05)`
 - **Overlay** (dialogs, sheets, popovers, command menu): `0 8px 30px oklch(0.22 0.004 85 / 0.12)`
+- **Key** (`--shadow-key`, primary and destructive buttons only): `3px 3px 0 0 {colors.light.on-surface}`
 
-Nothing else casts a shadow. No gloss, no bevels, no gradients standing in for plastic, no drop shadows under text. In dark mode, shadows are replaced by lighter surface tones.
+The key is the one deliberate exception to the restraint above, and it is not a shadow in the lighting sense: no blur, no opacity, drawn in the ink colour. It reads as the depth of a moulded key standing off the panel rather than as light falling on a card, which is why it belongs to a control and to nothing else. Pressing translates the key 3px onto its own shadow and removes it; that is the entire effect, and the reason the offset has to be a real distance rather than a soft edge. It is confined to the one call to action on a screen. A second element wearing it turns a control into a style, and the restraint everywhere else is what makes it read as a button at all.
+
+Nothing else casts a shadow. No gloss, no bevels, no gradients standing in for plastic, no drop shadows under text. In dark mode, shadows are replaced by lighter surface tones, except the key, which is drawn in the foreground colour and so inverts with the theme.
 
 ## Shapes
 
