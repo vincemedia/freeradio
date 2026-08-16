@@ -1,0 +1,262 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+/* ============================================================
+   Generated from DESIGN.md. Tokens are normative: if a value
+   here disagrees with DESIGN.md, DESIGN.md wins and this file
+   is regenerated. Never hand-edit a colour without changing
+   the frontmatter first.
+   ============================================================ */
+
+:root {
+  --radius: 4px;
+  --radius-sm: 2px;
+  --radius-md: 4px;
+  --radius-lg: 6px;
+  --radius-xl: 10px;
+
+  /* ---- light ---- */
+  --background: oklch(0.955 0.003 85);
+  --foreground: oklch(0.22 0.004 85);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.22 0.004 85);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.22 0.004 85);
+
+  --primary: oklch(0.84 0.166 89);
+  --primary-foreground: oklch(0.22 0.004 85);
+  --primary-hover: oklch(0.78 0.166 89);
+
+  --secondary: oklch(0.55 0.008 85);
+  --secondary-foreground: oklch(1 0 0);
+
+  --muted: oklch(0.926 0.003 85);
+  --muted-foreground: oklch(0.52 0.006 85);
+
+  --accent: oklch(0.55 0.212 29);
+  --accent-foreground: oklch(0.98 0.01 29);
+
+  --destructive: oklch(0.51 0.196 29);
+  --destructive-foreground: oklch(0.98 0.01 29);
+
+  --success: oklch(0.56 0.108 149);
+  --warning: oklch(0.66 0.132 68);
+
+  --border: oklch(0.885 0.004 85);
+  --input: oklch(0.885 0.004 85);
+  --ring: oklch(0.84 0.166 89);
+
+  /* ---- instrument: the only hardware vocabulary in the system ---- */
+  --panel: oklch(0.955 0.003 85);
+  --panel-border: oklch(0.885 0.004 85);
+  --panel-highlight: inset 0 1px 0 oklch(1 0 0 / 0.9);
+  --panel-shadow: inset 0 -1px 0 oklch(0.22 0.004 85 / 0.06);
+
+  --tick: oklch(0.52 0.006 85);
+  --tick-major: oklch(0.22 0.004 85);
+
+  --needle: oklch(0.55 0.212 29);
+
+  --lamp-on-air: oklch(0.55 0.212 29);
+  --lamp-recording: oklch(0.55 0.212 29);
+  --lamp-live: oklch(0.56 0.108 149);
+  --lamp-off: oklch(0.885 0.004 85);
+  --lamp-glow: 0 0 0 3px oklch(0.55 0.212 29 / 0.18);
+
+  --grille-dot: oklch(0.22 0.004 85);
+  --grille-opacity: 0.1;
+  --grille-pitch: 6px;
+
+  --ring-speaking: oklch(0.84 0.166 89);
+
+  /* ---- elevation ---- */
+  --shadow-raised: 0 1px 2px oklch(0.22 0.004 85 / 0.06),
+    0 2px 8px oklch(0.22 0.004 85 / 0.05);
+  --shadow-overlay: 0 8px 30px oklch(0.22 0.004 85 / 0.12);
+}
+
+.dark {
+  --background: oklch(0.19 0.003 85);
+  --foreground: oklch(0.93 0.003 85);
+  --card: oklch(0.24 0.003 85);
+  --card-foreground: oklch(0.93 0.003 85);
+  --popover: oklch(0.24 0.003 85);
+  --popover-foreground: oklch(0.93 0.003 85);
+
+  --primary: oklch(0.84 0.166 89);
+  --primary-foreground: oklch(0.19 0.003 85);
+  --primary-hover: oklch(0.88 0.166 89);
+
+  --secondary: oklch(0.55 0.008 85);
+  --secondary-foreground: oklch(0.93 0.003 85);
+
+  --muted: oklch(0.28 0.003 85);
+  --muted-foreground: oklch(0.66 0.005 85);
+
+  --accent: oklch(0.62 0.205 29);
+  --accent-foreground: oklch(0.98 0.01 29);
+
+  --destructive: oklch(0.58 0.2 29);
+  --destructive-foreground: oklch(0.98 0.01 29);
+
+  --success: oklch(0.64 0.108 149);
+  --warning: oklch(0.72 0.132 68);
+
+  --border: oklch(0.33 0.004 85);
+  --input: oklch(0.33 0.004 85);
+  --ring: oklch(0.84 0.166 89);
+
+  /* Dark panel: the highlight inverts to a dim top stroke, per DESIGN.md */
+  --panel: oklch(0.24 0.003 85);
+  --panel-border: oklch(0.33 0.004 85);
+  --panel-highlight: inset 0 1px 0 oklch(1 0 0 / 0.06);
+  --panel-shadow: inset 0 -1px 0 oklch(0 0 0 / 0.2);
+
+  --tick: oklch(0.66 0.005 85);
+  --tick-major: oklch(0.93 0.003 85);
+
+  --needle: oklch(0.62 0.205 29);
+
+  --lamp-on-air: oklch(0.62 0.205 29);
+  --lamp-recording: oklch(0.62 0.205 29);
+  --lamp-live: oklch(0.64 0.108 149);
+  --lamp-off: oklch(0.33 0.004 85);
+  --lamp-glow: 0 0 0 3px oklch(0.62 0.205 29 / 0.22);
+
+  --grille-dot: oklch(1 0 0);
+  --grille-opacity: 0.07;
+
+  --ring-speaking: oklch(0.84 0.166 89);
+
+  --shadow-raised: 0 1px 2px oklch(0 0 0 / 0.3), 0 2px 8px oklch(0 0 0 / 0.24);
+  --shadow-overlay: 0 8px 30px oklch(0 0 0 / 0.45);
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary-hover: var(--primary-hover);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  --color-panel: var(--panel);
+  --color-panel-border: var(--panel-border);
+  --color-tick: var(--tick);
+  --color-tick-major: var(--tick-major);
+  --color-needle: var(--needle);
+  --color-lamp-on-air: var(--lamp-on-air);
+  --color-lamp-recording: var(--lamp-recording);
+  --color-lamp-live: var(--lamp-live);
+  --color-lamp-off: var(--lamp-off);
+  --color-ring-speaking: var(--ring-speaking);
+
+  --radius-sm: var(--radius-sm);
+  --radius-md: var(--radius-md);
+  --radius-lg: var(--radius-lg);
+  --radius-xl: var(--radius-xl);
+
+  --font-display: var(--font-display);
+  --font-body: var(--font-body);
+
+  --shadow-raised: var(--shadow-raised);
+  --shadow-overlay: var(--shadow-overlay);
+
+  --ease-out-quint: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-in-out-quint: cubic-bezier(0.65, 0, 0.35, 1);
+  --ease-detent: cubic-bezier(0.34, 1.32, 0.64, 1);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+
+  body {
+    @apply bg-background text-foreground font-body antialiased;
+    /* The panel is a matte surface, so text never sits on pure white. */
+    text-rendering: optimizeLegibility;
+  }
+
+  /* Every number in this product is a readout. Digits must not
+     change width as they tick, or the needle appears to wobble. */
+  .readout {
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: "tnum" 1;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+  }
+
+  h1, h2, h3 {
+    @apply font-display;
+  }
+}
+
+@layer components {
+  /* The front panel every instrument control is mounted on. This inset
+     highlight is the entire skeuomorphic budget for a resting surface:
+     no gloss, no bevel, no gradient standing in for plastic. */
+  .panel {
+    background-color: var(--panel);
+    border: 1px solid var(--panel-border);
+    box-shadow: var(--panel-highlight), var(--panel-shadow);
+  }
+
+  /* Speaker perforation, aligned to the 4px spacing base so the
+     ornament lines up with the layout rather than floating over it. */
+  .grille {
+    background-image: radial-gradient(
+      circle at center,
+      color-mix(in oklch, var(--grille-dot) calc(var(--grille-opacity) * 100%), transparent) 0.75px,
+      transparent 0.75px
+    );
+    background-size: var(--grille-pitch) var(--grille-pitch);
+  }
+}
+
+/* The recording lamp is one of only three animations allowed to run at
+   rest, and it stops the moment recording does. */
+@keyframes lamp-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.45; }
+}
+
+.lamp-pulse {
+  animation: lamp-pulse 1s var(--ease-in-out-quint) infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  /* State must stay legible with zero animation: the lamp goes solid
+     rather than disappearing. */
+  .lamp-pulse {
+    animation: none;
+    opacity: 1;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
