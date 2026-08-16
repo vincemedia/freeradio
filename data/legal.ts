@@ -15,7 +15,7 @@
  * cannot control; before this carries real users it wants a lawyer's eye.
  */
 
-export const TERMS_VERSION = "2026-08-16";
+export const TERMS_VERSION = "2026-08-17";
 
 export interface Clause {
   heading: string;
@@ -41,6 +41,7 @@ export const TERMS: Clause[] = [
     heading: "You are responsible for what you hear",
     body: [
       "Rooms are open. You may encounter views you find wrong, offensive or distressing, from people nobody has vetted. Leaving is one click and is the remedy.",
+      "Anybody in a room may be recording it by means this service cannot see. Assume they are.",
       "Nothing said in a Co-Channel is advice — financial, legal, medical or otherwise — and none of it has been checked by anybody.",
     ],
   },
@@ -53,11 +54,12 @@ export const TERMS: Clause[] = [
     ],
   },
   {
-    heading: "Recording",
+    heading: "Recording, and the recording nobody can see",
     body: [
-      "A host may record a Co-Channel. When recording is running it is shown in the room's header the entire time, to everybody in it.",
-      "If you do not want to be recorded, leave the room. Speaking in a room that shows it is recording is agreement to being recorded.",
-      "Recordings are kept for up to thirty days and then stop being listed.",
+      "A host may record a Co-Channel through this service. When that is running it is shown in the room's header the entire time, to everybody in it, and speaking in a room that shows it is recording is agreement to being recorded.",
+      "Anybody else in the room may also be recording, and there is no way for this service or for you to know that they are. A phone on the desk, screen-capture software, a second device — none of it touches this application and none of it can be detected, prevented or announced by it. The indicator in the header is honest about what this service is doing and says nothing about what the other people in the room are doing.",
+      "So treat everything you say in a Co-Channel as permanently recorded by somebody, whatever the header says. That is true of every live conversation on the internet, and pretending otherwise would be the more dangerous thing to tell you.",
+      "Recordings made through this service are kept for up to thirty days and then stop being listed. Recordings made any other way are outside it entirely, and the operator has no control over them and no responsibility for them.",
     ],
   },
   {
@@ -94,7 +96,8 @@ export const PRIVACY: Clause[] = [
   {
     heading: "Audio",
     body: [
-      "Live audio passes through Cloudflare's network to reach the other people in the room. It is not stored unless a host is recording, which the room shows the whole time it is happening.",
+      "Live audio passes through Cloudflare's network to reach the other people in the room. It is not stored by this service unless a host is recording, which the room shows the whole time it is happening.",
+      "It can be captured by any participant using their own device, which this service cannot detect or prevent. What you say out loud in a room with strangers should be treated as permanent.",
       "Recordings are kept for up to thirty days and then stop being listed.",
     ],
   },

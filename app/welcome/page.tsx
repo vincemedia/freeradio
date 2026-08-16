@@ -114,8 +114,8 @@ const RULES = [
   },
   {
     icon: Record,
-    title: "Recording is announced",
-    body: "A recording lamp pulses in the header the whole time. Recordings outlive the room; nothing else does.",
+    title: "Recording is announced — ours, anyway",
+    body: "A lamp pulses in the header the whole time a host is recording, and those recordings outlive the room. Anybody in a room can also record it with their own device, which nothing here can see. Assume somebody is.",
   },
 ] as const;
 
@@ -564,8 +564,8 @@ export default function WelcomePage() {
                     >
                       privacy policy
                     </Link>
-                    . Rooms are not moderated, what you say is yours, and a
-                    host may record.
+                    . Rooms are not moderated, what you say is yours, and
+                    anyone in a room can record it.
                   </span>
                 </label>
               </div>

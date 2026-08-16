@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { BAND, DEFAULT_ECOSYSTEM, FREQUENCY_STEP } from "@/data/ecosystems";
 import type { EcosystemId } from "@/data/schema";
 import { HOLD_PRICE_USD } from "@/data/pricing";
+import { bandListeners } from "@/lib/server/band-listeners";
 import { bandOccupancy, listHolds } from "@/lib/server/store";
 import { userStations } from "@/lib/server/user-stations";
 
@@ -45,6 +46,10 @@ export async function GET(request: Request) {
     })),
   ];
 
+  /* Who is actually on this band, anywhere on it. Failure is an empty band
+     rather than an error: the scale is the page, and it draws either way. */
+  const listeners = await bandListeners(ecosystem).catch(() => []);
+
   const holds = listHolds(ecosystem);
   const taken = new Set([
     ...stations.map((s) => s.frequency.toFixed(1)),
@@ -70,6 +75,8 @@ export async function GET(request: Request) {
        free, and the scale should not imply otherwise. */
     holds,
     holdPriceUsd: HOLD_PRICE_USD[ecosystem],
+    /* Everybody in a room anywhere on the band, for the facepile. */
+    listeners,
     nextFree,
   });
 }

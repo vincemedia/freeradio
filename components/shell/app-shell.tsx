@@ -44,7 +44,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
       {/* Reachable from everywhere, quietly. A document you agreed to during
           first run and can then never find again is not really available. */}
-      <footer className="mx-auto w-full max-w-[1200px] px-4 pb-28 text-[11px] text-muted-foreground sm:px-6">
+      <footer className="mx-auto w-full max-w-[1200px] px-4 pb-28 text-center text-[11px] text-muted-foreground sm:px-6">
         <Link href="/terms" className="underline-offset-2 hover:underline">
           Terms
         </Link>

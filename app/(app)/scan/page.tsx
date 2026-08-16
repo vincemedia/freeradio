@@ -9,6 +9,7 @@ import { NewCoChannelDialog } from "@/components/co-channel/new-co-channel";
 import { Price } from "@/components/price";
 import { PageHeader } from "@/components/shell/page-header";
 import { Panel } from "@/components/instrument/parts";
+import { BandFacepile } from "@/components/instrument/band-facepile";
 import {
   nextStation,
   TuningScale,
@@ -21,6 +22,7 @@ import { getEcosystem } from "@/data/ecosystems";
 import type { CoChannelView } from "@/data/schema";
 import { formatFrequency } from "@/lib/format";
 import { useRadio } from "@/lib/store";
+import { useTuner } from "@/lib/use-tuner";
 
 type Hold = {
   id: string;
@@ -38,6 +40,7 @@ type BandResponse = {
   holds: Hold[];
   holdPriceUsd: number;
   nextFree: number | null;
+  listeners: { id: string; name: string }[];
 };
 
 /**
@@ -84,9 +87,16 @@ export default function ScanPage() {
 
   const { data: detail } = useFetch<CoChannelView>(tuned ? `/api/co-channels/${tuned.id}` : null);
 
+  /* The needle travels rather than teleporting, and the set makes the noise a
+     set makes while it does. `sweeping` is where it is on the way; the page's
+     own frequency only changes on arrival, so nothing downstream refetches for
+     every station passed over. */
+  const tuner = useTuner(frequency, "/audio/fm-tuning.mp3");
+  const needle = tuner.sweeping ?? frequency;
+
   const scan = (direction: 1 | -1) => {
     const next = nextStation(stations, frequency, direction);
-    if (next) setFrequency(next.frequency);
+    if (next) tuner.tuneTo(next.frequency, () => setFrequency(next.frequency));
   };
 
   /* Only live stations: a random pick should land you somewhere you can
@@ -104,8 +114,13 @@ export default function ScanPage() {
   const surpriseMe = () => {
     if (pickable.length === 0) return;
     const pick = pickable[Math.floor(Math.random() * pickable.length)];
-    setFrequency(pick.frequency);
-    router.push(`/co-channel/${pick.id}`);
+    /* Travels there first, and only then opens the room. Arriving before the
+       dial has moved would make the dial decorative — the whole point is that
+       the thing on screen is what chose. */
+    tuner.tuneTo(pick.frequency, () => {
+      setFrequency(pick.frequency);
+      router.push(`/co-channel/${pick.id}`);
+    });
   };
 
   const bandInfo = getEcosystem(ecosystem);
@@ -122,17 +137,31 @@ export default function ScanPage() {
           min={band?.min ?? 87.5}
           max={band?.max ?? 108}
           step={band?.step ?? 0.1}
-          value={frequency}
+          value={needle}
           stations={stations}
           holds={band?.holds ?? []}
-          onChange={setFrequency}
+          onChange={(f) => {
+            /* A hand on the dial outranks a sweep in progress. */
+            tuner.cancel();
+            setFrequency(f);
+          }}
         />
 
-        <div className="mt-4 flex flex-wrap items-center gap-2">
+        {/* Three columns rather than a row, so the actions sit in the middle
+            of the bar whatever is beside them. A flex row with `ml-auto` on
+            the ends centres the buttons only when both sides happen to be the
+            same width, which they never are. */}
+        <div className="mt-4 grid grid-cols-1 items-center gap-3 sm:grid-cols-[1fr_auto_1fr]">
+          {/* Who is on this band, anywhere on it. The band-wide view is the
+              only place that question can be answered, and faces answer it
+              faster than a number. */}
+          <BandFacepile listeners={band?.listeners ?? []} />
+
+          <div className="flex flex-wrap items-center justify-center gap-2">
           <Button
             size="sm"
             onClick={() => scan(-1)}
-            disabled={!nextStation(stations, frequency, -1)}
+            disabled={tuner.sweeping !== null || !nextStation(stations, frequency, -1)}
             aria-label="Scan down the band"
           >
             <CaretLeft size={14} />
@@ -150,7 +179,7 @@ export default function ScanPage() {
             variant="primary"
             size="sm"
             onClick={surpriseMe}
-            disabled={pickable.length === 0}
+            disabled={tuner.sweeping !== null || pickable.length === 0}
             aria-label="Join a station at random on this band"
           >
             <Shuffle size={14} />
@@ -160,14 +189,16 @@ export default function ScanPage() {
           <Button
             size="sm"
             onClick={() => scan(1)}
-            disabled={!nextStation(stations, frequency, 1)}
+            disabled={tuner.sweeping !== null || !nextStation(stations, frequency, 1)}
             aria-label="Scan up the band"
           >
             Scan up
             <CaretRight size={14} />
           </Button>
 
-          <span className="ml-auto flex items-center gap-1.5 text-xs text-muted-foreground">
+          </div>
+
+          <span className="flex items-center gap-1.5 text-xs text-muted-foreground sm:justify-end">
             <span className="readout">{stations.length}</span> on air
             <Help>
               A frequency is released the moment the last person leaves the station
