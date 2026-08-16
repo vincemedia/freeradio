@@ -201,7 +201,19 @@ export default function WelcomePage() {
     }
     setOnboarded(true);
     setEcosystem(FIRST_RUN_BAND);
-    /* `play` is what the station page reads to start on arrival. */
+
+    /* Started here rather than on arrival, because here is a click.
+       Browsers only allow audio to begin inside a user gesture, and
+       navigating spends the one we have — so the player is claimed now and
+       the station page simply finds it already running. */
+    try {
+      const { claim } = await import("@/lib/player");
+      await claim(`/api/co-channels/${FIRST_RUN_STATION}/audio`, 0, () => {});
+    } catch {
+      /* Refused, or unreachable. The station page shows an unpressed Play,
+         which is the honest fallback. */
+    }
+
     router.replace(`/co-channel/${FIRST_RUN_STATION}?play=1`);
   };
 

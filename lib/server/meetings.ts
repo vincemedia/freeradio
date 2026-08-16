@@ -59,6 +59,14 @@ export async function meetingFor(coChannelId: string): Promise<string | null> {
   const cached = cache.get(coChannelId);
   if (cached) return cached;
 
+  /* A station somebody started *is* a meeting: its title carries the station,
+     so there is nothing to create and nothing to look up twice. */
+  const started = await findUserMeeting(config, coChannelId);
+  if (started) {
+    cache.set(coChannelId, started);
+    return started;
+  }
+
   const id = await resolve(config, coChannelId);
   if (id) cache.set(coChannelId, id);
   return id;
@@ -79,6 +87,16 @@ async function resolve(
      created one at once, this is where they agree: both search, both sort the
      same way, both take the same meeting, and the other is left unused. */
   return findByTitle(config, title);
+}
+
+/** The meeting whose encoded title names this station. */
+async function findUserMeeting(config: RealtimeConfig, coChannelId: string) {
+  const rows = await listMeetings(config, {
+    search: "freeradio:v1:",
+    perPage: 100,
+  });
+  const match = rows.find((m) => (m.title ?? "").includes(`"i":"${coChannelId}"`));
+  return match?.id ?? null;
 }
 
 async function findByTitle(config: RealtimeConfig, title: string) {

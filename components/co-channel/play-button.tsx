@@ -63,9 +63,22 @@ export function PlayButton({
   useEffect(() => {
     if (!autoPlay || !src) return;
     let cancelled = false;
-    void player.claim(src, 0, onLost).then((started) => {
+
+    /* It may already be playing: the gesture that got us here started it,
+       because navigating would otherwise have spent the permission. Adopt
+       that stream rather than restarting it from the top.
+
+       Resolved rather than read synchronously, so this stays an effect that
+       talks to an external system instead of a setState cascade. */
+    void (async () => {
+      if (player.isPlaying()) {
+        player.adopt(onLost);
+        if (!cancelled) setPlaying(true);
+        return;
+      }
+      const started = await player.claim(src, 0, onLost);
       if (!cancelled) setPlaying(started);
-    });
+    })();
     return () => {
       cancelled = true;
     };

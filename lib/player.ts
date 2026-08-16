@@ -72,6 +72,19 @@ export async function resume(): Promise<boolean> {
   }
 }
 
+/**
+ * Take over a stream that is already running.
+ *
+ * Used when a click on one page started the audio and another page is now the
+ * thing representing it. Nothing about the playback changes; only who is told
+ * when it is taken away.
+ */
+export function adopt(onLost: () => void) {
+  const previous = holder;
+  holder = { onLost };
+  if (previous && previous !== holder) previous.onLost();
+}
+
 /** Give the player up, if this holder still has it. */
 export function release(onLost: () => void) {
   if (holder?.onLost !== onLost) return;

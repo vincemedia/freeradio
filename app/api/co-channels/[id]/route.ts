@@ -1,12 +1,31 @@
 import { NextResponse } from "next/server";
 import { getCoChannel } from "@/lib/server/store";
+import { userStation } from "@/lib/server/user-stations";
 
 export async function GET(
   _request: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
   const { id } = await params;
-  const coChannel = getCoChannel(id);
+  let coChannel = getCoChannel(id);
+
+  /* A station somebody started lives in RealtimeKit, not in memory. Looked up
+     second because the seeded band is the common case and needs no request. */
+  if (!coChannel) {
+    const started = await userStation(id);
+    if (started) {
+      coChannel = {
+        ...started,
+        host: null as never,
+        occupants: [],
+        occupantCount: 0,
+        contactCount: 0,
+        nest: [],
+        primaryGate: "open",
+      };
+    }
+  }
+
   if (!coChannel) {
     return NextResponse.json(
       { error: "That Co-Channel has closed." },
