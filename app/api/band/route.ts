@@ -26,6 +26,6 @@ export async function GET(request: Request) {
        free, and the scale should not imply otherwise. */
     holds: listHolds(ecosystem),
     holdPriceUsd: HOLD_PRICE_USD[ecosystem],
-    nextFree: nextFreeFrequency(ecosystem),
+    nextFree: nextFreeFrequency(ecosystem, ""),
   });
 }

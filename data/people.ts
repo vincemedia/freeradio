@@ -7,41 +7,15 @@
  */
 import type { Person } from "./schema";
 
-/**
- * The signed-in user.
+/*
+ * Nobody is seeded as "you".
  *
- * On Twetch rather than Nexus, which means their own handle carries a suffix
- * like everybody else's: `@johngalt@twetch`. That is worth having in the
- * demo — with a local identity you never see your own address written in
- * full, and the whole point of BRC-169 is that the authority is part of the
- * name. Twetch numbers its accounts, so `1957` is the handle and `johngalt`
- * is the named form; both address the same identity and the UI shows the
- * name.
+ * The connected identity is the wallet's key, synthesised in
+ * `lib/server/identity` rather than kept here: a person with a row is
+ * somebody this app invented, and the person using it is not.
  */
-export const ME_ID = "me-johngalt";
 
 export const people: Person[] = [
-  {
-    id: ME_ID,
-    name: "John Galt",
-    handle: "1957",
-    username: "johngalt",
-    ecosystem: "twetch",
-    role: "Engineer",
-    bio: "Builds things that work and says who built them.",
-    organization: null,
-    city: "Unlisted",
-    photo: null,
-    avatarColors: ["#eab300", "#dc2626", "#4353ff"],
-    registeredAt: "2021-03-04T09:00:00.000Z",
-    expertise: ["Engineering", "First principles"],
-    attestations: 11,
-    /* The demo account's own key. Presented by the no-wallet path so the
-       session records a real-shaped identity either way, and matched by
-       `resolveIdentity` so connecting this key is not an adoption. */
-    publicKey:
-      "02c5f1b6c1e6c6f4a1d0b1e8a3f4c7d2b9e0a5c8f3d6b1e4a7c0d3b6e9a2c5f8d1",
-  },
   {
     id: "rhea-mensah",
     name: "Rhea Mensah",

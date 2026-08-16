@@ -65,7 +65,18 @@ for (const o of occupants) {
 
 for (const c of coChannels) {
   const here = occupants.filter((o) => o.coChannelId === c.id);
-  if (here.length === 0) fail(`${c.id}: empty, so it should not exist`);
+
+  /* A live station is empty until somebody joins it, and its occupants come
+     from RealtimeKit rather thanから here. Seeded occupancy on one would be
+     faces in a room that cannot hear anybody. */
+  if (c.kind === "live") {
+    if (here.length > 0)
+      fail(`${c.id}: live, so its occupants must come from the meeting`);
+    if (c.hasAudio) fail(`${c.id}: live, so it has no recording behind it`);
+    continue;
+  }
+
+  if (here.length === 0) fail(`${c.id}: recorded and empty, so nobody was in it`);
   const hosts = here.filter((o) => o.role === "host");
   if (hosts.length !== 1) fail(`${c.id}: ${hosts.length} hosts`);
   if (hosts[0] && hosts[0].personId !== c.hostId)
@@ -129,8 +140,11 @@ for (const [id, script] of Object.entries(SCRIPTS)) {
     if (!personIds.has(personId)) fail(`${id}: script names unknown ${personId}`);
 }
 
+/* Only a recorded station has words: it already happened. A live one says
+   whatever the people in it say. */
 for (const c of coChannels)
-  if (!SCRIPTS[c.id]) fail(`${c.id}: no script, so the room never says anything`);
+  if (c.kind === "recorded" && !SCRIPTS[c.id])
+    fail(`${c.id}: recorded with no transcript`);
 
 /* ------------------------------------------------------------- recordings */
 

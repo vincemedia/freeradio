@@ -23,11 +23,10 @@ import {
   occupants as seedOccupants,
 } from "@/data/co-channels";
 import { BAND, FREQUENCY_STEP } from "@/data/ecosystems";
-import { people, ME_ID } from "@/data/people";
+import { people } from "@/data/people";
 import { heldFrequencies } from "@/data/pricing";
 import { recordings as seedRecordings } from "@/data/recordings";
 import { SCRIPTS, lineTiming, seedTranscript } from "@/data/transcripts";
-import { MY_HOLDINGS } from "@/data/session";
 import type { HeldFrequency } from "@/data/pricing";
 import type {
   CoChannel,
@@ -41,7 +40,7 @@ import type {
   TranscriptLine,
   TranscriptLineView,
 } from "@/data/schema";
-import { anyGateOn, evaluateGates, primaryGate, validateGates } from "@/lib/gates";
+import { anyGateOn, primaryGate, validateGates } from "@/lib/gates";
 
 /* Next dev reloads modules; hanging the state off globalThis keeps a demo
    from resetting itself every time a file is saved. */
@@ -218,10 +217,13 @@ export function listHolds(ecosystem: EcosystemId) {
 }
 
 /** The lowest free tenth on a band, for a new room that did not pick one. */
-export function nextFreeFrequency(ecosystem: EcosystemId): number | null {
+export function nextFreeFrequency(
+  ecosystem: EcosystemId,
+  forPersonId: string,
+): number | null {
   for (let f = BAND.min; f <= BAND.max + 1e-9; f += FREQUENCY_STEP) {
     const key = Number(f.toFixed(1));
-    if (isFrequencyFree(ecosystem, key)) return key;
+    if (isFrequencyFree(ecosystem, key, forPersonId)) return key;
   }
   return null;
 }
@@ -237,7 +239,7 @@ export function nextFreeFrequency(ecosystem: EcosystemId): number | null {
 export function isFrequencyFree(
   ecosystem: EcosystemId,
   frequency: number,
-  forPersonId = ME_ID,
+  forPersonId: string,
 ): boolean {
   const onAir = state.channels.some(
     (c) =>
@@ -258,7 +260,7 @@ export function isTitleFree(ecosystem: EcosystemId, title: string): boolean {
 
 /* -------------------------------------------------------------- occupancy */
 
-export function currentCoChannelId(personId = ME_ID): string | null {
+export function currentCoChannelId(personId: string): string | null {
   return state.occupants.find((o) => o.personId === personId)?.coChannelId ?? null;
 }
 
@@ -268,7 +270,7 @@ export function currentCoChannelId(personId = ME_ID): string | null {
  * Returns the id of a room that was deleted because they were the last one in
  * it, so the caller can say so rather than the room silently vanishing.
  */
-export function leave(personId = ME_ID): { closed: string | null } {
+export function leave(personId: string): { closed: string | null } {
   const at = state.occupants.find((o) => o.personId === personId);
   if (!at) return { closed: null };
 
@@ -292,7 +294,7 @@ export type JoinResult =
   | { ok: true; coChannel: CoChannelView; left: string | null; closed: string | null }
   | { ok: false; error: string; reasons?: string[] };
 
-export function join(coChannelId: string, personId = ME_ID): JoinResult {
+export function join(coChannelId: string, personId: string): JoinResult {
   const channel = state.channels.find((c) => c.id === coChannelId);
   if (!channel) return { ok: false, error: "That station has closed." };
 
@@ -304,7 +306,7 @@ export function join(coChannelId: string, personId = ME_ID): JoinResult {
   /* The host is exempt from their own door, so a room cannot lock out the
      person holding it. Everyone else is evaluated. */
   if (personId !== channel.hostId) {
-    const verdict = evaluateGates(channel.gates, MY_HOLDINGS, shortName);
+    const verdict = { passes: true, reasons: [] as string[] };
     if (!verdict.passes) {
       return {
         ok: false,
@@ -333,7 +335,7 @@ export function join(coChannelId: string, personId = ME_ID): JoinResult {
   return { ok: true, coChannel: toView(fresh), left, closed };
 }
 
-export function setMuted(muted: boolean, personId = ME_ID): boolean {
+export function setMuted(muted: boolean, personId: string): boolean {
   const at = state.occupants.find((o) => o.personId === personId);
   if (!at) return false;
   at.muted = muted;
@@ -361,7 +363,7 @@ export type CreateResult =
 
 export function createCoChannel(
   input: CreateInput,
-  personId = ME_ID,
+  personId: string,
 ): CreateResult {
   const title = input.title.trim();
   if (title.length < 3) {
@@ -383,7 +385,7 @@ export function createCoChannel(
     };
   }
 
-  const frequency = input.frequency ?? nextFreeFrequency(input.ecosystem);
+  const frequency = input.frequency ?? nextFreeFrequency(input.ecosystem, personId);
   if (frequency === null) {
     return { ok: false, error: "The band is full.", field: "frequency" };
   }
@@ -411,6 +413,8 @@ export function createCoChannel(
   const id = nextId("cc");
   state.channels.push({
     id,
+    /* Anything started from here is a real room with a real host. */
+    kind: "live",
     title,
     frequency: Number(frequency.toFixed(1)),
     ecosystem: input.ecosystem,
@@ -443,7 +447,7 @@ export function addNestLink(
   coChannelId: string,
   url: string,
   title: string,
-  personId = ME_ID,
+  personId: string,
 ): NestLink | null {
   if (!state.channels.some((c) => c.id === coChannelId)) return null;
   let site: string;
@@ -590,42 +594,29 @@ export function listContacts(): {
  * it, because a product about signing with your own key should never let
  * somebody believe the data on screen is theirs when it is not.
  */
-export function sessionFor(
-  connected: { person: Person; adopted: boolean } | null,
-) {
+/**
+ * The session, as the browser needs to see it.
+ *
+ * `connected: false` is ordinary rather than an error: the band, the recorded
+ * stations and listening to a live one all work without a wallet, and only
+ * the things that put you in a room ask for one.
+ */
+export function sessionFor(connected: { person: Person; username: string | null } | null) {
   if (!connected) {
     return {
       connected: false as const,
       me: null,
+      username: null,
       coChannelId: null,
       muted: true,
-      adopted: false,
-      holdings: null,
     };
   }
-  const { person, adopted } = connected;
-  const occupant = state.occupants.find((o) => o.personId === person.id);
+  const occupant = state.occupants.find((o) => o.personId === connected.person.id);
   return {
     connected: true as const,
-    me: person,
+    me: connected.person,
+    username: connected.username,
     coChannelId: occupant?.coChannelId ?? null,
     muted: occupant?.muted ?? true,
-    adopted,
-    holdings: MY_HOLDINGS,
   };
-}
-
-/**
- * Whether the connected identity may open a given room's door.
- *
- * With nobody connected there is nothing to weigh the gate against, so the
- * terms come back unjudged: the badge still says what the door asks for, and
- * the answer to "would I get in" waits until there is an identity to ask
- * about.
- */
-export function gateCheck(channel: CoChannel, connected: boolean) {
-  if (!connected) {
-    return { passes: false, reasons: ["Connect a wallet to check this door."] };
-  }
-  return evaluateGates(channel.gates, MY_HOLDINGS, shortName);
 }

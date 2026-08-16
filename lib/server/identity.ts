@@ -1,113 +1,143 @@
 import "server-only";
 
 import { cookies } from "next/headers";
-import { ME_ID, people } from "@/data/people";
 import type { Person } from "@/data/schema";
 
 /**
  * Who is using the app.
  *
- * There is one identity and it comes from the connected wallet. No password
- * exists anywhere in this product, and there is no account switcher: a wallet
- * supplies one key, and that key is the account.
+ * There is one identity and it is the wallet's key. No password, no account
+ * switcher, and — since this build — no seeded persona standing in for a real
+ * person either.
  *
- * The cookie holds the identity key that was *presented*. It is the record of
- * a handshake, not a login — it grants nothing that presenting the key again
- * would not, and deleting it is the whole of disconnecting.
+ * ## Why there is no demo account any more
+ *
+ * Every unrecognised key used to resolve to a seeded account so a real wallet
+ * landed somewhere furnished. That was right while the rooms were invented,
+ * and wrong the moment two people are in one: both were the same person id, so
+ * RealtimeKit saw one participant and the second arrival took the first's
+ * seat, and both were called the same name on screen.
+ *
+ * So a connection is now itself. The key is the account, the display name is
+ * whatever they chose during first run, and the fallback — before they choose,
+ * or if they never do — is the key, truncated. A truncated key is not a
+ * friendly name, but it is *theirs*, which a borrowed one never was.
+ *
+ * Two cookies, both plain: the key that was presented, and the name they
+ * picked for it. Neither grants anything. Deleting them is the whole of
+ * disconnecting.
  */
 
 const COOKIE = "fr_identity";
+const NAME_COOKIE = "fr_username";
 
-/** The account the demo path connects as, and the one a real key adopts into. */
-export const DEMO_IDENTITY = ME_ID;
+export function identityCookieName() {
+  return COOKIE;
+}
+
+export function usernameCookieName() {
+  return NAME_COOKIE;
+}
 
 /** A compressed secp256k1 public key: 33 bytes, hex, 02 or 03 prefixed. */
 export function isIdentityKey(value: unknown): value is string {
   return typeof value === "string" && /^0[23][0-9a-fA-F]{64}$/.test(value);
 }
 
-export function identityCookieName() {
-  return COOKIE;
+/**
+ * A key, shortened enough to read and long enough to be one person.
+ *
+ * Both ends, because both ends are what distinguish two keys — the middle of
+ * a hex string tells you nothing at a glance.
+ */
+export function truncateKey(publicKey: string): string {
+  return `${publicKey.slice(0, 6)}…${publicKey.slice(-4)}`;
 }
 
 /**
- * The account an identity key belongs to.
+ * What a username has to be to be usable as a handle.
  *
- * A key that matches a seeded person is that person. A key that does not —
- * which is every real wallet, since these fixtures were written before any of
- * them existed — is *adopted* into the demo account rather than given a fresh
- * empty one.
- *
- * The alternative was tried in the app this pattern comes from and reverted.
- * The entire fixture world belongs to seeded people: a minted account is in no
- * room, knows nobody, has tuned to nothing and hosts nothing, so connecting a
- * real wallet produces a product that looks broken rather than one that looks
- * new.
- *
- * Adoption changes whose data is on screen, never whose key is on a signature:
- * anything the wallet signs, it signs with its own key, and this record is
- * never consulted for that. The UI says which of the two happened.
+ * Handles are addresses in this product, so the same rules apply as anywhere
+ * else: lowercase, no spaces, and short enough to sit in an occupant list.
  */
-export function resolveIdentity(
-  publicKey: string,
-): { person: Person; adopted: boolean } | null {
-  if (!isIdentityKey(publicKey)) return null;
-  const seeded = people.find((p) => p.publicKey === publicKey);
-  if (seeded) return { person: seeded, adopted: false };
-  const demo = people.find((p) => p.id === DEMO_IDENTITY);
-  return demo ? { person: demo, adopted: true } : null;
+export function normaliseUsername(input: string): string | null {
+  const value = input.trim().toLowerCase().replace(/^@+/, "");
+  if (!/^[a-z0-9][a-z0-9_-]{1,23}$/.test(value)) return null;
+  return value;
+}
+
+/**
+ * The connected identity as a Person the UI already knows how to draw.
+ *
+ * Synthesised rather than looked up: there is no row for this person, because
+ * the wallet is the row. `id` is derived from the key so it is stable across
+ * sessions and unique across people, which is what both the occupant list and
+ * RealtimeKit need of it.
+ */
+export function personFromKey(publicKey: string, username: string | null): Person {
+  const short = truncateKey(publicKey);
+  return {
+    id: `wallet-${publicKey.slice(0, 16)}`,
+    name: username ?? short,
+    handle: username ?? short,
+    /* The key is its own authority. There is no ecosystem to claim without
+       asking the wallet which one it belongs to, and guessing would put a
+       borrowed suffix on somebody's address. */
+    ecosystem: "nexus",
+    keyIdentity: true,
+    publicKey,
+    role: "",
+    bio: "",
+    organization: null,
+    city: "",
+    photo: null,
+    /* Derived from the key, so the same person is the same colours every
+       time without storing anything. */
+    avatarColors: colorsFor(publicKey),
+  };
+}
+
+const PALETTE = [
+  "#eab300", "#cc2e1d", "#4353ff", "#16a34a", "#7c3aed",
+  "#0891b2", "#db2777", "#f97316", "#0ea5e9", "#65a30d",
+];
+
+function colorsFor(publicKey: string): string[] {
+  const n = parseInt(publicKey.slice(-6), 16) || 0;
+  return [
+    PALETTE[n % PALETTE.length],
+    PALETTE[(n >> 3) % PALETTE.length],
+    PALETTE[(n >> 6) % PALETTE.length],
+  ];
+}
+
+export interface Connected {
+  person: Person;
+  publicKey: string;
+  username: string | null;
 }
 
 /**
  * The connected identity, or null.
  *
- * Null is an ordinary answer: browsing the band and listening to a station
- * both work without a wallet, and only the things that put you in a room ask
- * for one.
+ * Null is ordinary: browsing the band, playing a recorded station and
+ * listening to a live one all work without a wallet.
  */
-export async function connectedPerson(): Promise<{
-  person: Person;
-  adopted: boolean;
-  /** the key actually presented, which is what makes two adopted people two */
-  publicKey: string;
-} | null> {
+export async function connectedPerson(): Promise<Connected | null> {
   const store = await cookies();
   const key = store.get(COOKIE)?.value;
-  if (!key) return null;
-  const resolved = resolveIdentity(key);
-  return resolved ? { ...resolved, publicKey: key } : null;
+  if (!isIdentityKey(key)) return null;
+  const username = store.get(NAME_COOKIE)?.value ?? null;
+  return { person: personFromKey(key, username), publicKey: key, username };
 }
 
 /**
- * The last few characters of a key, for telling two adopted people apart.
+ * Who this connection is to the voice network.
  *
- * Adoption resolves every unrecognised wallet to the same account, which is
- * right for browsing and wrong the moment two of them are in a room together
- * and both are called John Galt. The key is the only thing that differs, so a
- * few characters of it is the smallest honest distinguisher.
+ * The key, because it is unique per wallet, and a display name that is
+ * theirs. Two people who have not chosen a username are still two
+ * participants with two different truncated keys.
  */
-export function keyFingerprint(publicKey: string): string {
-  return publicKey.slice(-4);
-}
-
-/**
- * Who this connection is, as far as the voice network is concerned.
- *
- * The wallet key rather than the resolved person id. Two people who both
- * adopted into the demo account share a person id, and handing RealtimeKit a
- * shared `custom_participant_id` makes them one participant — the second to
- * arrive takes over the first's seat. The key is unique per wallet, which is
- * the entire point of it.
- */
-export function participantIdentity(connected: {
-  person: Person;
-  adopted: boolean;
-  publicKey: string;
-}) {
-  return {
-    id: connected.publicKey,
-    name: connected.adopted
-      ? `${connected.person.name} (${keyFingerprint(connected.publicKey)})`
-      : connected.person.name,
-  };
+export function participantIdentity(connected: Connected) {
+  return { id: connected.publicKey, name: connected.person.name };
 }

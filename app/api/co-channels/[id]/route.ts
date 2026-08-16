@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
-import { connectedPerson } from "@/lib/server/identity";
-import { gateCheck, getCoChannel } from "@/lib/server/store";
+import { getCoChannel } from "@/lib/server/store";
 
 export async function GET(
   _request: Request,
@@ -16,6 +15,5 @@ export async function GET(
   }
   /* The card and the door use the same verdict, so a room can never offer a
      Join button it will then refuse. */
-  const verdict = gateCheck(coChannel, (await connectedPerson()) !== null);
-  return NextResponse.json({ ...coChannel, gateCheck: verdict });
+  return NextResponse.json(coChannel);
 }

@@ -1,87 +1,119 @@
 import { NextResponse, type NextRequest } from "next/server";
 import {
-  DEMO_IDENTITY,
+  connectedPerson,
   identityCookieName,
   isIdentityKey,
-  resolveIdentity,
+  normaliseUsername,
+  personFromKey,
+  usernameCookieName,
 } from "@/lib/server/identity";
-import { people } from "@/data/people";
 import { leave, sessionFor } from "@/lib/server/store";
-import { connectedPerson } from "@/lib/server/identity";
 
 export const dynamic = "force-dynamic";
 
+const YEAR = 60 * 60 * 24 * 365;
+
 /** Who is connected, if anyone. Browsing and listening work without a wallet. */
 export async function GET() {
-  const connected = await connectedPerson();
-  return NextResponse.json(sessionFor(connected));
+  return NextResponse.json(sessionFor(await connectedPerson()));
 }
 
 /**
  * Establish a session from a wallet identity.
  *
- * Two paths, and which one happened is visible to the reader rather than
- * hidden.
+ * The browser has already asked the wallet for `getPublicKey({ identityKey:
+ * true })` and posts the key here. There is nothing to resolve it against and
+ * nothing to look up: the key *is* the account. What arrives is who they are.
  *
- * With a real BRC-100 wallet the browser has already called
- * `getPublicKey({ identityKey: true })` and posts the key here.
- * `resolveIdentity` matches it to a seeded person, or adopts it into the demo
- * account — see `lib/server/identity` for why it adopts rather than minting.
- *
- * Without a wallet, `mode: "demo"` connects as the demo account so the
- * prototype can be looked at on a machine that has none, which is most of
- * them. It is labelled as a demo everywhere it surfaces. What it is NOT is a
- * login: there is no password in this product, and the demo path grants
- * nothing a wallet would not.
+ * A username may come with it, or later, or never. It is a display name for a
+ * key and nothing more — it grants nothing, it is not checked for uniqueness
+ * against anybody, and without one the key itself is shown, truncated. Storing
+ * it beside the key is what lets the rest of the app put a name to an identity
+ * wherever one is needed, including as the name other people see in a room.
  */
 export async function POST(request: NextRequest) {
-  let body: { publicKey?: string; mode?: "wallet" | "demo" } = {};
+  let body: { publicKey?: string; username?: string } = {};
   try {
     body = await request.json();
   } catch {
-    /* An empty body means the demo path. */
+    /* An empty body is a malformed connect, handled below. */
   }
 
-  let identityKey: string | undefined;
-
-  if (body.mode === "wallet") {
-    if (!isIdentityKey(body.publicKey)) {
-      return NextResponse.json(
-        { error: "That does not look like a BRC-100 identity key." },
-        { status: 400 },
-      );
-    }
-    identityKey = body.publicKey;
-  } else {
-    identityKey = people.find((p) => p.id === DEMO_IDENTITY)?.publicKey;
+  if (!isIdentityKey(body.publicKey)) {
+    return NextResponse.json(
+      { error: "That does not look like a BRC-100 identity key." },
+      { status: 400 },
+    );
   }
 
-  if (!identityKey) {
-    return NextResponse.json({ error: "No identity available." }, { status: 500 });
+  /* A username that fails the rules is dropped rather than rejected: the
+     connection is the point, and a name can be set again. */
+  const username = body.username ? normaliseUsername(body.username) : null;
+
+  const response = NextResponse.json(
+    sessionFor({ person: personFromKey(body.publicKey, username), username }),
+  );
+  const options = {
+    httpOnly: true,
+    sameSite: "lax" as const,
+    path: "/",
+    maxAge: YEAR,
+  };
+  response.cookies.set(identityCookieName(), body.publicKey, options);
+  if (username) response.cookies.set(usernameCookieName(), username, options);
+  return response;
+}
+
+/**
+ * Set or change the username, without reconnecting.
+ *
+ * Separate from POST because first run asks for a name *before* the wallet:
+ * choosing what to be called should not require having connected, and the
+ * name is kept for whichever key connects next.
+ */
+export async function PATCH(request: NextRequest) {
+  let body: { username?: string } = {};
+  try {
+    body = await request.json();
+  } catch {
+    /* Handled by the validation below. */
   }
 
-  const resolved = resolveIdentity(identityKey);
-  if (!resolved) {
-    return NextResponse.json({ error: "No identity available." }, { status: 500 });
+  const username = normaliseUsername(body.username ?? "");
+  if (!username) {
+    return NextResponse.json(
+      {
+        error:
+          "Two to twenty-four characters: letters, numbers, dashes and underscores.",
+      },
+      { status: 400 },
+    );
   }
 
-  const response = NextResponse.json(sessionFor(resolved));
-  /* The key that was presented, not the key of the account it resolved to, so
-     the session still knows which wallet is actually attached. */
-  response.cookies.set(identityCookieName(), identityKey, {
+  const connected = await connectedPerson();
+  const response = NextResponse.json(
+    sessionFor(
+      connected
+        ? { person: personFromKey(connected.publicKey, username), username }
+        : null,
+    ),
+  );
+  response.cookies.set(usernameCookieName(), username, {
     httpOnly: true,
     sameSite: "lax",
     path: "/",
-    maxAge: 60 * 60 * 24 * 30,
+    maxAge: YEAR,
   });
   return response;
 }
 
 /**
- * Disconnect. Nothing is revoked, because nothing was granted beyond the key.
+ * Disconnect.
  *
  * Leaving whatever room you were in is part of it: an occupant list is a list
- * of people who are present, and somebody who has disconnected is not.
+ * of people who are present, and somebody who has disconnected is not. The
+ * username survives, because it belongs to the key rather than to the session
+ * and reconnecting the same wallet should not ask again.
  */
 export async function DELETE() {
   const connected = await connectedPerson();

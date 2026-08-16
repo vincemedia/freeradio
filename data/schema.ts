@@ -80,15 +80,17 @@ export interface Person {
   isContact?: boolean;
   /** peer attestations of the handle-to-key binding, per BRC-169 section 10 */
   attestations?: number;
-  /**
-   * Their BRC-100 identity key, where one is known.
-   *
-   * Only the demo account has one, because these fixtures were written before
-   * any real wallet existed. A connecting key that matches nobody is adopted
-   * into that account rather than minting an empty one; see
-   * `lib/server/identity`.
-   */
+  /** their BRC-100 identity key, for the connected user */
   publicKey?: string;
+  /**
+   * True when this person is a wallet rather than a row.
+   *
+   * Their handle is a username they chose or their own key truncated, and it
+   * has no ecosystem behind it — nothing has told us which authority the key
+   * belongs to, and guessing would put a borrowed suffix on somebody's
+   * address. The UI renders them without one.
+   */
+  keyIdentity?: boolean;
 }
 
 /* ------------------------------------------------------------------- gates */
@@ -155,8 +157,24 @@ export interface Token {
  * frequency is an attribute here rather than a table of allocations: there is
  * nothing to keep once the room is gone.
  */
+/**
+ * What a station is.
+ *
+ * `live` is a real voice room on Cloudflare RealtimeKit: joining it opens a
+ * microphone and the people in it are whoever actually joined.
+ *
+ * `recorded` is a broadcast that already happened. There is nobody in it and
+ * nothing to join — you play it. Its occupants are the people who were there
+ * at the time, which is history rather than a claim about now.
+ *
+ * The distinction is the honest version of what this prototype used to do,
+ * which was to present invented occupancy as if it were live.
+ */
+export type CoChannelKind = "live" | "recorded";
+
 export interface CoChannel {
   id: string;
+  kind: CoChannelKind;
   /** unique within its ecosystem, case-insensitively */
   title: string;
   /**
@@ -175,12 +193,13 @@ export interface CoChannel {
   /** whether the host has recording switched on right now */
   recording: boolean;
   /**
-   * Whether a real audio file sits behind this station.
+   * Whether a recorded station has its audio.
    *
-   * True for three of them. Where it is true the transcript and the level
-   * meter are both driven by that file, so the words on screen and the bars
-   * beside them describe the same recording; everywhere else both are
-   * authored. Which stations those are lives in `data/audio.ts`.
+   * Three of them do, and those are the ones with a real transcript behind
+   * them. The rest are broadcasts whose recording was never kept, which the
+   * page says rather than pretending the file is loading.
+   *
+   * Meaningless on a live station, where the audio is the room itself.
    */
   hasAudio: boolean;
   /** short line under the title in browse; the host's own description */

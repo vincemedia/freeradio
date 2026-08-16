@@ -26,13 +26,12 @@ import { Help } from "@/components/ui/overlays";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Skeleton } from "@/components/ui/primitives";
 import type { CoChannelView } from "@/data/schema";
-import type { GateResult } from "@/lib/gates";
 import { GATE_HELP } from "@/lib/gates";
 import { elapsedSince, formatDuration, formatFrequency } from "@/lib/format";
 import { useRadio } from "@/lib/store";
 import { coChannelTransitionName } from "@/lib/view-transition";
 
-type RoomResponse = CoChannelView & { gateCheck: GateResult };
+type RoomResponse = CoChannelView;
 
 export default function CoChannelPage() {
   const { id } = useParams<{ id: string }>();
@@ -138,12 +137,10 @@ export default function CoChannelPage() {
   if (!view) return null;
 
   const isHost = view.host.id === session?.me?.id;
-  /* Only ever means a door refused *you*. With nothing connected there is no
-     you to refuse, so an open room must not announce that you cannot join it —
-     the control already says the actual reason, which is that you have not
-     connected. */
-  const locked =
-    connected && !inThisRoom && preview && !preview.gateCheck.passes;
+  /* A gated room is described rather than judged now: holdings belong to a
+     wallet and this app does not read them, so the badge says what the door
+     asks for and the door itself answers when you try it. */
+  const locked = false;
 
   return (
     <div className="flex gap-6">
@@ -407,18 +404,6 @@ export default function CoChannelPage() {
               </Sheet>
             </div>
           </div>
-
-          {/* Why the door is shut, stated rather than implied. */}
-          {locked && preview && (
-            <div className="mt-4 rounded-md border border-border bg-background p-3">
-              <p className="text-sm font-medium">You cannot join this one</p>
-              <ul className="mt-1.5 space-y-1 text-[13px] text-muted-foreground">
-                {preview.gateCheck.reasons.map((r) => (
-                  <li key={r}>{r}</li>
-                ))}
-              </ul>
-            </div>
-          )}
 
           {!inThisRoom && !locked && (
             <p className="mt-4 flex items-center gap-2 text-xs text-muted-foreground">

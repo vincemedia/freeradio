@@ -34,7 +34,13 @@ const OPEN: Gates = {
 const gate = (over: Partial<Gates>): Gates => ({ ...OPEN, ...over });
 
 /**
- * The authored spec. One entry per live room.
+ * The authored spec. One entry per station.
+ *
+ * Everything written here is `recorded`: a broadcast that already happened,
+ * with the people who were in it at the time. That is what this data always
+ * was — invented occupancy — and calling it recorded is the difference
+ * between a fixture and a lie. Live stations are seeded separately below and
+ * start empty, because a live room's occupants are whoever actually joined.
  *
  * `muted` names the occupants who are muted; everybody else is unmuted. Mute
  * state is authored rather than defaulted because it is shown for every
@@ -43,6 +49,8 @@ const gate = (over: Partial<Gates>): Gates => ({ ...OPEN, ...over });
  */
 interface Spec {
   id: string;
+  /** omitted means recorded; the live seeds set it explicitly */
+  kind?: CoChannel["kind"];
   frequency: number;
   ecosystem: CoChannel["ecosystem"];
   title: string;
@@ -519,13 +527,71 @@ const SPECS: Spec[] = [
 
 /* ------------------------------------------------------------------ tables */
 
-/* A room with nobody in it does not exist. The placeholder above is filtered
-   here rather than deleted, so the frequency it was holding is demonstrably
-   back in the pool. */
-const LIVE = SPECS.filter((s) => s.occupantIds.length > 0);
+/**
+ * Stations anybody can walk into and actually talk in.
+ *
+ * Empty on purpose, and permanently: a live station's occupants are the
+ * people currently in its RealtimeKit meeting, so seeding them here would put
+ * faces in a room that cannot hear anybody. They exist so the band is not
+ * bare — somewhere to go that works — and they are open, because a door with
+ * terms is no use to a stranger testing whether the microphone works.
+ */
+const LIVE_SEEDS: Spec[] = [
+  {
+    id: "cc-open-mic",
+    kind: "live",
+    frequency: 95.5,
+    ecosystem: "nexus",
+    title: "Open mic",
+    topic: "Nothing scheduled. Turn up, unmute, say something.",
+    hostId: "darren-kellenschwiler",
+    occupantIds: [],
+    muted: [],
+    startedMinutesAgo: 0,
+  },
+  {
+    id: "cc-first-contact",
+    kind: "live",
+    frequency: 88.3,
+    ecosystem: "twetch",
+    title: "First contact",
+    topic: "The room to test whether your microphone works. Somebody usually answers.",
+    hostId: "tw-kurt",
+    occupantIds: [],
+    muted: [],
+    startedMinutesAgo: 0,
+  },
+  {
+    id: "cc-late-shift",
+    kind: "live",
+    frequency: 103.1,
+    ecosystem: "nexus",
+    title: "The late shift",
+    topic: "On air whenever somebody is. No subject, no host in particular.",
+    hostId: "rhea-mensah",
+    occupantIds: [],
+    muted: [],
+    startedMinutesAgo: 0,
+  },
+  {
+    id: "cc-workshop",
+    kind: "live",
+    frequency: 91.3,
+    ecosystem: "twetch",
+    title: "Workshop",
+    topic: "Bring a problem. Somebody here has probably had it.",
+    hostId: "tw-neil",
+    occupantIds: [],
+    muted: [],
+    startedMinutesAgo: 0,
+  },
+];
 
-export const coChannels: CoChannel[] = LIVE.map((s) => ({
+const ALL: Spec[] = [...LIVE_SEEDS, ...SPECS];
+
+export const coChannels: CoChannel[] = ALL.map((s) => ({
   id: s.id,
+  kind: s.kind ?? ("recorded" as const),
   title: s.title,
   frequency: s.frequency,
   ecosystem: s.ecosystem,
@@ -537,7 +603,9 @@ export const coChannels: CoChannel[] = LIVE.map((s) => ({
   ...(s.gates ? { gates: s.gates } : {}),
 }));
 
-export const occupants: Occupant[] = LIVE.flatMap((s) =>
+/* Only recorded stations carry occupants: they are who was there, which is a
+   fact about the past. A live station's are read from RealtimeKit. */
+export const occupants: Occupant[] = ALL.flatMap((s) =>
   s.occupantIds.map((personId, i) => ({
     id: `occ-${s.id}-${personId}`,
     coChannelId: s.id,
@@ -549,7 +617,7 @@ export const occupants: Occupant[] = LIVE.flatMap((s) =>
   })),
 );
 
-export const nestLinks: NestLink[] = LIVE.flatMap((s) =>
+export const nestLinks: NestLink[] = ALL.flatMap((s) =>
   (s.nest ?? []).map((n, i) => ({
     id: `nest-${s.id}-${i}`,
     coChannelId: s.id,
