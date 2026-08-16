@@ -10,6 +10,8 @@ import { MobileMenu } from "@/components/shell/mobile-menu";
 import { CommandBar } from "@/components/shell/command-bar";
 import { NewCoChannelDialog } from "@/components/co-channel/new-co-channel";
 import { Button } from "@/components/ui/button";
+import { HintTooltip } from "@/components/ui/overlays";
+import { useRadio } from "@/lib/store";
 import { cn } from "@/lib/utils";
 
 /**
@@ -30,6 +32,12 @@ export function TopBar() {
   const pathname = usePathname();
   const [search, setSearch] = useState(false);
   const [create, setCreate] = useState(false);
+  const seenOnAirHint = useRadio((s) => s.seenOnAirHint);
+  const dismissOnAirHint = useRadio((s) => s.dismissOnAirHint);
+  const inAStation = useRadio((s) => s.session?.coChannelId) != null;
+  /* Only worth showing while they are somewhere else, which after first run
+     means inside the station they were dropped into. */
+  const showOnAirHint = !seenOnAirHint && inAStation && pathname !== "/";
   const isActive = (href: string) =>
     href === "/" ? pathname === "/" : pathname.startsWith(href);
 
@@ -52,22 +60,36 @@ export function TopBar() {
           <BandSwitch className="shrink-0" />
 
           <nav className="ml-2 hidden items-center gap-0.5 md:flex">
-            {NAV.map((item) => (
-              <Link
-                key={item.href}
-                href={item.href}
-                aria-current={isActive(item.href) ? "page" : undefined}
-                className={cn(
-                  "rounded-md px-2.5 py-1.5 text-sm font-medium transition-colors",
-                  isActive(item.href)
-                    ? "bg-muted text-foreground"
-                    : "text-muted-foreground hover:bg-muted hover:text-foreground",
-                )}
-              >
-                <span className="hidden lg:inline">{item.label}</span>
-                <span className="lg:hidden">{item.labelShort}</span>
-              </Link>
-            ))}
+            {NAV.map((item) => {
+              const link = (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  onClick={item.href === "/" ? dismissOnAirHint : undefined}
+                  aria-current={isActive(item.href) ? "page" : undefined}
+                  className={cn(
+                    "rounded-md px-2.5 py-1.5 text-sm font-medium transition-colors",
+                    isActive(item.href)
+                      ? "bg-muted text-foreground"
+                      : "text-muted-foreground hover:bg-muted hover:text-foreground",
+                  )}
+                >
+                  <span className="hidden lg:inline">{item.label}</span>
+                  <span className="lg:hidden">{item.labelShort}</span>
+                </Link>
+              );
+
+              /* First run leaves you inside a station, which is a good first
+                 impression and a poor map. The hint points at the way back to
+                 the band, once, and goes for good the moment it is used. */
+              return item.href === "/" && showOnAirHint ? (
+                <HintTooltip key={item.href} label="Discover more stations">
+                  {link}
+                </HintTooltip>
+              ) : (
+                link
+              );
+            })}
           </nav>
 
           <div className="ml-auto flex items-center gap-1.5">
@@ -97,13 +119,13 @@ export function TopBar() {
                 control on any screen is whatever that screen is actually for:
                 Join in a room, Open this Co-Channel on the scanner.
 
-                Icon-only below sm, where the label will not fit. Opening a
-                Co-Channel is the point of the product, so it stays on the top
+                Icon-only below sm, where the label will not fit. Starting a
+                station is the point of the product, so it stays on the top
                 bar at every width rather than moving into the menu. */}
             <Button
               size="icon-sm"
               variant="secondary"
-              aria-label="Open a Co-Channel"
+              aria-label="Start a station"
               onClick={() => setCreate(true)}
               className="sm:hidden"
             >
@@ -117,7 +139,7 @@ export function TopBar() {
               className="hidden sm:inline-flex"
             >
               <Plus size={15} />
-              <span className="hidden lg:inline">Open a Co-Channel</span>
+              <span className="hidden lg:inline">Start a station</span>
               <span className="lg:hidden">Open</span>
             </Button>
 

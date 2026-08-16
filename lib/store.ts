@@ -56,6 +56,14 @@ interface RadioState {
    */
   followed: EcosystemId[];
   onboarded: boolean;
+  /**
+   * Whether the hint pointing back at the band has been dismissed.
+   *
+   * First run drops you straight into a station, which is a good first
+   * impression and a bad map: you are somewhere before you know there is
+   * anywhere else. The hint says where the rest is, once, and never again.
+   */
+  seenOnAirHint: boolean;
   recent: RecentRoom[];
 
   /* ---- live state ---- */
@@ -69,6 +77,7 @@ interface RadioState {
   /** follow or unfollow a band; refuses to leave the list empty */
   toggleFollowed: (id: EcosystemId) => void;
   setOnboarded: (v: boolean) => void;
+  dismissOnAirHint: () => void;
 
   refreshSession: () => Promise<void>;
   openRoom: (id: string) => Promise<void>;
@@ -88,6 +97,7 @@ export const useRadio = create<RadioState>()(
          one band you are definitely on. */
       followed: [DEFAULT_ECOSYSTEM],
       onboarded: false,
+      seenOnAirHint: false,
       recent: [],
 
       session: null,
@@ -111,6 +121,7 @@ export const useRadio = create<RadioState>()(
           };
         }),
       setOnboarded: (onboarded) => set({ onboarded }),
+      dismissOnAirHint: () => set({ seenOnAirHint: true }),
 
       refreshSession: async () => {
         const session = await apiFetch<Session>("/api/session");
@@ -219,6 +230,7 @@ export const useRadio = create<RadioState>()(
         ecosystem: s.ecosystem,
         followed: s.followed,
         onboarded: s.onboarded,
+        seenOnAirHint: s.seenOnAirHint,
         recent: s.recent,
       }),
     },

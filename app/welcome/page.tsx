@@ -20,6 +20,7 @@ import { EcosystemMark, Facepile } from "@/components/identity";
 import { Panel } from "@/components/instrument/parts";
 import { TuningScale, type Station } from "@/components/instrument/tuning-scale";
 import { Button } from "@/components/ui/button";
+import { FIRST_RUN_STATION } from "@/data/audio";
 import { ecosystems, getEcosystem } from "@/data/ecosystems";
 import type { CoChannelView, EcosystemId } from "@/data/schema";
 import { useRadio } from "@/lib/store";
@@ -158,14 +159,24 @@ export default function WelcomePage() {
 
   const next = () => setStep(STEPS[Math.min(index + 1, STEPS.length - 1)]);
   const back = () => setStep(STEPS[Math.max(index - 1, 0)]);
-  const finish = () => {
-    /* Land on a band you follow rather than whatever was selected before,
-       which after a multi-select may be one you just dropped. */
+  const join = useRadio((s) => s.join);
+
+  /**
+   * Finish by putting them in a station rather than in front of a list.
+   *
+   * The product is people talking; a directory is not that. So the last step
+   * tunes them in, muted, and the hint on "On air" is what tells them there is
+   * a whole band behind it. If the station has closed, or its door refuses
+   * them, this falls back to the list rather than stranding them.
+   */
+  const finish = async () => {
     if (!followed.includes(useRadio.getState().ecosystem)) {
       setEcosystem(followed[0]);
     }
     setOnboarded(true);
-    router.replace("/");
+
+    const landed = await join(FIRST_RUN_STATION);
+    router.replace(landed.ok ? `/co-channel/${FIRST_RUN_STATION}` : "/");
   };
 
   /* A slow sweep on the first screen, so the needle is visibly a needle
@@ -207,7 +218,7 @@ export default function WelcomePage() {
           )}
           <button
             type="button"
-            onClick={finish}
+            onClick={() => void finish()}
             className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
           >
             Skip
@@ -443,7 +454,11 @@ export default function WelcomePage() {
                   a frequency of your own. You arrive muted either way.
                 </p>
               </div>
-              <Button variant="primary" className="w-full" onClick={finish}>
+              <Button
+                variant="primary"
+                className="w-full"
+                onClick={() => void finish()}
+              >
                 Start listening
               </Button>
             </>

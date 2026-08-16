@@ -93,6 +93,43 @@ export function Tooltip({
 }
 
 /**
+ * A hint that shows itself.
+ *
+ * The one tooltip in the product that opens without being asked, because it
+ * exists to point somewhere the reader does not yet know about. It stays open
+ * until it is used, has no arrow-key trap and no close button: using the thing
+ * it points at is how it goes away, and it never comes back.
+ */
+export function HintTooltip({
+  children,
+  label,
+}: {
+  children: React.ReactNode;
+  label: string;
+}) {
+  return (
+    <T.Provider>
+      <T.Root open>
+        <T.Trigger asChild>{children}</T.Trigger>
+        <T.Portal>
+          <T.Content
+            side="bottom"
+            sideOffset={8}
+            collisionPadding={8}
+            /* Not interactive: it must never sit between the pointer and the
+               link it is pointing at. */
+            className="pointer-events-none z-50 flex items-center gap-1.5 rounded-md bg-foreground px-2.5 py-1.5 text-xs font-medium text-background shadow-[var(--shadow-overlay)] animate-in fade-in slide-in-from-top-1 duration-300"
+          >
+            {label}
+            <T.Arrow className="fill-foreground" width={10} height={5} />
+          </T.Content>
+        </T.Portal>
+      </T.Root>
+    </T.Provider>
+  );
+}
+
+/**
  * Inline help.
  *
  * A question mark adjacent to the thing it explains, per Rams: labels sit next
