@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Inter, Inter_Tight } from "next/font/google";
+import { Agentation } from "agentation";
 import { Providers } from "@/components/providers";
 import "./globals.css";
 
@@ -71,6 +72,9 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning>
       <body className={`${body.variable} ${display.variable}`}>
         <Providers>{children}</Providers>
+        {/* Development only, so the running app is inspectable and steerable
+            by agents without shipping the toolbar to anybody else. */}
+        {process.env.NODE_ENV === "development" && <Agentation />}
       </body>
     </html>
   );

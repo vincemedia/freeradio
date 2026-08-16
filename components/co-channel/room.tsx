@@ -11,6 +11,7 @@ import {
   Plus,
 } from "@phosphor-icons/react";
 import { Avatar, Identity } from "@/components/identity";
+import { PersonCard } from "@/components/person-card";
 import { Grille, Lamp, SpeakingRing } from "@/components/instrument/parts";
 import { Button } from "@/components/ui/button";
 import { Help } from "@/components/ui/overlays";
@@ -199,15 +200,17 @@ export function OccupantGrid({ room }: { room: CoChannelView }) {
                 )}
               </span>
 
-              <span className="w-full min-w-0">
-                <span className="block truncate text-[13px] font-medium leading-tight">
-                  {o.personId === me ? "You" : o.person.name}
+              <PersonCard person={o.person} className="w-full">
+                <span className="block w-full min-w-0">
+                  <span className="block truncate text-[13px] font-medium leading-tight">
+                    {o.personId === me ? "You" : o.person.name}
+                  </span>
+                  <Identity
+                    person={o.person}
+                    className="justify-center text-[10px] leading-tight"
+                  />
                 </span>
-                <Identity
-                  person={o.person}
-                  className="justify-center text-[10px] leading-tight"
-                />
-              </span>
+              </PersonCard>
             </li>
           );
         })}
@@ -259,12 +262,17 @@ export function Transcript({ lines }: { lines: TranscriptLineView[] }) {
         ) : (
           lines.map((line) => (
             <article key={line.id} className="flex gap-2.5">
+              {/* The portrait in front of the line, as the brief asks, and the
+                  name opens the card so you can reach whatever room they are
+                  in without leaving this one. */}
               <Avatar person={line.person} size={26} className="mt-0.5" />
               <div className="min-w-0 flex-1">
                 <div className="flex items-baseline gap-1.5">
-                  <span className="truncate text-[13px] font-medium">
-                    {line.person.name}
-                  </span>
+                  <PersonCard person={line.person}>
+                    <span className="truncate text-[13px] font-medium">
+                      {line.person.name}
+                    </span>
+                  </PersonCard>
                   <span className="readout shrink-0 text-[10px] text-muted-foreground">
                     {formatClock(line.at)}
                   </span>
