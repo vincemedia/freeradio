@@ -46,10 +46,7 @@ export function PersonCard({
   className?: string;
 }) {
   const [open, setOpen] = useState(false);
-  const { data } = useFetch<PersonResponse>(
-    open ? `/api/people/${person.id}` : null,
-    [open, person.id],
-  );
+  const { data } = useFetch<PersonResponse>(open ? `/api/people/${person.id}` : null);
 
   const room = data?.coChannel;
 

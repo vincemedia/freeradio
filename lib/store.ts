@@ -27,11 +27,27 @@ interface Session {
   muted: boolean;
 }
 
+/**
+ * A room you were in.
+ *
+ * Carries its own copy of the title and frequency because the room may not
+ * exist any more, and the frequency may belong to somebody else by now. That
+ * is the point of showing these: it is where the ephemerality becomes visible.
+ */
+export interface RecentRoom {
+  id: string;
+  title: string;
+  frequency: number;
+  ecosystem: EcosystemId;
+  at: string;
+}
+
 interface RadioState {
   /* ---- persisted preferences ---- */
   ecosystem: EcosystemId;
   onboarded: boolean;
   minimised: boolean;
+  recent: RecentRoom[];
 
   /* ---- live state ---- */
   session: Session | null;
@@ -60,6 +76,7 @@ export const useRadio = create<RadioState>()(
       ecosystem: DEFAULT_ECOSYSTEM,
       onboarded: false,
       minimised: false,
+      recent: [],
 
       session: null,
       room: null,
@@ -104,7 +121,24 @@ export const useRadio = create<RadioState>()(
           await apiPost(`/api/co-channels/${id}/join`);
           await get().refreshSession();
           await get().openRoom(id);
-          set({ minimised: false });
+          const room = get().room;
+          if (room) {
+            /* Newest first, deduped, capped. A recent list that grows without
+               limit is an archive nobody asked for. */
+            set((s) => ({
+              minimised: false,
+              recent: [
+                {
+                  id: room.id,
+                  title: room.title,
+                  frequency: room.frequency,
+                  ecosystem: room.ecosystem,
+                  at: new Date().toISOString(),
+                },
+                ...s.recent.filter((r) => r.id !== room.id),
+              ].slice(0, 6),
+            }));
+          }
           return { ok: true };
         } catch (e) {
           if (e instanceof ApiError) {
@@ -161,6 +195,7 @@ export const useRadio = create<RadioState>()(
       partialize: (s) => ({
         ecosystem: s.ecosystem,
         onboarded: s.onboarded,
+        recent: s.recent,
       }),
     },
   ),

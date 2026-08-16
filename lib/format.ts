@@ -5,24 +5,9 @@
  * a frequency that loses its trailing zero somewhere in the app is a
  * different frequency as far as a reader is concerned.
  */
-import type { Person } from "@/data/schema";
 
 /** Always one decimal, including at `.0`. The dial does not drop digits. */
 export const formatFrequency = (mhz: number) => mhz.toFixed(1);
-
-/**
- * `@handle@ecosystem`, per BRC-169.
- *
- * The suffix is never dropped, even on the local ecosystem: two people in one
- * room can hold the same handle on different hosts, and the suffix is the only
- * thing telling them apart.
- */
-export const formatIdentity = (person: Person) =>
-  `@${person.handle}@${person.ecosystem}`;
-
-/** The name people say, which on a numeric ecosystem is not the handle. */
-export const displayHandle = (person: Person) =>
-  person.username ? `@${person.username}` : `@${person.handle}`;
 
 /** Running time, as a clock. Tabular figures keep it from jittering. */
 export function formatDuration(seconds: number): string {

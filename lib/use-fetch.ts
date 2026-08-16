@@ -10,10 +10,12 @@ import { apiFetch } from "@/lib/api";
  * and can be told to refetch. Everything still goes through `apiFetch`, so the
  * day this is swapped for SWR or React Query the network layer does not move.
  *
- * `key` may be null to skip the request, which is how a component waits for
- * something it depends on.
+ * The key is the whole dependency. Every parameter that changes the result is
+ * already in the URL, or turns the key null, so there is nothing else to
+ * depend on. `key` may be null to skip the request, which is how a component
+ * waits for something it needs first.
  */
-export default function useFetch<T>(key: string | null, deps: unknown[] = []) {
+export default function useFetch<T>(key: string | null) {
   const [data, setData] = useState<T | null>(null);
   const [error, setError] = useState<Error | null>(null);
   const [loading, setLoading] = useState(key !== null);
@@ -39,10 +41,14 @@ export default function useFetch<T>(key: string | null, deps: unknown[] = []) {
     } finally {
       if (ticket === latest.current) setLoading(false);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [key, ...deps]);
+  }, [key]);
 
+  /* Fetching on mount and storing the result is what a data hook is, so the
+     setState-in-effect rule does not apply here the way it does to derived
+     state. This is the one place in the app that gets the exception, which is
+     the point of having a single hook rather than fetch calls in components. */
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     void load();
   }, [load]);
 

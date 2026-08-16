@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef } from "react";
+import { useCallback, useMemo, useRef } from "react";
 import type { GateKind } from "@/data/schema";
 import { formatFrequency } from "@/lib/format";
 import { cn } from "@/lib/utils";
@@ -16,6 +16,13 @@ export interface Station {
   contactCount: number;
   primaryGate: GateKind;
   recording: boolean;
+}
+
+/** A frequency somebody is paying to keep, whether or not it is on air. */
+export interface Hold {
+  id: string;
+  frequency: number;
+  label: string;
 }
 
 /**
@@ -34,12 +41,6 @@ export interface Station {
  * A percentage translate is relative to the element's own width, which is why
  * the rail spans the whole track.
  */
-export interface Hold {
-  id: string;
-  frequency: number;
-  label: string;
-}
-
 export function TuningScale({
   min,
   max,
@@ -321,15 +322,3 @@ export function nextStation(
   return pool[0] ?? null;
 }
 
-/** Keeps the needle in sync when the band changes under it. */
-export function useClampToBand(
-  value: number,
-  min: number,
-  max: number,
-  onChange: (v: number) => void,
-) {
-  useEffect(() => {
-    if (value < min) onChange(min);
-    else if (value > max) onChange(max);
-  }, [value, min, max, onChange]);
-}

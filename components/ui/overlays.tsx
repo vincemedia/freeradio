@@ -55,8 +55,6 @@ export const DialogClose = D.Close;
 
 /* ---------------------------------------------------------------- tooltip */
 
-export const TooltipProvider = T.Provider;
-
 /**
  * Hover on desktop, tap on mobile.
  *

@@ -45,10 +45,7 @@ export default function CoChannelPage() {
   const joining = useRadio((s) => s.joining);
   const setMinimised = useRadio((s) => s.setMinimised);
 
-  const { data: preview, loading, error } = useFetch<RoomResponse>(
-    `/api/co-channels/${id}`,
-    [id],
-  );
+  const { data: preview, loading, error } = useFetch<RoomResponse>(`/api/co-channels/${id}`);
 
   const inThisRoom = session?.coChannelId === id;
   const view = inThisRoom && room ? room : preview;

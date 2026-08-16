@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { toast } from "sonner";
 import { ArrowsClockwise } from "@phosphor-icons/react";
 import useFetch from "@/lib/use-fetch";
@@ -55,28 +55,28 @@ export function NewCoChannelDialog({
   const [open, setOpen] = useState(false);
   const [title, setTitle] = useState("");
   const [topic, setTopic] = useState("");
-  const [frequency, setFrequency] = useState<number | null>(null);
+  const [chosen, setChosen] = useState<number | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const { data: band } = useFetch<BandInfo>(
-    open ? `/api/band?ecosystem=${ecosystem}` : null,
-    [ecosystem, open],
-  );
+  const { data: band } = useFetch<BandInfo>(open ? `/api/band?ecosystem=${ecosystem}` : null);
 
-  /* Pre-fill with the lowest free tenth once the band answers. */
-  useEffect(() => {
-    if (band?.nextFree != null && frequency === null) setFrequency(band.nextFree);
-  }, [band, frequency]);
+  /* The frequency is derived from the band until somebody types one, rather
+     than copied into state by an effect once the band answers. `chosen` is
+     the override; null means "the lowest free tenth". */
+  const frequency = chosen ?? band?.nextFree ?? null;
 
-  useEffect(() => {
-    if (!open) {
+  /* Closing resets the form. That is a consequence of an event, so it happens
+     in the event rather than in an effect watching for it. */
+  const onOpenChange = (next: boolean) => {
+    setOpen(next);
+    if (!next) {
       setTitle("");
       setTopic("");
-      setFrequency(null);
+      setChosen(null);
       setError(null);
     }
-  }, [open]);
+  };
 
   const taken = new Set((band?.stations ?? []).map((s) => s.frequency.toFixed(1)));
 
@@ -88,7 +88,7 @@ export function NewCoChannelDialog({
       if (!taken.has(f.toFixed(1))) free.push(f);
     }
     if (free.length === 0) return;
-    setFrequency(free[Math.floor(Math.random() * free.length)]);
+    setChosen(free[Math.floor(Math.random() * free.length)]);
   };
 
   const submit = async (e: React.FormEvent) => {
@@ -105,7 +105,7 @@ export function NewCoChannelDialog({
         gates: OPEN_GATES,
       });
       await refreshSession();
-      setOpen(false);
+      onOpenChange(false);
       toast.success("You are on air", {
         description: `${formatFrequency(created.frequency)} MHz on ${getEcosystem(ecosystem)?.name}`,
       });
@@ -123,7 +123,7 @@ export function NewCoChannelDialog({
     frequency !== null && taken.has(frequency.toFixed(1));
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogTrigger asChild>{children}</DialogTrigger>
       <DialogContent
         title="Open a Co-Channel"
@@ -173,7 +173,7 @@ export function NewCoChannelDialog({
                 min={band?.min}
                 max={band?.max}
                 value={frequency ?? ""}
-                onChange={(e) => setFrequency(Number(e.target.value))}
+                onChange={(e) => setChosen(Number(e.target.value))}
                 className="readout w-32"
               />
               <span className="text-sm text-muted-foreground">MHz</span>

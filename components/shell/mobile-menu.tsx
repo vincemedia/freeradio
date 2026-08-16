@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { CaretLeft, CaretRight, Check } from "@phosphor-icons/react";
 import useFetch from "@/lib/use-fetch";
@@ -27,24 +26,25 @@ type Band = Ecosystem & { coChannelCount: number; occupantCount: number };
 export function MobileMenu() {
   const [open, setOpen] = useState(false);
   const [panel, setPanel] = useState<"root" | "bands">("root");
-  const pathname = usePathname();
-
   const ecosystem = useRadio((s) => s.ecosystem);
   const setEcosystem = useRadio((s) => s.setEcosystem);
   const { data: bands } = useFetch<Band[]>(open ? "/api/ecosystems" : null);
 
-  /* Navigating closes the menu, and the next open starts at the top. */
+  /* Locking the page behind the overlay is a real external effect, so it
+     belongs here. Resetting the panel does not: that is a consequence of
+     closing, so it happens where the closing happens. */
   useEffect(() => {
-    setOpen(false);
-  }, [pathname]);
-
-  useEffect(() => {
-    if (!open) setPanel("root");
-    document.body.style.overflow = open ? "hidden" : "";
+    if (!open) return;
+    document.body.style.overflow = "hidden";
     return () => {
       document.body.style.overflow = "";
     };
   }, [open]);
+
+  const close = () => {
+    setOpen(false);
+    setPanel("root");
+  };
 
   const current = bands?.find((b) => b.id === ecosystem);
 
@@ -54,7 +54,7 @@ export function MobileMenu() {
         type="button"
         aria-label={open ? "Close menu" : "Open menu"}
         aria-expanded={open}
-        onClick={() => setOpen((v) => !v)}
+        onClick={() => (open ? close() : setOpen(true))}
         className="relative flex size-9 items-center justify-center rounded-md md:hidden"
       >
         <span className="sr-only">Menu</span>
@@ -87,6 +87,7 @@ export function MobileMenu() {
                 <Link
                   key={item.href}
                   href={item.href}
+                  onClick={close}
                   className="py-3 font-display text-2xl font-semibold tracking-tight text-foreground"
                 >
                   {item.label}
@@ -126,7 +127,7 @@ export function MobileMenu() {
                     type="button"
                     onClick={() => {
                       setEcosystem(b.id);
-                      setOpen(false);
+                      close();
                     }}
                     className="flex w-full items-start gap-3 rounded-md px-3 py-3 text-left active:bg-muted"
                   >

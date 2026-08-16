@@ -37,10 +37,7 @@ export default function RecordingsPage() {
   /* Unlocks are per session, like the rest of the mock money in this app. */
   const [bought, setBought] = useState<Set<string>>(new Set());
 
-  const { data, loading } = useFetch<Row[]>(
-    `/api/recordings?ecosystem=${ecosystem}`,
-    [ecosystem],
-  );
+  const { data, loading } = useFetch<Row[]>(`/api/recordings?ecosystem=${ecosystem}`);
 
   const band = getEcosystem(ecosystem);
 

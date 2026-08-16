@@ -14,7 +14,6 @@ import { cn } from "@/lib/utils";
  */
 export const Sheet = D.Root;
 export const SheetTrigger = D.Trigger;
-export const SheetClose = D.Close;
 
 export function SheetContent({
   className,

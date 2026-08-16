@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Broadcast, CaretLeft, CaretRight, LockKey } from "@phosphor-icons/react";
 import useFetch from "@/lib/use-fetch";
 import { CoChannelCard } from "@/components/co-channel/card";
@@ -50,14 +50,29 @@ type BandResponse = {
 export default function ScanPage() {
   const router = useRouter();
   const ecosystem = useRadio((s) => s.ecosystem);
-  const [frequency, setFrequency] = useState(98.7);
 
-  const { data: band } = useFetch<BandResponse>(
-    `/api/band?ecosystem=${ecosystem}`,
-    [ecosystem],
-  );
+  /* Where the needle sits is derived, not stored, until somebody moves it.
+     Switching band would otherwise leave it in a gap on the new band, and
+     correcting that from an effect means a second render every time the band
+     answers. `tunedTo` is the override; null means "wherever the busiest
+     room is". */
+  const [tunedTo, setTunedTo] = useState<number | null>(null);
+  const [lastBand, setLastBand] = useState(ecosystem);
+  if (lastBand !== ecosystem) {
+    /* Adjusting state during render when a prop changes, which React
+       supports and which avoids the extra pass an effect would cost. */
+    setLastBand(ecosystem);
+    setTunedTo(null);
+  }
+
+  const { data: band } = useFetch<BandResponse>(`/api/band?ecosystem=${ecosystem}`);
 
   const stations = band?.stations ?? [];
+  const busiest = stations.length
+    ? [...stations].sort((a, b) => b.occupantCount - a.occupantCount)[0]
+    : null;
+  const frequency = tunedTo ?? busiest?.frequency ?? 98.7;
+  const setFrequency = setTunedTo;
   const tuned = stations.find(
     (s) => Math.abs(s.frequency - frequency) < (band?.step ?? 0.1) / 2,
   );
@@ -65,20 +80,8 @@ export default function ScanPage() {
     (h) => Math.abs(h.frequency - frequency) < (band?.step ?? 0.1) / 2,
   );
 
-  /* Switching band lands you on its busiest room rather than wherever the
-     needle happened to be, which is usually a gap on the new band. */
-  useEffect(() => {
-    if (!band || band.stations.length === 0) return;
-    const busiest = [...band.stations].sort(
-      (a, b) => b.occupantCount - a.occupantCount,
-    )[0];
-    setFrequency(busiest.frequency);
-  }, [band]);
 
-  const { data: detail } = useFetch<CoChannelView>(
-    tuned ? `/api/co-channels/${tuned.id}` : null,
-    [tuned?.id],
-  );
+  const { data: detail } = useFetch<CoChannelView>(tuned ? `/api/co-channels/${tuned.id}` : null);
 
   const scan = (direction: 1 | -1) => {
     const next = nextStation(stations, frequency, direction);

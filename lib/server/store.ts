@@ -175,18 +175,6 @@ export function getCoChannel(id: string): CoChannelView | undefined {
   return row ? toView(row) : undefined;
 }
 
-export function getCoChannelByFrequency(
-  ecosystem: EcosystemId,
-  frequency: number,
-): CoChannelView | undefined {
-  const row = state.channels.find(
-    (c) =>
-      c.ecosystem === ecosystem &&
-      Math.abs(c.frequency - frequency) < FREQUENCY_STEP / 2,
-  );
-  return row ? toView(row) : undefined;
-}
-
 /* --------------------------------------------------------------- the band */
 
 /**
@@ -222,12 +210,6 @@ function activeHold(ecosystem: EcosystemId, frequency: number) {
       h.frequency.toFixed(1) === frequency.toFixed(1) &&
       new Date(h.until).getTime() > now,
   );
-}
-
-export function holdOn(ecosystem: EcosystemId, frequency: number) {
-  const hold = activeHold(ecosystem, frequency);
-  if (!hold) return null;
-  return { ...hold, holder: peopleById.get(hold.holderId) };
 }
 
 /** Every live hold on a band, so the scale can show reserved gaps. */

@@ -27,15 +27,9 @@ export function CommandBar({
   const router = useRouter();
   const ecosystem = useRadio((s) => s.ecosystem);
 
-  const { data: coChannels } = useFetch<CoChannelView[]>(
-    open ? "/api/co-channels" : null,
-    [open],
-  );
-  const { data: people } = useFetch<Person[]>(open ? "/api/people" : null, [open]);
-  const { data: recordings } = useFetch<Recording[]>(
-    open ? "/api/recordings" : null,
-    [open],
-  );
+  const { data: coChannels } = useFetch<CoChannelView[]>(open ? "/api/co-channels" : null);
+  const { data: people } = useFetch<Person[]>(open ? "/api/people" : null);
+  const { data: recordings } = useFetch<Recording[]>(open ? "/api/recordings" : null);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {

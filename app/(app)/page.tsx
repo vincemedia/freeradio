@@ -7,6 +7,7 @@ import useFetch from "@/lib/use-fetch";
 import { CoChannelCard, CoChannelCardSkeleton } from "@/components/co-channel/card";
 import { NewCoChannelDialog } from "@/components/co-channel/new-co-channel";
 import { ContactsOnAir } from "@/components/co-channel/contacts-on-air";
+import { RecentCoChannels } from "@/components/co-channel/recent";
 import { PageHeader } from "@/components/shell/page-header";
 import { Button } from "@/components/ui/button";
 import { EmptyState, Input } from "@/components/ui/primitives";
@@ -24,10 +25,7 @@ export default function OnAirPage() {
   const ecosystem = useRadio((s) => s.ecosystem);
   const [q, setQ] = useState("");
 
-  const { data, loading } = useFetch<CoChannelView[]>(
-    `/api/co-channels?ecosystem=${ecosystem}${q ? `&q=${encodeURIComponent(q)}` : ""}`,
-    [ecosystem, q],
-  );
+  const { data, loading } = useFetch<CoChannelView[]>(`/api/co-channels?ecosystem=${ecosystem}${q ? `&q=${encodeURIComponent(q)}` : ""}`);
 
   const band = getEcosystem(ecosystem);
 
@@ -42,6 +40,8 @@ export default function OnAirPage() {
       />
 
       <ContactsOnAir />
+
+      <RecentCoChannels />
 
       <section className="space-y-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
