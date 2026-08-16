@@ -2,7 +2,7 @@
 
 import { Command } from "cmdk";
 import { useRouter } from "next/navigation";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Broadcast, Record, UsersThree } from "@phosphor-icons/react";
 import useFetch from "@/lib/use-fetch";
 import { Avatar, EcosystemMark } from "@/components/identity";
@@ -26,6 +26,7 @@ export function CommandBar({
 }) {
   const router = useRouter();
   const ecosystem = useRadio((s) => s.ecosystem);
+  const [query, setQuery] = useState("");
 
   const { data: coChannels } = useFetch<CoChannelView[]>(open ? "/api/co-channels" : null);
   const { data: people } = useFetch<Person[]>(open ? "/api/people" : null);
@@ -52,6 +53,14 @@ export function CommandBar({
   const here = (coChannels ?? []).filter((c) => c.ecosystem === ecosystem);
   const elsewhere = (coChannels ?? []).filter((c) => c.ecosystem !== ecosystem);
 
+  /* Where each person is, from the rooms already loaded. Picking a handle
+     should take you to them if you can hear them, so the result needs to know
+     that before you choose it, not after. */
+  const roomOf = new Map<string, CoChannelView>();
+  for (const c of coChannels ?? []) {
+    for (const o of c.occupants) roomOf.set(o.personId, c);
+  }
+
   return (
     <Command.Dialog
       open={open}
@@ -62,6 +71,8 @@ export function CommandBar({
       contentClassName=""
     >
       <Command.Input
+        value={query}
+        onValueChange={setQuery}
         placeholder="Search Co-Channels, handles, frequencies"
         className="h-12 w-full border-b border-border bg-transparent px-4 text-base outline-none placeholder:text-muted-foreground sm:text-sm"
       />
@@ -117,26 +128,52 @@ export function CommandBar({
           </Command.Group>
         )}
 
-        {(people ?? []).length > 0 && (
+        {/* Handles appear once you have typed something. cmdk filters what is
+            rendered, so a capped list would silently make most of the 87
+            people unsearchable, and rendering all of them by default would
+            bury the rooms under a directory nobody asked for. */}
+        {query.trim().length >= 2 && (people ?? []).length > 0 && (
           <Command.Group
             heading="Handles"
             className="[&_[cmdk-group-heading]]:px-2 [&_[cmdk-group-heading]]:py-1.5 [&_[cmdk-group-heading]]:text-[11px] [&_[cmdk-group-heading]]:font-medium [&_[cmdk-group-heading]]:uppercase [&_[cmdk-group-heading]]:tracking-[0.06em] [&_[cmdk-group-heading]]:text-muted-foreground"
           >
-            {(people ?? []).slice(0, 40).map((p) => (
-              <Command.Item
-                key={p.id}
-                value={`${p.name} @${p.handle} ${p.username ?? ""} ${p.ecosystem}`}
-                onSelect={() => go(`/contacts?handle=${p.id}`)}
-                className="flex cursor-pointer items-center gap-2.5 rounded-md px-2 py-2 text-sm data-[selected=true]:bg-muted"
-              >
-                <Avatar person={p} size={20} />
-                <span className="min-w-0 flex-1 truncate">{p.name}</span>
-                <span className="flex shrink-0 items-center gap-0.5 text-xs text-muted-foreground">
-                  @{p.username ?? p.handle}
-                  <EcosystemMark ecosystem={p.ecosystem} size={12} />
-                </span>
-              </Command.Item>
-            ))}
+            {(people ?? []).map((p) => {
+              const room = roomOf.get(p.id);
+              return (
+                <Command.Item
+                  key={p.id}
+                  value={`${p.name} @${p.handle} ${p.username ?? ""} ${p.ecosystem}`}
+                  /* Straight to the room when they are on air, since that is
+                     the only thing this app can do about a person. Otherwise
+                     to Contacts, filtered to them, rather than to a list they
+                     then have to search again. */
+                  onSelect={() =>
+                    go(
+                      room
+                        ? `/co-channel/${room.id}`
+                        : `/contacts?q=${encodeURIComponent(p.username ?? p.handle)}`,
+                    )
+                  }
+                  className="flex cursor-pointer items-center gap-2.5 rounded-md px-2 py-2 text-sm data-[selected=true]:bg-muted"
+                >
+                  <Avatar person={p} size={20} />
+                  <span className="min-w-0 flex-1 truncate">{p.name}</span>
+                  {room ? (
+                    <span className="flex shrink-0 items-center gap-1 text-xs">
+                      <Broadcast size={12} className="text-muted-foreground" />
+                      <span className="readout">
+                        {formatFrequency(room.frequency)}
+                      </span>
+                    </span>
+                  ) : (
+                    <span className="flex shrink-0 items-center gap-0.5 text-xs text-muted-foreground">
+                      @{p.username ?? p.handle}
+                      <EcosystemMark ecosystem={p.ecosystem} size={12} />
+                    </span>
+                  )}
+                </Command.Item>
+              );
+            })}
           </Command.Group>
         )}
 

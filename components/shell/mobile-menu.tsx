@@ -35,9 +35,6 @@ export function MobileMenu({
 }) {
   const [open, setOpen] = useState(false);
   const [panel, setPanel] = useState<"root" | "bands">("root");
-  /* Portals need a document, so nothing is portalled until after mount. */
-  const [mounted, setMounted] = useState(false);
-  useEffect(() => setMounted(true), []);
   const ecosystem = useRadio((s) => s.ecosystem);
   const setEcosystem = useRadio((s) => s.setEcosystem);
   const { data: bands } = useFetch<Band[]>(open ? "/api/ecosystems" : null);
@@ -85,11 +82,14 @@ export function MobileMenu({
         </span>
       </button>
 
-      {/* Portalled to the body on purpose. The top bar sets `backdrop-blur`,
+      {/* Portalled to the body on purpose. The top bar sets a backdrop blur,
           and an ancestor with a backdrop-filter becomes the containing block
           for position:fixed descendants, so rendering the overlay in place
-          sized it against the 56px header and collapsed it to zero height. */}
-      {open && mounted && createPortal(
+          sized it against the 56px header and collapsed it to zero height.
+
+          No mount guard needed: open starts false and only a click sets it,
+          which never happens while rendering on the server. */}
+      {open && createPortal(
         <div className="fixed inset-0 top-14 z-30 bg-background md:hidden">
           <div className="relative h-full overflow-hidden">
             {/* Root panel */}

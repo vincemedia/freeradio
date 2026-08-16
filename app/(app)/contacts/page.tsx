@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useSearchParams } from "next/navigation";
+import { Suspense, useState } from "react";
 import { MagnifyingGlass, UsersThree } from "@phosphor-icons/react";
 import useFetch from "@/lib/use-fetch";
 import { Avatar, EcosystemMark, Identity } from "@/components/identity";
@@ -32,7 +33,32 @@ type Row = {
  * ecosystems, and hiding the ones on another band would make the list lie.
  */
 export default function ContactsPage() {
-  const [q, setQ] = useState("");
+  /* useSearchParams suspends on a statically rendered page, so the part that
+     reads it sits behind its own boundary. */
+  return (
+    <Suspense fallback={<ContactsSkeleton />}>
+      <Contacts />
+    </Suspense>
+  );
+}
+
+function ContactsSkeleton() {
+  return (
+    <div className="space-y-6">
+      <Skeleton className="h-9 w-40" />
+      <Skeleton className="h-10 w-full sm:max-w-sm" />
+      {Array.from({ length: 6 }).map((_, i) => (
+        <Skeleton key={i} className="h-14 w-full rounded-lg" />
+      ))}
+    </div>
+  );
+}
+
+function Contacts() {
+  /* Arriving from search pre-fills the filter, so picking a handle lands on
+     that person rather than on the whole list again. */
+  const initial = useSearchParams().get("q") ?? "";
+  const [q, setQ] = useState(initial);
   const { data, loading } = useFetch<Row[]>("/api/contacts");
 
   const filtered = (data ?? []).filter((r) =>

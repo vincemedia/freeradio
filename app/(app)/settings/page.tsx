@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useSyncExternalStore } from "react";
 import { useTheme } from "next-themes";
 import { Check, Monitor, Moon, Sun } from "@phosphor-icons/react";
 import { Avatar, EcosystemMark, Identity } from "@/components/identity";
@@ -32,10 +32,14 @@ export default function SettingsPage() {
   const setEcosystem = useRadio((s) => s.setEcosystem);
   const session = useRadio((s) => s.session);
 
-  /* next-themes only knows the resolved value on the client, so the controls
-     render inert until mount rather than briefly showing the wrong one. */
-  const [ready, setReady] = useState(false);
-  useEffect(() => setReady(true), []);
+  /* next-themes only knows the resolved theme on the client, so the controls
+     stay inert until hydration rather than briefly showing the wrong one.
+     Read as an external store: no effect, and nothing to cascade. */
+  const ready = useSyncExternalStore(
+    () => () => {},
+    () => true,
+    () => false,
+  );
 
   return (
     <div className="max-w-2xl space-y-8">
