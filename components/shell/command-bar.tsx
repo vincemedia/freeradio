@@ -66,7 +66,11 @@ export function CommandBar({
       open={open}
       onOpenChange={onOpenChange}
       label="Search Free Radio"
-      className="fixed left-1/2 top-[12vh] z-50 w-[calc(100vw-2rem)] max-w-lg -translate-x-1/2 overflow-hidden rounded-lg border border-border bg-popover shadow-[var(--shadow-overlay)]"
+      /* Full bleed on a phone: a search that covers the screen is the whole
+         task, and a floating card with corners and a margin around it is a
+         dialog pretending the page behind it still matters. From sm up it
+         becomes the card again. */
+      className="fixed inset-0 z-50 flex flex-col overflow-hidden border-border bg-popover sm:inset-auto sm:left-1/2 sm:top-[12vh] sm:block sm:h-auto sm:w-[calc(100vw-2rem)] sm:max-w-lg sm:-translate-x-1/2 sm:rounded-lg sm:border sm:shadow-[var(--shadow-overlay)]"
       overlayClassName="fixed inset-0 z-50 bg-foreground/25"
       contentClassName=""
     >
@@ -74,9 +78,11 @@ export function CommandBar({
         value={query}
         onValueChange={setQuery}
         placeholder="Search stations, handles, frequencies"
-        className="h-12 w-full border-b border-border bg-transparent px-4 text-base outline-none placeholder:text-muted-foreground sm:text-sm"
+        className="h-14 w-full shrink-0 border-b border-border bg-transparent px-4 text-base outline-none placeholder:text-muted-foreground sm:h-12 sm:text-sm"
       />
-      <Command.List className="max-h-[min(24rem,60vh)] overflow-y-auto overscroll-contain p-1.5">
+      {/* On a phone the list is the rest of the screen; from sm up it is a
+          capped panel again. */}
+      <Command.List className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-1.5 sm:max-h-[min(24rem,60vh)] sm:flex-none">
         <Command.Empty className="px-3 py-8 text-center text-sm text-muted-foreground">
           Nothing on any band matches that.
         </Command.Empty>

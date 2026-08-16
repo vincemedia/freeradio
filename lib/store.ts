@@ -2,7 +2,7 @@
 
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
-import { DEFAULT_ECOSYSTEM } from "@/data/ecosystems";
+import { DEFAULT_ECOSYSTEM, DEFAULT_FOLLOWED } from "@/data/ecosystems";
 import type {
   CoChannelView,
   EcosystemId,
@@ -116,9 +116,9 @@ export const useRadio = create<RadioState>()(
   persist(
     (set, get) => ({
       ecosystem: DEFAULT_ECOSYSTEM,
-      /* Nexus to begin with: it is the hub you are signed into, so it is the
-         one band you are definitely on. */
-      followed: [DEFAULT_ECOSYSTEM],
+      /* Nexus because it is the hub you are signed into, Twetch because it
+         is where the stations with real audio are. */
+      followed: [...DEFAULT_FOLLOWED],
       onboarded: false,
       seenOnAirHint: false,
       recent: [],

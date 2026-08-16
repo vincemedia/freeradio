@@ -53,7 +53,7 @@ export function MinimisedBar() {
         "pb-[env(safe-area-inset-bottom)]",
         /* Arrives from below, the direction the room left in. */
         "animate-in slide-in-from-bottom-4 fade-in duration-250 ease-out-quint",
-        "sm:inset-x-auto sm:bottom-4 sm:right-4 sm:w-[22rem] sm:rounded-lg sm:border sm:pb-0 sm:shadow-[var(--shadow-overlay)]",
+        "sm:inset-x-auto sm:bottom-4 sm:right-4 sm:w-[28rem] sm:rounded-lg sm:border sm:pb-0 sm:shadow-[var(--shadow-overlay)]",
       )}
     >
       <div className="flex items-center gap-2.5 px-3 py-2.5">

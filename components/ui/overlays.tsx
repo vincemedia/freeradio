@@ -93,6 +93,39 @@ export function Tooltip({
 }
 
 /**
+ * A tooltip that holds more than a clause.
+ *
+ * Same surface and timing as `Tooltip`, but the content is nodes rather than a
+ * string, for the few places where the useful answer has a mark and a number
+ * in it and reads worse spelled out as a sentence.
+ */
+export function RichTooltip({
+  children,
+  content,
+}: {
+  children: React.ReactNode;
+  content: React.ReactNode;
+}) {
+  return (
+    <T.Provider delayDuration={200}>
+      <T.Root>
+        <T.Trigger asChild>{children}</T.Trigger>
+        <T.Portal>
+          <T.Content
+            sideOffset={6}
+            collisionPadding={8}
+            className="z-50 max-w-[min(20rem,calc(100vw-2rem))] rounded-sm bg-foreground px-2.5 py-2 text-xs leading-snug text-background shadow-[var(--shadow-overlay)] data-[state=delayed-open]:animate-in data-[state=delayed-open]:fade-in"
+          >
+            {content}
+            <T.Arrow className="fill-foreground" width={10} height={5} />
+          </T.Content>
+        </T.Portal>
+      </T.Root>
+    </T.Provider>
+  );
+}
+
+/**
  * A hint that shows itself.
  *
  * The one tooltip in the product that opens without being asked, because it

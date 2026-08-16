@@ -372,18 +372,35 @@ export default function CoChannelPage() {
           )}
         </Panel>
 
-        <Nest room={view} canPost={inThisRoom} />
-        <OccupantGrid room={view} leaving={leaving} />
-        {inThisRoom && <Transcript lines={transcript} />}
-        {!inThisRoom && (
-          <p className="rounded-lg border border-dashed border-border px-4 py-6 text-center text-sm text-muted-foreground">
-            Join to follow the transcript as people talk.
-          </p>
-        )}
+        {/* Everything below the header waits for the header to finish
+            morphing out of the card, then arrives in reading order. The
+            header is the only thing that was already on screen; letting the
+            rest appear with it wastes the one movement the eye can follow.
+            Timing lives in globals.css so it cannot drift from the view
+            transition's own duration. */}
+        <div data-settle style={{ "--settle-index": 0 } as React.CSSProperties}>
+          <Nest room={view} canPost={inThisRoom} />
+        </div>
+        <div data-settle style={{ "--settle-index": 1 } as React.CSSProperties}>
+          <OccupantGrid room={view} leaving={leaving} />
+        </div>
+        <div data-settle style={{ "--settle-index": 2 } as React.CSSProperties}>
+          {inThisRoom ? (
+            <Transcript lines={transcript} />
+          ) : (
+            <p className="rounded-lg border border-dashed border-border px-4 py-6 text-center text-sm text-muted-foreground">
+              Join to follow the transcript as people talk.
+            </p>
+          )}
+        </div>
       </div>
 
       {/* Docked sidepane, at xl and above only. */}
-      <aside className="hidden w-[20rem] shrink-0 xl:block">
+      <aside
+        data-settle
+        style={{ "--settle-index": 3 } as React.CSSProperties}
+        className="hidden w-[20rem] shrink-0 xl:block"
+      >
         <div className="sticky top-20 rounded-lg border border-border bg-card p-4">
           <SidePane room={view} />
         </div>

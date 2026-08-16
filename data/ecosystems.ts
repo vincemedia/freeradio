@@ -109,3 +109,13 @@ export function getEcosystem(id: string): Ecosystem | undefined {
 
 /** The band you are on unless you switch it, because you are inside Nexus. */
 export const DEFAULT_ECOSYSTEM = "nexus" as const;
+
+/**
+ * The bands ticked when onboarding first draws the list.
+ *
+ * Nexus because it is the hub you are signed into, and Twetch because it is
+ * where the stations with real recordings behind them are: a first run that
+ * ends on a band with nothing to hear is a worse introduction than one extra
+ * checkbox already ticked.
+ */
+export const DEFAULT_FOLLOWED = ["nexus", "twetch"] as const;

@@ -5,8 +5,10 @@ import { useRouter } from "next/navigation";
 import { Coins, LockKey, Prohibit, ShieldCheck } from "@phosphor-icons/react";
 import { Facepile, Identity } from "@/components/identity";
 import { Badge } from "@/components/ui/primitives";
-import type { CoChannelView, GateKind } from "@/data/schema";
-import { GATE_LABEL } from "@/lib/gates";
+import { RichTooltip, Tooltip } from "@/components/ui/overlays";
+import { getToken } from "@/data/tokens";
+import type { CoChannelView, GateKind, Gates, Token } from "@/data/schema";
+import { GATE_HELP, GATE_LABEL } from "@/lib/gates";
 import { formatFrequency } from "@/lib/format";
 import { useRadio } from "@/lib/store";
 import { cn } from "@/lib/utils";
@@ -22,14 +24,104 @@ const GATE_ICON: Record<Exclude<GateKind, "open">, React.ComponentType<{ size?: 
   renounce: Prohibit,
 };
 
-export function GateBadge({ gate }: { gate: GateKind }) {
+/**
+ * The gate on a card, and what it actually asks for.
+ *
+ * The badge alone says a door has terms; it does not say whether you are
+ * likely to get through, which is the only thing anybody wants to know from a
+ * browse list. So the terms come with it on hover: the token's own mark, its
+ * name and the amount, rather than the word "Token".
+ *
+ * Falls back to the one-clause explanation when the gate is one without an
+ * asset behind it, or when the caller has no gate detail to pass.
+ */
+export function GateBadge({ gate, gates }: { gate: GateKind; gates?: Gates }) {
   if (gate === "open") return null;
   const Icon = GATE_ICON[gate];
-  return (
+
+  const badge = (
     <Badge variant="outline" className="gap-1">
       <Icon size={11} />
       {GATE_LABEL[gate]}
     </Badge>
+  );
+
+  const terms = gates ? gateTerms(gate, gates) : null;
+  if (!terms) return <Tooltip label={GATE_HELP[gate]}>{badge}</Tooltip>;
+
+  return (
+    <RichTooltip content={terms}>
+      {/* A span, because the card around this is a link and the tooltip
+          trigger must not be a nested interactive element. */}
+      <span tabIndex={0} className="rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+        {badge}
+      </span>
+    </RichTooltip>
+  );
+}
+
+/** What the gate holds out for, drawn with the asset's own mark. */
+function gateTerms(gate: GateKind, gates: Gates): React.ReactNode | null {
+  if (gate === "token" && gates.token.on && gates.token.ids.length > 0) {
+    return (
+      <span className="flex flex-col gap-1">
+        <span className="opacity-70">To join you must hold</span>
+        {gates.token.ids.map((id, i) => {
+          const token = getToken(id);
+          const min = gates.token.minimums?.[id];
+          return (
+            <span key={id} className="flex items-center gap-1.5">
+              {i > 0 && <span className="opacity-70">or</span>}
+              <TokenMark token={token} id={id} />
+              <span className="font-medium">{token?.name ?? id}</span>
+              {min != null && (
+                <span className="readout tabular-nums">
+                  {min.toLocaleString("en-GB")} {token?.symbol ?? ""}
+                </span>
+              )}
+            </span>
+          );
+        })}
+      </span>
+    );
+  }
+
+  if (gate === "timelock" && gates.timelock.on) {
+    const token = getToken(gates.timelock.assetId ?? "bsv");
+    return (
+      <span className="flex flex-col gap-1">
+        <span className="opacity-70">To join you must have locked</span>
+        <span className="flex items-center gap-1.5">
+          <TokenMark token={token} id={gates.timelock.assetId ?? "bsv"} />
+          <span className="readout tabular-nums font-medium">
+            {gates.timelock.amount} {token?.symbol ?? "BSV"}
+          </span>
+          <span className="opacity-70">
+            for {(gates.timelock.minBlocks ?? 0).toLocaleString("en-GB")} more blocks
+          </span>
+        </span>
+      </span>
+    );
+  }
+
+  return null;
+}
+
+/** The token's mark, or its colour when it has no file of its own. */
+function TokenMark({ token, id }: { token?: Token; id: string }) {
+  if (token?.icon) {
+    return (
+      /* eslint-disable-next-line @next/next/no-img-element */
+      <img src={token.icon} alt="" width={14} height={14} className="shrink-0 rounded-full" />
+    );
+  }
+  return (
+    <span
+      aria-hidden
+      className="size-3.5 shrink-0 rounded-full ring-1 ring-background/40"
+      style={{ background: token?.color ?? "currentColor" }}
+      title={token?.symbol ?? id}
+    />
   );
 }
 
@@ -76,7 +168,12 @@ export function CoChannelCard({
             } as React.CSSProperties)
       }
       className={cn(
-        "group relative flex flex-col gap-3 rounded-lg border border-border bg-card p-4 transition-[transform,background-color] duration-150 ease-[var(--ease-out-quint)] hover:bg-muted/40 active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+        /* Hovering lifts the card off the panel rather than tinting it. A
+           Braun front panel is one surface with things standing proud of it;
+           the way it answers a finger is by having depth, not by changing
+           colour. So the card rises a hair and takes a shadow, and pressing
+           it puts it back down flush. */
+        "group relative flex flex-col gap-3 rounded-lg border border-border bg-card p-4 transition-[transform,box-shadow,border-color] duration-150 ease-[var(--ease-out-quint)] hover:-translate-y-0.5 hover:border-foreground/15 hover:shadow-[var(--shadow-raised)] active:translate-y-0 active:shadow-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background motion-reduce:transition-none motion-reduce:hover:translate-y-0",
         className,
       )}
     >
@@ -100,7 +197,7 @@ export function CoChannelCard({
               REC
             </Badge>
           )}
-          <GateBadge gate={coChannel.primaryGate} />
+          <GateBadge gate={coChannel.primaryGate} gates={coChannel.gates} />
         </div>
       </div>
 
