@@ -21,9 +21,15 @@ import { personFromKey, truncateKey } from "@/lib/identity-key";
  * would get on with, because there is no social graph here to mine and
  * pretending otherwise would be inventing one.
  *
- * Renders nothing when nobody has been on lately, which leaves the written
- * empty state to say so on its own. An offer of nobody is worse than no
- * offer.
+ * Renders nothing when nobody has been on lately. An offer of nobody is worse
+ * than no offer.
+ *
+ * Shown whether or not you already have contacts. It began as an empty-state
+ * decoration, which is exactly backwards: the moment you add one person the
+ * list stops being empty, and the way to find the second person vanishes with
+ * it. It is also the only route back to somebody you shared a room with and
+ * did not add at the time — which is the common case, since you were
+ * listening to them rather than looking at the screen.
  */
 
 export function RecentPeople() {
@@ -42,8 +48,9 @@ export function RecentPeople() {
           Recently on air
         </h2>
         <p className="mt-1 text-xs text-muted-foreground">
-          People who have been in a room lately. Adding somebody here is the
-          same as adding them from a room.
+          Anybody who has been in a room lately, including whoever you were
+          just talking to. Names are whatever they chose; the ones without a
+          username are their key, so go by the face.
         </p>
       </div>
 

@@ -76,14 +76,10 @@ function Contacts() {
       />
 
       {contacts.length === 0 ? (
-        <div className="space-y-6">
-          <EmptyState title="Nobody yet" icon={<UsersThree size={28} />}>
-            Join a station and add the people you hear. They will show up here,
-            and on the front page whenever they are on air.
-          </EmptyState>
-          {/* Or start from the people who have actually been here. */}
-          <RecentPeople />
-        </div>
+        <EmptyState title="Nobody yet" icon={<UsersThree size={28} />}>
+          Join a station and add the people you hear. They will show up here,
+          and on the front page whenever they are on air.
+        </EmptyState>
       ) : (
         <>
           <div className="relative sm:max-w-sm">
@@ -198,6 +194,13 @@ function Contacts() {
           )}
         </>
       )}
+
+      {/* Always, rather than only while the list is empty. A way to find
+          somebody is not a decoration for a blank screen — it is most wanted
+          right after you have met one person, which is exactly when an
+          empty-state-only version disappears. It is also the only route to
+          somebody you shared a room with and forgot to add at the time. */}
+      <RecentPeople />
     </div>
   );
 }
