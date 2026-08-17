@@ -61,7 +61,7 @@ export function LiveOccupants({
           {live.status === "joining"
             ? "Opening the room…"
             : live.status === "unavailable"
-              ? "This station is not reachable right now."
+              ? (live.error ?? "This station is not reachable right now.")
               : "Join to see who is here and to be heard yourself."}
         </p>
       </section>

@@ -110,6 +110,18 @@ export function useLiveRoom(coChannelId: string | null): LiveRoom {
   const [error, setError] = useState<string | null>(null);
 
   const meetingRef = useRef<Meeting | null>(null);
+  /**
+   * The station this browser is *trying* to be in.
+   *
+   * Distinct from the meeting, which is whether it currently is. A dropped
+   * connection leaves the intent intact and the meeting null, which is exactly
+   * the state a reconnect needs to recognise: locking a phone suspends the
+   * page and kills the transport, and coming back to a room that quietly gave
+   * up is the single most annoying thing a voice app can do.
+   */
+  const intent = useRef<string | null>(null);
+  /** How many times a drop has been answered, so it cannot loop forever. */
+  const attempts = useRef(0);
   /* Mirrored into state as well as held in a ref. The ref is what the
      callbacks use, because they must not be rebuilt every time it changes;
      the state is what the room can render from, because a ref read during
@@ -161,6 +173,10 @@ export function useLiveRoom(coChannelId: string | null): LiveRoom {
   }, []);
 
   const leave = useCallback(() => {
+    /* Leaving is a decision, so it withdraws the intent — nothing should bring
+       this browser back into a room it chose to leave. */
+    intent.current = null;
+    attempts.current = 0;
     const meeting = meetingRef.current;
     meetingRef.current = null;
     setMeeting(null);
@@ -174,8 +190,37 @@ export function useLiveRoom(coChannelId: string | null): LiveRoom {
     });
   }, []);
 
+  /**
+   * Ask to be back in the room.
+   *
+   * A counter rather than a call, because the thing that wants to reconnect is
+   * an SDK event handler bound during a join, and having it invoke that join's
+   * own closure would pin one attempt forever. Bumping a number lets the effect
+   * below run the current one.
+   *
+   * Backs off — a second, then two, then four — because the usual reason a
+   * connection failed is that the network is not there yet, and hammering it
+   * neither helps nor is free. Six attempts is a little over a minute, which
+   * covers a lift, a tunnel and a phone that was face-down for a while, and
+   * stops well short of a tab reconnecting all night on a dead network.
+   */
+  const [retry, setRetry] = useState(0);
+
+  const reconnect = useCallback(() => {
+    if (!intent.current) return;
+    if (attempts.current >= 6) {
+      setStatus("unavailable");
+      setError("Lost the connection to this station. Press join to try again.");
+      return;
+    }
+    const wait = Math.min(8000, 1000 * 2 ** attempts.current);
+    attempts.current += 1;
+    setTimeout(() => setRetry((n) => n + 1), wait);
+  }, []);
+
   const join = useCallback(async () => {
     if (!coChannelId || meetingRef.current) return;
+    intent.current = coChannelId;
     setStatus("joining");
     setError(null);
 
@@ -227,11 +272,19 @@ export function useLiveRoom(coChannelId: string | null): LiveRoom {
        * better failure: two of you talking over each other is worse than none.
        */
       meeting.participants.joined.on("participantJoined", (arrived) => {
+        /* Only while this is still the meeting. A listener bound to a
+           connection that has already been replaced would otherwise tear down
+           its successor — which is a room that dies a second after opening,
+           for no reason the reader could ever guess. */
+        if (meetingRef.current !== meeting) return;
         const mine = meeting.self.customParticipantId;
         if (!mine) return;
         const list = Array.isArray(arrived) ? arrived : [arrived];
         if (!list.some((p) => p?.customParticipantId === mine)) return;
 
+        /* Deliberate, so the reconnect logic does not treat it as a drop and
+           bring this tab straight back into a room it was told to give up. */
+        intent.current = null;
         setError("You joined this station somewhere else, so this tab left it.");
         leave();
       });
@@ -266,15 +319,31 @@ export function useLiveRoom(coChannelId: string | null): LiveRoom {
         setParticipants([]);
         setMicOn(false);
         setRecording(false);
-        setStatus("idle");
-        if (state === "kicked") {
-          setError("The host removed you from this station.");
-        } else if (state === "ended") {
-          setError("This station has ended.");
-        } else if (state === "disconnected") {
-          setError("You were disconnected from this station.");
-        }
         void meeting.leave().catch(() => {});
+
+        if (state === "kicked") {
+          intent.current = null;
+          setStatus("idle");
+          setError("The host removed you from this station.");
+          return;
+        }
+        if (state === "ended") {
+          intent.current = null;
+          setStatus("idle");
+          setError("This station has ended.");
+          return;
+        }
+
+        /* Anything else is a transport that went away rather than a decision
+           anybody made — a phone locking, a tunnel, a network handover. The
+           intent is still to be in this room, so the room comes back. */
+        if (intent.current) {
+          setStatus("joining");
+          setError(null);
+          reconnect();
+          return;
+        }
+        setStatus("idle");
       });
       meeting.recording?.on?.("recordingUpdate", () => {
         const state = meeting.recording?.recordingState;
@@ -285,14 +354,61 @@ export function useLiveRoom(coChannelId: string | null): LiveRoom {
 
       await meeting.join();
       sync();
+      /* Back in. Whatever it took to get here is no longer owed. */
+      attempts.current = 0;
       setStatus("live");
     } catch (e) {
+      /* A failed join is usually a network that is not ready — the token
+         request timing out, the transport refusing — and those recover on
+         their own if asked again. So it retries quietly and only says
+         "unreachable" once it has genuinely stopped trying, rather than at the
+         first stumble. */
+      meetingRef.current = null;
+      if (intent.current && attempts.current < 6) {
+        setError(null);
+        setStatus("joining");
+        reconnect();
+        return;
+      }
       setError(e instanceof Error ? e.message : "Could not reach the room.");
-      /* A station with no live audio configured is not an error the reader
-         can act on, so it reads as unavailable rather than as a failure. */
       setStatus("unavailable");
     }
-  }, [coChannelId, sync, leave]);
+  }, [coChannelId, sync, leave, reconnect]);
+
+  /* Every retry, whatever asked for it, lands here with the current `join`. */
+  useEffect(() => {
+    if (retry === 0) return;
+    if (!intent.current || meetingRef.current) return;
+    void join();
+  }, [retry, join]);
+
+  /**
+   * Coming back to the page.
+   *
+   * A locked phone suspends everything, and the transport is usually gone by
+   * the time it wakes. The SDK sometimes reports that as a `roomLeft` and
+   * sometimes simply stops carrying audio, so waking is treated as its own
+   * reason to check: if this browser means to be in a room and is not in one,
+   * it rejoins.
+   */
+  useEffect(() => {
+    const check = () => {
+      if (document.hidden) return;
+      if (!intent.current || meetingRef.current) return;
+      /* A fresh start: waking up is not the same as a failed attempt, and
+         should not inherit the backoff from one. */
+      attempts.current = 0;
+      setRetry((n) => n + 1);
+    };
+    document.addEventListener("visibilitychange", check);
+    window.addEventListener("online", check);
+    window.addEventListener("pageshow", check);
+    return () => {
+      document.removeEventListener("visibilitychange", check);
+      window.removeEventListener("online", check);
+      window.removeEventListener("pageshow", check);
+    };
+  }, []);
 
   /**
    * Your microphone.
