@@ -3,7 +3,8 @@
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Suspense, useState } from "react";
-import { MagnifyingGlass, Trash, UsersThree } from "@phosphor-icons/react";
+import { MagnifyingGlass, Plug, Trash, UsersThree } from "@phosphor-icons/react";
+import { toast } from "sonner";
 import { Avatar, EcosystemMark } from "@/components/identity";
 import { Lamp } from "@/components/instrument/parts";
 import { RecentPeople } from "@/components/co-channel/recent-people";
@@ -13,6 +14,7 @@ import { EmptyState, Input, Skeleton } from "@/components/ui/primitives";
 import { useContacts, MAX_CONTACTS } from "@/lib/contacts";
 import { formatFrequency } from "@/lib/format";
 import { personFromKey, truncateKey } from "@/lib/identity-key";
+import { useRadio } from "@/lib/store";
 import { useOnAir } from "@/lib/use-on-air";
 
 /**
@@ -55,6 +57,12 @@ function Contacts() {
   const [q, setQ] = useState(initial);
 
   const { contacts, remove } = useContacts();
+  /* Contacts are stored in this browser, but they are *keys* — so having any is
+     only meaningful once you have one yourself. Saying that, with the button
+     that fixes it, beats an instruction that cannot be followed. */
+  const connected = useRadio((s) => s.session?.connected) === true;
+  const connect = useRadio((s) => s.connect);
+  const connecting = useRadio((s) => s.connecting);
   const onAirRows = useOnAir();
   const roomOf = new Map(onAirRows.map((r) => [r.contact.key, r.room]));
 
@@ -76,9 +84,34 @@ function Contacts() {
       />
 
       {contacts.length === 0 ? (
-        <EmptyState title="Nobody yet" icon={<UsersThree size={28} />}>
-          Join a station and add the people you hear. They will show up here,
-          and on the front page whenever they are on air.
+        <EmptyState
+          title={connected ? "Nobody yet" : "Connect a wallet to keep contacts"}
+          icon={<UsersThree size={28} />}
+          action={
+            connected ? undefined : (
+              <Button
+                variant="primary"
+                size="sm"
+                disabled={connecting}
+                onClick={() => {
+                  void connect().then((r) => {
+                    if (!r.ok) {
+                      toast.error("Your wallet did not connect", {
+                        description: r.error,
+                      });
+                    }
+                  });
+                }}
+              >
+                <Plug size={15} />
+                {connecting ? "Connecting" : "Connect a wallet"}
+              </Button>
+            )
+          }
+        >
+          {connected
+            ? "Join a station and add the people you hear. They will show up here, and on the front page whenever they are on air."
+            : "A contact is a person's wallet key, so keeping one needs a key of your own to keep it against. Listening works without one — this is the part that does not."}
         </EmptyState>
       ) : (
         <>

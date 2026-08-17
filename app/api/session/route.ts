@@ -7,7 +7,8 @@ import {
   personFromKey,
   usernameCookieName,
 } from "@/lib/server/identity";
-import { PublicKey, Signature } from "@bsv/sdk";
+import { ProtoWallet } from "@bsv/sdk";
+import { SESSION_PROTOCOL } from "@/lib/session-protocol";
 import {
   challengeIsOurs,
   issueChallenge,
@@ -78,7 +79,7 @@ export async function POST(request: NextRequest) {
 
   if (
     typeof body.signature !== "string" ||
-    !signedByKey(body.publicKey, body.challenge, body.signature)
+    !(await signedByKey(body.publicKey, body.challenge, body.signature))
   ) {
     return NextResponse.json(
       { error: "That signature does not come from that key." },
@@ -166,21 +167,44 @@ export async function DELETE() {
 }
 
 /**
- * Whether that key made that signature.
+ * Whether that identity signed that challenge.
  *
- * DER, hex, over the challenge as UTF-8 — which is what `createSignature` on a
- * BRC-100 wallet produces for a `data` argument. A malformed signature is a
- * failure and not an error: anything this cannot parse is something this will
- * not accept, which is the only safe way for a check like this to be wrong.
+ * The first version of this verified against the identity key directly and
+ * could never have worked, which broke connecting outright: a BRC-100 wallet
+ * does not sign with the identity key. It signs with a key *derived* from it
+ * per BRC-42, from the protocol, the key id and the counterparty — so verifying
+ * against the identity key is checking the wrong key entirely.
+ *
+ * The counterparty is what makes this verifiable at all. A signature made for
+ * `anyone` uses the well-known counterparty key, so anybody holding the
+ * signer's public identity — which is public — can derive the same public key
+ * and check the signature, while only the wallet could have produced it. That
+ * is exactly the asymmetry a login needs, and `ProtoWallet('anyone')` is the
+ * SDK's own side of it.
+ *
+ * The challenge is the key id as well as the data, so the derived key is
+ * specific to this one login attempt.
+ *
+ * Anything unparseable is a refusal rather than an error. A check like this may
+ * only ever fail closed.
  */
-function signedByKey(
+async function signedByKey(
   publicKey: string,
   challenge: string,
   signature: string,
-): boolean {
+): Promise<boolean> {
   try {
-    const key = PublicKey.fromString(publicKey);
-    return key.verify(challenge, Signature.fromDER(signature, "hex"), "utf8");
+    const bytes = signature.match(/../g)?.map((h) => parseInt(h, 16));
+    if (!bytes || bytes.some((b) => Number.isNaN(b))) return false;
+
+    const { valid } = await new ProtoWallet("anyone").verifySignature({
+      data: Array.from(new TextEncoder().encode(challenge)),
+      signature: bytes,
+      protocolID: SESSION_PROTOCOL,
+      keyID: challenge,
+      counterparty: publicKey,
+    });
+    return valid === true;
   } catch {
     return false;
   }

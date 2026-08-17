@@ -1,6 +1,7 @@
 "use client";
 
 import { WalletClient } from "@bsv/sdk";
+import { SESSION_PROTOCOL } from "@/lib/session-protocol";
 
 /**
  * BRC-100 wallet access.
@@ -107,18 +108,23 @@ export async function probeWallet(): Promise<boolean> {
  * operation that requires the private key, and the whole point of asking for it
  * is that a public key alone proves nothing — anybody can quote one.
  *
- * `protocolID` and `keyID` name what the signature is for, so a signature
- * produced for this purpose cannot be replayed as one for another: the wallet
- * derives a distinct key per protocol, and this one says "free radio, session".
+ * The counterparty is `anyone`, which is what makes it verifiable by a server
+ * that holds no private key of yours: the derived public key can be computed
+ * from your public identity, while only your wallet can produce the signature.
  */
 export async function signChallenge(challenge: string): Promise<string> {
   const wallet = getClient();
   const { signature } = await withTimeout(
     wallet.createSignature({
       data: Array.from(new TextEncoder().encode(challenge)),
-      protocolID: [0, "free radio session"],
-      keyID: "identity",
-      counterparty: "self",
+      protocolID: SESSION_PROTOCOL,
+      /* The challenge is the key id as well as the payload, so the key this is
+         signed with is specific to this one login attempt. */
+      keyID: challenge,
+      /* `anyone`, so the server can verify it. A signature for `self` is
+         checkable only by the wallet that made it, which is no use to anybody
+         being asked to believe it — that mistake is what broke connecting. */
+      counterparty: "anyone",
     }),
     ACTION_TIMEOUT_MS,
     () => new NoWalletError(),
