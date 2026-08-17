@@ -47,6 +47,11 @@ export function SidePane({
   const live = useLive();
   /* A live room's occupancy is the meeting's, not the fixture's. */
   const isLive = room.kind === "live";
+  /* And the meeting can only answer for it while you are actually connected.
+     Reading `live.participants` when you are not in the room reports an empty
+     list, which the pane was presenting as "nobody is here" — a claim about the
+     room made from the fact that this browser had left it. */
+  const connectedHere = isLive && live.stationId === room.id && live.status === "live";
 
   const permalink = useMemo(() => {
     if (typeof window === "undefined") return "";
@@ -99,7 +104,9 @@ export function SidePane({
           </div>
           <div className="flex items-baseline justify-between gap-3">
             <dt className="text-muted-foreground">In the room</dt>
-            <dd className="readout">{isLive ? live.participants.length : room.occupantCount}</dd>
+            <dd className="readout">
+              {connectedHere ? live.participants.length : room.occupantCount}
+            </dd>
           </div>
         </dl>
 
@@ -184,7 +191,7 @@ export function SidePane({
         <ul className="space-y-1">
           {/* A live room's occupancy is the meeting's. A recorded one's is who
               was there, which is history and does not change. */}
-          {isLive &&
+          {connectedHere &&
             live.participants.map((p) => (
               <li key={p.id} className="flex items-center gap-2.5 py-1">
                 {/* The face, then the name. A list of names is a list of
@@ -205,9 +212,20 @@ export function SidePane({
                 </span>
               </li>
             ))}
-          {isLive && live.participants.length === 0 && (
+          {connectedHere && live.participants.length === 0 && (
             <li className="py-1 text-sm text-muted-foreground">
               Nobody is here yet.
+            </li>
+          )}
+
+          {/* Not connected, so this browser cannot see the room. Saying how many
+              are in it and that you are not one of them is two true things; the
+              old copy said one false one. */}
+          {isLive && !connectedHere && (
+            <li className="py-1 text-sm text-muted-foreground">
+              {room.occupantCount > 0
+                ? `${room.occupantCount} ${room.occupantCount === 1 ? "person is" : "people are"} in here. Join to see who.`
+                : "Nobody is in here right now."}
             </li>
           )}
 

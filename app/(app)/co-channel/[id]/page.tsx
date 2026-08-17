@@ -224,6 +224,9 @@ export default function CoChannelPage() {
                     back from a request a moment ago is at best a moment
                     behind — which is how somebody standing in a station was
                     told nobody was there. */}
+                {/* The meeting when connected, the server otherwise. Reading a
+                    disconnected meeting gives zero, which is a claim about the
+                    room made from a fact about this browser. */}
                 <span>
                   {inRoom ? live.participants.length : view.occupantCount} in
                   the room

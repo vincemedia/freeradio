@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import RealtimeKitClient from "@cloudflare/realtimekit";
 import { apiPost } from "@/lib/api";
+import { toast } from "sonner";
 import { play } from "@/lib/sfx";
 
 /**
@@ -134,14 +135,29 @@ export function useLiveRoom(coChannelId: string | null): LiveRoom {
    * two people in them, and the two longest were ninety minutes of one browser
    * sitting alone in an empty station.
    *
-   * So a room that nobody is using lets go of you. Not a punishment and not a
-   * timeout on *you* — the test is whether the room has been silent, and your
-   * own open microphone exempts you entirely.
+   * So a room that nobody is using lets go of you — but "nobody is using it" is
+   * a much narrower claim than "nobody has spoken", and the first version of
+   * this conflated them and evicted people who were waiting in a quiet room on
+   * purpose. See the watchdog below for the test that replaced it.
+   *
+   * Zero until the room is actually joined, because `Date.now()` during render
+   * is a different value on every pass and the compiler is right to refuse it.
+   * The join sets it; the watchdog treats zero as "not started yet".
    */
-  /* Zero until the room is actually joined, because `Date.now()` during render
-     is a different value on every pass and the compiler is right to refuse it.
-     The join sets it; the watchdog treats zero as "not started yet". */
   const lastVoice = useRef(0);
+
+  /**
+   * When this browser was last touched.
+   *
+   * The honest signal for "somebody is still here", and the one the first
+   * version of the watchdog lacked entirely — which is why it evicted people who
+   * were sitting in a quiet room on purpose. A pointer or a key means a person,
+   * and a person waiting for somebody to turn up is not waste.
+   */
+  const lastTouch = useRef(0);
+
+  /** When the question was put, or 0 if it has not been. */
+  const asked = useRef(0);
 
   /**
    * A join already in flight.
@@ -445,46 +461,92 @@ export function useLiveRoom(coChannelId: string | null): LiveRoom {
   }, [coChannelId, sync, leave, reconnect]);
 
   /**
-   * Let go of a room nobody is using.
+   * Let go of a room nobody is using — and only then.
    *
-   * Two thresholds, because a backgrounded tab and a foregrounded one are
-   * different claims about whether somebody is there. Visible and silent for
-   * fifteen minutes is somebody who wandered off mid-session; hidden and silent
-   * for three is a tab behind other tabs, which nobody is listening to.
+   * The first version of this tested silence alone and threw people out of
+   * rooms they were sitting in on purpose. Waiting in a quiet room *is* the
+   * product: Open mic exists so somebody can sit in it until another person
+   * turns up, and evicting them at fifteen minutes for being early is far worse
+   * than paying for the connection. It was doing exactly that.
    *
-   * Never while your own microphone is open, and never while a recording is
-   * running: both mean the connection is doing its job, and cutting either
-   * would be the interface deciding it knows better than the person using it.
+   * So a visible tab that is being touched counts as somebody being there,
+   * whatever the room sounds like, and the visible case asks before it acts.
+   * Hidden and silent needs no question — nobody is looking at the answer.
    *
-   * The intent is withdrawn, so the reconnect machinery does not treat this as
-   * a drop and immediately undo it. Coming back is one press, and the room says
-   * plainly why it let go.
+   * Never while your own microphone is open and never while a recording is
+   * running: both mean the connection is doing its job.
    */
   useEffect(() => {
     if (status !== "live") return;
 
-    const VISIBLE_MS = 15 * 60 * 1000;
-    const HIDDEN_MS = 3 * 60 * 1000;
+    /* Backgrounded and silent: nobody is listening, and nobody has to be asked. */
+    const HIDDEN_MS = 5 * 60 * 1000;
+    /* Visible, silent, and untouched. Long, because being wrong here means
+       throwing out somebody who is present. */
+    const IDLE_MS = 30 * 60 * 1000;
+    /* How long the question stands before silence answers it. */
+    const GRACE_MS = 90 * 1000;
+
+    lastTouch.current = Date.now();
+    const touched = () => {
+      lastTouch.current = Date.now();
+      asked.current = 0;
+    };
+    const EVENTS = ["pointerdown", "keydown", "wheel"] as const;
+    for (const event of EVENTS) {
+      window.addEventListener(event, touched, { passive: true });
+    }
 
     const check = setInterval(() => {
       if (!meetingRef.current || lastVoice.current === 0) return;
-      /* Talking, or being recorded: in use either way. */
+
       if (micOn || recording) {
         lastVoice.current = Date.now();
+        asked.current = 0;
         return;
       }
-      const quietFor = Date.now() - lastVoice.current;
-      const limit = document.hidden ? HIDDEN_MS : VISIBLE_MS;
-      if (quietFor < limit) return;
 
-      intent.current = null;
-      setError(
-        "Nobody had spoken here for a while, so this tab let the station go. Press join to come back.",
-      );
-      leave();
-    }, 30_000);
+      const now = Date.now();
+      const quietFor = now - lastVoice.current;
 
-    return () => clearInterval(check);
+      if (document.hidden) {
+        if (quietFor < HIDDEN_MS) return;
+        intent.current = null;
+        setError(
+          "This tab was in the background and the room was quiet, so it let the station go. Press join to come back.",
+        );
+        leave();
+        return;
+      }
+
+      /* Being touched counts for as much as being spoken in. */
+      const idleFor = Math.min(quietFor, now - lastTouch.current);
+      if (idleFor < IDLE_MS) return;
+
+      if (asked.current && now - asked.current > GRACE_MS) {
+        intent.current = null;
+        setError(
+          "Nobody answered, so this tab let the station go. Press join to come back.",
+        );
+        leave();
+        return;
+      }
+
+      /* Ask first. Touching anything at all cancels it. */
+      if (!asked.current) {
+        asked.current = now;
+        toast("Still listening?", {
+          description:
+            "The room has been quiet for a while. Touch anything to stay, or this tab will let the station go.",
+          duration: GRACE_MS,
+        });
+      }
+    }, 20_000);
+
+    return () => {
+      clearInterval(check);
+      for (const event of EVENTS) window.removeEventListener(event, touched);
+    };
   }, [status, micOn, recording, leave]);
 
   /* Every retry, whatever asked for it, lands here with the current `join`. */
