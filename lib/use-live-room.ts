@@ -142,6 +142,21 @@ export function useLiveRoom(coChannelId: string | null): LiveRoom {
      is a different value on every pass and the compiler is right to refuse it.
      The join sets it; the watchdog treats zero as "not started yet". */
   const lastVoice = useRef(0);
+
+  /**
+   * A join already in flight.
+   *
+   * `meetingRef` cannot do this job. It is assigned after two awaits — the
+   * token request, then the SDK's own setup — so two callers arriving in that
+   * window both saw no meeting and both built one. There are now several things
+   * that can start a join: the provider pointing at a station, a retry after a
+   * drop, and waking the tab. Two of them overlapping means two media
+   * connections negotiating for one participant id, which is precisely the
+   * shape that fails as "could not establish media connection".
+   *
+   * So the flag is set synchronously, before anything can yield.
+   */
+  const joining = useRef(false);
   /* Mirrored into state as well as held in a ref. The ref is what the
      callbacks use, because they must not be rebuilt every time it changes;
      the state is what the room can render from, because a ref read during
@@ -198,7 +213,9 @@ export function useLiveRoom(coChannelId: string | null): LiveRoom {
 
   const leave = useCallback(() => {
     /* Leaving is a decision, so it withdraws the intent — nothing should bring
-       this browser back into a room it chose to leave. */
+       this browser back into a room it chose to leave. A join already in flight
+       sees the cleared intent when it lands and abandons itself rather than
+       depositing somebody in a room they have just left. */
     intent.current = null;
     attempts.current = 0;
     const meeting = meetingRef.current;
@@ -243,10 +260,17 @@ export function useLiveRoom(coChannelId: string | null): LiveRoom {
   }, []);
 
   const join = useCallback(async () => {
-    if (!coChannelId || meetingRef.current) return;
+    if (!coChannelId || meetingRef.current || joining.current) return;
+    joining.current = true;
     intent.current = coChannelId;
     setStatus("joining");
     setError(null);
+
+    /* Held so a failure can tear down whatever was half-built. A meeting that
+       was created and then failed to connect still holds a socket and a
+       microphone claim, and leaving it behind is how the next attempt inherits
+       the problem that killed this one. */
+    let building: Meeting | null = null;
 
     try {
       const { authToken, role: granted } = await apiPost<{
@@ -262,6 +286,15 @@ export function useLiveRoom(coChannelId: string | null): LiveRoom {
           video: false,
         },
       });
+      building = meeting;
+
+      /* The station changed under this attempt — somebody pressed a different
+         one while it was connecting. Abandon rather than land in a room nobody
+         asked for. */
+      if (intent.current !== coChannelId) {
+        await meeting.leave().catch(() => {});
+        return;
+      }
 
       meetingRef.current = meeting;
       setMeeting(meeting);
@@ -391,14 +424,23 @@ export function useLiveRoom(coChannelId: string | null): LiveRoom {
          "unreachable" once it has genuinely stopped trying, rather than at the
          first stumble. */
       meetingRef.current = null;
+      setMeeting(null);
+      /* Whatever was built before it failed goes with it. */
+      if (building) await building.leave().catch(() => {});
       if (intent.current && attempts.current < 6) {
         setError(null);
         setStatus("joining");
         reconnect();
         return;
       }
-      setError(e instanceof Error ? e.message : "Could not reach the room.");
+      setError(
+        e instanceof Error && e.message
+          ? e.message
+          : "Could not reach the room.",
+      );
       setStatus("unavailable");
+    } finally {
+      joining.current = false;
     }
   }, [coChannelId, sync, leave, reconnect]);
 
@@ -448,7 +490,7 @@ export function useLiveRoom(coChannelId: string | null): LiveRoom {
   /* Every retry, whatever asked for it, lands here with the current `join`. */
   useEffect(() => {
     if (retry === 0) return;
-    if (!intent.current || meetingRef.current) return;
+    if (!intent.current || meetingRef.current || joining.current) return;
     void join();
   }, [retry, join]);
 
@@ -464,7 +506,7 @@ export function useLiveRoom(coChannelId: string | null): LiveRoom {
   useEffect(() => {
     const check = () => {
       if (document.hidden) return;
-      if (!intent.current || meetingRef.current) return;
+      if (!intent.current || meetingRef.current || joining.current) return;
       /* A fresh start: waking up is not the same as a failed attempt, and
          should not inherit the backoff from one. */
       attempts.current = 0;
