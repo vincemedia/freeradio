@@ -44,7 +44,14 @@ export default function CoChannelPage() {
   const connected = useRadio((s) => s.session?.connected) === true;
   const connect = useRadio((s) => s.connect);
 
-  const { data: preview, loading, error } = useFetch<RoomResponse>(`/api/co-channels/${id}`);
+  /* Kept fresh while the page is open. Fetched once, the occupancy was whatever
+     it happened to be when the room was opened — so somebody who joined an empty
+     station was told nobody was there, indefinitely. */
+  const {
+    data: preview,
+    loading,
+    error,
+  } = useFetch<RoomResponse>(`/api/co-channels/${id}`, 20_000);
   /* A recorded broadcast's words are a fact about the past, fetched once. */
   const { data: transcriptLines } = useFetch<TranscriptLineView[]>(
     preview && preview.kind === "recorded" && preview.hasAudio

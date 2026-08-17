@@ -35,6 +35,7 @@ export function MinimisedBar() {
 
   const { data: room } = useFetch<CoChannelView>(
     live.stationId ? `/api/co-channels/${live.stationId}` : null,
+    20_000,
   );
 
   if (!live.stationId || live.status !== "live" || !room) return null;
@@ -72,7 +73,13 @@ export function MinimisedBar() {
                 {formatFrequency(room.frequency)}
               </span>
               <span className="text-[11px] text-muted-foreground">
-                {live.participants.length} in the room
+                {/* The meeting when it can answer, the room's own count when it
+                    cannot. Reading an unconnected meeting gives zero, which is
+                    a claim about the station made from a fact about this tab. */}
+                {live.status === "live"
+                  ? live.participants.length
+                  : (room?.occupantCount ?? 0)}{" "}
+                in the room
               </span>
             </span>
             <span className="mt-0.5 block truncate text-[13px] font-medium leading-tight">

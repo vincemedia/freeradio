@@ -15,8 +15,8 @@
  * The browser already has an image decoder. It is the one that will display the
  * result, it is sandboxed, it needs no binary shipped to a Lambda, and it can do
  * the work before six megabytes are sent anywhere. So the resize happens here
- * and the server's job becomes narrower and stricter: accept one format, one
- * size, one shape, and refuse everything else.
+ * and the server's job becomes narrower and stricter: accept only what a canvas
+ * produces, at one size and one shape, and refuse everything else.
  *
  * ## What is kept, and what is given up
  *
@@ -27,8 +27,8 @@
  * holds.
  *
  * Given up: the server no longer *proves* that by re-encoding. It checks the
- * magic bytes, the declared type and the length, so what it stores is a small
- * WebP or nothing — but a determined client could hand it a hostile small WebP
+ * magic bytes and the length, so what it stores is a small WebP or PNG or
+ * nothing — but a determined client could hand it a hostile small one of those
  * rather than one this function made. That is the same exposure every site with
  * user avatars carries, and it is a real reduction from before. It is written
  * down here rather than quietly forgotten, and the privacy policy says the
@@ -59,7 +59,10 @@ export class NotAnImageError extends Error {
 const MAX_INPUT_BYTES = 12 * 1024 * 1024;
 
 /**
- * A square WebP, cropped from the middle, ready to upload.
+ * A square image, cropped from the middle, ready to upload.
+ *
+ * WebP where the browser can encode it and PNG where it cannot, because
+ * `toBlob` is only required to support PNG. Both are accepted by the server.
  *
  * SVG is refused here as well as on the server. It is a document format with
  * script and external references in it, and while a canvas would flatten it,
@@ -93,13 +96,19 @@ export async function squareWebp(file: File): Promise<Blob> {
       height,
     );
 
-    const blob = await new Promise<Blob | null>((resolve) => {
-      canvas.toBlob(resolve, "image/webp", QUALITY);
-    });
-    /* A browser with no WebP encoder would hand back a PNG under the wrong
-       type, or nothing. Either way this is not the file the server accepts. */
-    if (!blob || blob.type !== "image/webp") throw new NotAnImageError();
-    return blob;
+    /* WebP if the browser can, PNG if it cannot. `toBlob` is only required to
+       support PNG — everything else is best-effort — and a browser that cannot
+       encode WebP quietly returns a PNG under the type it was given, so the
+       result is checked rather than assumed. Either is canvas output, which is
+       the whole point: a fresh encode from raw pixels, carrying none of the
+       original's metadata. */
+    const webp = await encode(canvas, "image/webp");
+    if (webp) return webp;
+
+    const png = await encode(canvas, "image/png");
+    if (png) return png;
+
+    throw new NotAnImageError();
   } finally {
     bitmap.close();
   }
@@ -119,4 +128,15 @@ async function decode(file: File): Promise<ImageBitmap> {
   } catch {
     throw new NotAnImageError();
   }
+}
+
+/** One attempt at a format, or null if this browser will not produce it. */
+async function encode(
+  canvas: HTMLCanvasElement,
+  type: "image/webp" | "image/png",
+): Promise<Blob | null> {
+  const blob = await new Promise<Blob | null>((resolve) => {
+    canvas.toBlob(resolve, type, QUALITY);
+  });
+  return blob && blob.type === type ? blob : null;
 }

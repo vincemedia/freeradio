@@ -45,12 +45,31 @@ export const maxDuration = 30;
 /** A re-encoded 256px WebP is a few tens of kilobytes. This is generous. */
 const MAX_BYTES = 512 * 1024;
 
-/** `RIFF` … `WEBP`: twelve bytes that a WebP has and other things do not. */
-function isWebp(bytes: Uint8Array): boolean {
-  if (bytes.length < 12) return false;
+/**
+ * What canvas can produce, recognised by its bytes rather than its claim.
+ *
+ * WebP first, PNG as the fallback, because `toBlob` is only *required* to
+ * support PNG — everything else is best-effort, and a browser that cannot
+ * encode WebP silently hands back a PNG instead. Accepting only WebP made that
+ * browser unable to set an avatar at all, which is a strange way to punish
+ * somebody for their Safari version.
+ *
+ * Both are canvas output either way, which is what the privacy claim rests on:
+ * a fresh encode from raw pixels carries no EXIF, no location and no trailing
+ * payload from the file somebody picked.
+ */
+function looksLikeCanvasOutput(bytes: Uint8Array): "webp" | "png" | null {
+  if (bytes.length < 12) return null;
   const tag = (at: number) =>
     String.fromCharCode(bytes[at], bytes[at + 1], bytes[at + 2], bytes[at + 3]);
-  return tag(0) === "RIFF" && tag(8) === "WEBP";
+
+  if (tag(0) === "RIFF" && tag(8) === "WEBP") return "webp";
+
+  /* The eight-byte PNG signature. */
+  const png = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a];
+  if (png.every((b, i) => bytes[i] === b)) return "png";
+
+  return null;
 }
 
 export async function POST(request: NextRequest) {
@@ -91,9 +110,13 @@ export async function POST(request: NextRequest) {
   }
 
   const bytes = new Uint8Array(await file.arrayBuffer());
-  if (!isWebp(bytes)) {
+  const kind = looksLikeCanvasOutput(bytes);
+  if (!kind) {
     return NextResponse.json(
-      { error: "That is not a WebP. The app resizes images before sending them." },
+      {
+        error:
+          "That is not an image this accepts. Pick a JPEG, PNG, GIF or WebP and the app will resize it.",
+      },
       { status: 415 },
     );
   }
@@ -106,16 +129,29 @@ export async function POST(request: NextRequest) {
   /* Keyed by the identity that uploaded it, so one wallet cannot overwrite
      another's, and suffixed randomly so a replaced avatar is not served from a
      cache under its old URL. */
-  const key = `avatars/${connected.publicKey.slice(0, 16)}.webp`;
+  const key = `avatars/${connected.publicKey.slice(0, 16)}.${kind}`;
 
-  const blob = await put(key, Buffer.from(bytes), {
-    access: "public",
-    /* Set here, never taken from the upload: a blob served as text/html would
-       be a stored cross-site script. */
-    contentType: "image/webp",
-    addRandomSuffix: true,
-    cacheControlMaxAge: 60 * 60 * 24 * 365,
-  });
+  let blob;
+  try {
+    blob = await put(key, Buffer.from(bytes), {
+      access: "public",
+      /* From the bytes, never from the upload's own claim: a blob served as
+         text/html would be a stored cross-site script. */
+      contentType: kind === "webp" ? "image/webp" : "image/png",
+      addRandomSuffix: true,
+      cacheControlMaxAge: 60 * 60 * 24 * 365,
+    });
+  } catch (e) {
+    /* Reported rather than swallowed into a bare 500. Four deploys were spent
+       on an upload failure that said nothing about itself. */
+    return NextResponse.json(
+      {
+        error: "The image could not be stored.",
+        detail: e instanceof Error ? e.message : String(e),
+      },
+      { status: 502 },
+    );
+  }
 
   /* The previous one, if any, is removed rather than left paid for. */
   const previous = request.cookies.get(avatarCookieName())?.value ?? null;
