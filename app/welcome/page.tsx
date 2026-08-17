@@ -1,9 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { toast } from "sonner";
-import { useEffect, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
 import {
   ArrowLeft,
   Broadcast,
@@ -127,7 +127,27 @@ const GATES = [
 ] as const;
 
 export default function WelcomePage() {
+  /* useSearchParams suspends on a statically rendered page, so the whole flow
+     sits behind a boundary rather than the one line that reads the param. */
+  return (
+    <Suspense fallback={null}>
+      <Welcome />
+    </Suspense>
+  );
+}
+
+function Welcome() {
   const router = useRouter();
+  /**
+   * Watching it again, from settings.
+   *
+   * Not a second first run. Somebody who came back for the explanation has
+   * already chosen a name and already agreed to the terms, and asking for both
+   * again would be the app forgetting them as the price of a refresher. So the
+   * last step loses the field and the checkbox, and the end of it goes back to
+   * the band rather than into a recorded broadcast — they have heard it.
+   */
+  const again = useSearchParams().get("again") === "1";
   const setOnboarded = useRadio((s) => s.setOnboarded);
   const followed = useRadio((s) => s.followed);
   const toggleFollowed = useRadio((s) => s.toggleFollowed);
@@ -204,6 +224,15 @@ export default function WelcomePage() {
       setEcosystem(followed[0]);
     }
     setOnboarded(true);
+
+    /* A repeat viewing ends where somebody actually wants to be — the band they
+       were on — rather than in an hour of somebody else's recorded broadcast
+       they have already been shown once. */
+    if (again) {
+      router.replace("/");
+      return;
+    }
+
     setEcosystem(FIRST_RUN_BAND);
 
     /* Started here rather than on arrival, because here is a click.
@@ -492,9 +521,9 @@ export default function WelcomePage() {
                   The band is open
                 </h1>
                 <p className="max-w-sm text-sm leading-relaxed text-balance text-muted-foreground">
-                  Listening needs nothing. Connect a wallet when you want to be
-                  in a room rather than beside it — to speak, to pin a link, or
-                  to take a frequency of your own.
+                  {again
+                    ? "That is the whole of it. Your name, your bands and your contacts are exactly as you left them."
+                    : "Listening needs nothing. Connect a wallet when you want to be in a room rather than beside it — to speak, to pin a link, or to take a frequency of your own."}
                 </p>
               </div>
 
@@ -507,6 +536,7 @@ export default function WelcomePage() {
                   than as a form that has appeared beneath a splash screen. A
                   full-width field for a one-word answer also invites a
                   sentence. */}
+              {!again && (
               <div className="mx-auto mt-3 w-full max-w-[17rem] space-y-2 text-center">
                 <label
                   htmlFor="fr-username"
@@ -570,6 +600,7 @@ export default function WelcomePage() {
                   </span>
                 </label>
               </div>
+              )}
 
               {/* Both ways out of the last step, with the wallet on top
                   because it is the one that opens the rest of the product.
@@ -584,7 +615,7 @@ export default function WelcomePage() {
                 <Button
                   variant="primary"
                   className="w-full"
-                  disabled={connecting || !agreed}
+                  disabled={connecting || (!again && !agreed)}
                   onClick={() => {
                     void connect().then((result) => {
                       if (!result.ok) {
@@ -603,10 +634,10 @@ export default function WelcomePage() {
                 <Button
                   variant="ghost"
                   className="w-full"
-                  disabled={!agreed}
+                  disabled={!again && !agreed}
                   onClick={() => void finish()}
                 >
-                  Just listen for now
+                  {again ? "Back to the band" : "Just listen for now"}
                 </Button>
               </div>
             </>
