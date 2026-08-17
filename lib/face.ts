@@ -16,15 +16,31 @@ import { isIdentityKey, personFromKey } from "@/lib/identity-key";
  * avatar needs to be worth drawing.
  */
 export function facePerson(participant: {
+  /** the peer id in a live room, or the participant id in a roster */
   id: string;
+  /**
+   * The identity, where it is carried separately.
+   *
+   * A live participant has two ids: a peer id, which is per connection and
+   * means nothing across two of them, and a custom id, which is the public
+   * key. Seeding an avatar on the peer id gives somebody a different face
+   * every time they reconnect and a different face from the one they have in
+   * the top bar — which is exactly what the occupant list was doing, because
+   * this read `id` and a participant's `id` is the peer.
+   */
+  customId?: string;
   name: string;
   picture?: string;
 }): Person {
-  const key = isIdentityKey(participant.id) ? participant.id : null;
+  /* The identity if there is one, otherwise whatever is stable about them. */
+  const identifier = participant.customId ?? participant.id;
+  const key = isIdentityKey(identifier) ? identifier : null;
   const person = personFromKey(
     key ?? `02${"0".repeat(64)}`,
     participant.name,
     participant.picture ?? null,
   );
-  return key ? person : { ...person, id: participant.id, publicKey: undefined };
+  /* A listener has no key, so their seat is the seed — stable for that
+     browser, and nobody else's. */
+  return key ? person : { ...person, id: identifier, publicKey: undefined };
 }
