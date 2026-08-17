@@ -14,6 +14,7 @@ import { EcosystemMark } from "@/components/identity";
 import { NotificationToggle } from "@/components/shell/notification-toggle";
 import { SfxToggle } from "@/components/shell/sfx-toggle";
 import { AvatarPicker } from "@/components/shell/avatar-picker";
+import { HandleCard, HandleClaim } from "@/components/shell/handle-editor";
 import { PageHeader } from "@/components/shell/page-header";
 import { UsernameEditor } from "@/components/shell/username-editor";
 import { Button } from "@/components/ui/button";
@@ -109,8 +110,20 @@ function Notifications() {
           <div className="space-y-2">
             {/* The name first: it is what other people see most often, and the
                 thing most likely to be missing — anybody who arrived through an
-                invitation to a station never chose one. */}
-            <UsernameEditor person={me} />
+                invitation to a station never chose one.
+
+                A verified BRC-169 handle replaces the field outright rather than
+                sitting above it. Two display names for one person is a question
+                every list in the app would have to answer, and the attested one
+                wins each time it is asked — so there is nothing to choose. */}
+            {session.handle ? (
+              <HandleCard person={me} handle={session.handle} />
+            ) : (
+              <>
+                <UsernameEditor person={me} />
+                <HandleClaim />
+              </>
+            )}
             <AvatarPicker person={me} />
           </div>
         ) : (

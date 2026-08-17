@@ -35,6 +35,11 @@ export const PLATFORM_FEE = 0.05;
  * something on it.
  */
 export const HOLD_PRICE_USD: Record<EcosystemId, number> = {
+  /* The dearest band, because it is the one that reaches everybody rather than
+     one ecosystem's users. Required as well as reasonable: this map is keyed by
+     every ecosystem, and a missing entry would hand the scan page an undefined
+     price rather than a number. */
+  longwave: 24,
   nexus: 12,
   twetch: 9,
   treechat: 9,

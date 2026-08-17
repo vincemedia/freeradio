@@ -25,7 +25,7 @@ import { TuningScale, type Station } from "@/components/instrument/tuning-scale"
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/primitives";
 import { FIRST_RUN_BAND, FIRST_RUN_STATION } from "@/data/audio";
-import { ecosystems, getEcosystem } from "@/data/ecosystems";
+import { BAND, ecosystems, getEcosystem } from "@/data/ecosystems";
 import type { CoChannelView, EcosystemId } from "@/data/schema";
 import { useRadio } from "@/lib/store";
 import { cn } from "@/lib/utils";
@@ -60,17 +60,37 @@ const PLACEHOLDER_STATIONS: Station[] = [
 const SWEEP_SIZE = 5;
 
 /**
+ * The stretch of dial the first screen demonstrates.
+ *
+ * The FM band, because it is the one most people have physically tuned and the
+ * screen is teaching what a scale is rather than cataloguing the bands. Named
+ * rather than repeated as two literals, so the marks and the ruler cannot drift
+ * apart — which is exactly how a station on another band ended up placed off the
+ * end of it.
+ */
+const DEMO_BAND = BAND;
+
+/**
  * Rooms for the demonstration dial, drawn from what is actually on air.
  *
  * One per band where possible, so the first thing anybody sees is that a
  * frequency belongs to an ecosystem rather than to the app, which is the
  * point step two then asks them to act on. Frequencies must be distinct or
  * two rooms would land on the same mark and only one would ever be tunable.
+ *
+ * Only rooms that fit the scale below, which runs 87.5 to 108. Longwave sits at
+ * 160–180, so its station would have been picked as its band's busiest and then
+ * placed sixty megahertz past the right-hand end of the ruler: a mark nobody can
+ * see, and one fifth of the sweep spent on a needle parked off the dial.
  */
 function pickSweep(rooms: CoChannelView[]): CoChannelView[] {
   const chosen: CoChannelView[] = [];
   const usedBands = new Set<string>();
   const usedFrequencies = new Set<string>();
+
+  rooms = rooms.filter(
+    (r) => r.frequency >= DEMO_BAND.min && r.frequency <= DEMO_BAND.max,
+  );
 
   const take = (room: CoChannelView) => {
     const f = room.frequency.toFixed(1);
@@ -219,7 +239,13 @@ function Welcome() {
    * impression than a good conversation you can hear immediately.
    */
   const finish = async () => {
-    if (name.trim() && !nameSaved) await saveName();
+    /* A wallet that turned out to have a BRC-169 handle has already been named
+       by its ecosystem, and that name outranks anything typed here — so the
+       typed one is dropped rather than saved and then overridden. Read from the
+       store rather than from a prop because it is only known once the wallet has
+       connected, which happens on this very step. */
+    const named = useRadio.getState().session?.handle;
+    if (!named && name.trim() && !nameSaved) await saveName();
     if (!followed.includes(useRadio.getState().ecosystem)) {
       setEcosystem(followed[0]);
     }
@@ -349,8 +375,8 @@ function Welcome() {
 
                 <Panel className="p-4">
                   <TuningScale
-                    min={87.5}
-                    max={108}
+                    min={DEMO_BAND.min}
+                    max={DEMO_BAND.max}
                     step={0.1}
                     value={frequency}
                     stations={stations}
@@ -561,9 +587,14 @@ function Welcome() {
                   aria-describedby="fr-username-help"
                   className="h-11 text-center"
                 />
+                {/* The handle cannot be mentioned as a fact yet, because
+                    nothing knows about it until a wallet connects — which is the
+                    button below this one. So it is set as an expectation rather
+                    than left to surprise somebody who finds their typed name
+                    gone a moment later. */}
                 <p id="fr-username-help" className="text-xs text-muted-foreground">
                   {nameError ??
-                    "Shown to everyone in a room. Without one you appear as your identity key, shortened."}
+                    "Shown to everyone in a room. If your wallet has a registered handle, that is used instead."}
                 </p>
 
                 {/* The agreement, next to the thing being agreed to rather

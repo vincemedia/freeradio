@@ -106,6 +106,43 @@ export function sealKey(publicKey: string): string {
   return `${publicKey}.${sign(`identity:${publicKey}`)}`;
 }
 
+/**
+ * The verified handle cookie, sealed *and bound to the key*.
+ *
+ * A handle is an attested name — the whole reason it displaces the username is
+ * that a registry vouched for it — so a plain cookie holding one would be
+ * exactly the bug the identity cookie used to have, with a better disguise:
+ * type `fr_handle=@satoshi@handcash.io` in devtools and the app introduces you
+ * that way in every room you enter. Verified at the endpoint and unverified on
+ * the way back in is not verified.
+ *
+ * The key goes into the tag as well as the handle, so a sealed handle cannot be
+ * lifted from one session and replayed under another identity. A cookie that
+ * says `@alice@handcash.io` is only good for the one wallet alice proved.
+ */
+export function sealHandle(publicKey: string, handle: string): string {
+  return `${handle}.${sign(`handle:${publicKey}:${handle}`)}`;
+}
+
+/** The handle inside a sealed cookie, if this server sealed it for this key. */
+export function unsealHandle(
+  publicKey: string,
+  value: string | undefined,
+): string | null {
+  if (!value) return null;
+  const cut = value.lastIndexOf(".");
+  if (cut <= 0) return null;
+
+  const handle = value.slice(0, cut);
+  const mac = value.slice(cut + 1);
+  const expected = sign(`handle:${publicKey}:${handle}`);
+
+  const a = Buffer.from(mac);
+  const b = Buffer.from(expected);
+  if (a.length !== b.length || !timingSafeEqual(a, b)) return null;
+  return handle;
+}
+
 /** The key inside a sealed cookie, or null if this server did not seal it. */
 export function unsealKey(value: string | undefined): string | null {
   if (!value) return null;

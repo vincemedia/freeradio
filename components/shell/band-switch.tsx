@@ -4,16 +4,11 @@ import { DropdownMenu } from "radix-ui";
 import { CaretDown, Check } from "@phosphor-icons/react";
 import useSWRLike from "@/lib/use-fetch";
 import { EcosystemMark } from "@/components/identity";
-import type { Ecosystem } from "@/data/schema";
+import { howBusy, type Band } from "@/lib/band-busy";
 import { useRadio } from "@/lib/store";
 import { DropdownRoot } from "@/components/ui/overlays";
 import { useOnAir } from "@/lib/use-on-air";
 import { cn } from "@/lib/utils";
-
-type Band = Ecosystem & {
-  coChannelCount: number;
-  occupantCount: number;
-};
 
 /**
  * The band switch.
@@ -24,7 +19,7 @@ type Band = Ecosystem & {
  * that something is happening elsewhere.
  */
 export function BandSwitch({ className }: { className?: string }) {
-  const { data: bands } = useSWRLike<Band[]>("/api/ecosystems");
+  const { data: bands, reload } = useSWRLike<Band[]>("/api/ecosystems");
   const ecosystem = useRadio((s) => s.ecosystem);
   const setEcosystem = useRadio((s) => s.setEcosystem);
   const followed = useRadio((s) => s.followed);
@@ -39,7 +34,13 @@ export function BandSwitch({ className }: { className?: string }) {
   const current = bands?.find((b) => b.id === ecosystem);
 
   return (
-    <DropdownRoot>
+    /* Refreshed as the menu opens rather than on a timer.
+       These counts are only read at the moment somebody is deciding where to go,
+       and the switch is mounted in the top bar on every page — so polling it
+       would mean a request every few seconds, on every open tab, for a number
+       nobody is looking at. Fetched once for the badge on the trigger, and again
+       the instant the list is actually shown. */
+    <DropdownRoot onOpenChange={(open) => open && void reload()}>
       <DropdownMenu.Trigger
         className={cn(
           "inline-flex h-9 items-center gap-2 rounded-md border border-border bg-card px-2.5 text-sm font-medium transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
@@ -96,10 +97,7 @@ export function BandSwitch({ className }: { className?: string }) {
                         )}
                       </span>
                       <span className="mt-0.5 block text-xs text-muted-foreground">
-                        {b.coChannelCount === 0
-                          ? "Nothing on air"
-                          : `${b.coChannelCount} on air, ${b.occupantCount} talking`}
-                        {(known[b.id] ?? 0) > 0 && `, ${known[b.id]} you know`}
+                        {howBusy(b, known[b.id] ?? 0)}
                       </span>
                     </span>
                     {b.id === ecosystem && (

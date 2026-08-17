@@ -126,8 +126,14 @@ export default function ScanImage() {
           />
         </div>
 
+        {/* Was "on every ecosystem", which stopped being true the moment a band
+            had limits of its own: Longwave has its own stretch of dial, so a card
+            claiming every ecosystem shared this one was advertising a fact about
+            most of them. No direction is claimed either — this card draws the FM
+            ruler, and where the other band sits relative to it is not something a
+            single scale can show. */}
         <div style={{ display: "flex", fontSize: 22, color: MUTED }}>
-          {`${BAND.min.toFixed(1)} to ${BAND.max.toFixed(1)} MHz, on every ecosystem`}
+          {`${BAND.min.toFixed(1)} to ${BAND.max.toFixed(1)} MHz, plus the global Longwave band`}
         </div>
       </div>
     ),

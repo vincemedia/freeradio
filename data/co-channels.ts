@@ -549,6 +549,32 @@ const SPECS: Spec[] = [
  * makes a stranger unmute, so each of these is one.
  */
 const LIVE_SEEDS: Spec[] = [
+  /**
+   * The one station on Longwave, and the only one there will be.
+   *
+   * Every other seeded station is somewhere to go on a band that would otherwise
+   * be bare. This one is the point of its band: a single global frequency that is
+   * always on, so there is never an hour when opening the app means finding
+   * nobody anywhere.
+   *
+   * Hostless like the rest, and for the same reason — naming a host reads as a
+   * promise that a particular person is in there. On a station that is meant to
+   * be permanently open, whoever turns up runs it until they leave.
+   */
+  {
+    id: "cc-global-town-square",
+    kind: "live",
+    frequency: 169.0,
+    ecosystem: "longwave",
+    title: "24/7 Global Town Square on FreeRadio",
+    topic:
+      "Any hour, any wallet, any subject. The one frequency that is always open — if nobody is talking when you arrive, you are the one who starts.",
+    hostId: "",
+    bed: "piano",
+    occupantIds: [],
+    muted: [],
+    startedMinutesAgo: 0,
+  },
   {
     id: "cc-open-mic",
     kind: "live",

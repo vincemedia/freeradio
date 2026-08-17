@@ -1,5 +1,9 @@
 import { NextResponse } from "next/server";
-import { BAND, MAX_STATIONS_PER_BAND, getEcosystem } from "@/data/ecosystems";
+import {
+  MAX_STATIONS_PER_BAND,
+  bandFor,
+  getEcosystem,
+} from "@/data/ecosystems";
 import { DEFAULT_BED, isBedId, type BedId } from "@/data/beds";
 import type { EcosystemId, Gates } from "@/data/schema";
 import { connectedPerson } from "@/lib/server/identity";
@@ -137,7 +141,13 @@ export async function POST(request: Request) {
       ),
     ].map((s) => s.frequency.toFixed(1)),
   );
-  const frequency = body.frequency ?? firstFree(taken);
+  /* This band's limits, not the FM band's. Every check here used to read one
+     shared constant, so a station on Longwave — where the dial runs 160 to 180 —
+     would have been refused at its own frequency, and an unpicked one would have
+     been offered 87.5, which is not on that band at all. */
+  const band = bandFor(body.ecosystem);
+
+  const frequency = body.frequency ?? firstFree(taken, band);
   if (frequency === null) {
     return NextResponse.json({ error: "The band is full." }, { status: 409 });
   }
@@ -149,13 +159,13 @@ export async function POST(request: Request) {
   const onGrid = Math.abs(frequency * 10 - Math.round(frequency * 10)) < 1e-9;
   if (
     !Number.isFinite(frequency) ||
-    frequency < BAND.min ||
-    frequency > BAND.max ||
+    frequency < band.min ||
+    frequency > band.max ||
     !onGrid
   ) {
     return NextResponse.json(
       {
-        error: `A frequency has to be between ${BAND.min.toFixed(1)} and ${BAND.max.toFixed(1)}, in tenths.`,
+        error: `A frequency on ${bandName(body.ecosystem)} has to be between ${band.min.toFixed(1)} and ${band.max.toFixed(1)}, in tenths.`,
         field: "frequency",
       },
       { status: 400 },
@@ -199,9 +209,12 @@ export async function POST(request: Request) {
   return NextResponse.json(station, { status: 201 });
 }
 
-/** The lowest tenth nobody is on. */
-function firstFree(taken: Set<string>): number | null {
-  for (let f = 87.5; f <= 108.0 + 1e-9; f += 0.1) {
+/** The lowest tenth nobody is on, within this band's own limits. */
+function firstFree(
+  taken: Set<string>,
+  band: { min: number; max: number },
+): number | null {
+  for (let f = band.min; f <= band.max + 1e-9; f += 0.1) {
     const key = Number(f.toFixed(1)).toFixed(1);
     if (!taken.has(key)) return Number(key);
   }

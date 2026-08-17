@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { BAND, DEFAULT_ECOSYSTEM, FREQUENCY_STEP } from "@/data/ecosystems";
+import { DEFAULT_ECOSYSTEM, FREQUENCY_STEP, bandFor } from "@/data/ecosystems";
 import type { EcosystemId } from "@/data/schema";
 import { HOLD_PRICE_USD } from "@/data/pricing";
 import { bandOccupants, liveRosters } from "@/lib/server/live-counts";
@@ -19,6 +19,11 @@ export async function GET(request: Request) {
   const url = new URL(request.url);
   const ecosystem =
     (url.searchParams.get("ecosystem") as EcosystemId) || DEFAULT_ECOSYSTEM;
+
+  /* The limits this band actually has. Read from the ecosystem rather than from
+     one shared constant, or the scale draws Longwave as 87.5–108 and its only
+     station sits sixty megahertz off the end of it. */
+  const band = bandFor(ecosystem);
 
   const seeded = bandOccupancy(ecosystem);
 
@@ -74,7 +79,7 @@ export async function GET(request: Request) {
   ]);
 
   let nextFree: number | null = null;
-  for (let f = BAND.min; f <= BAND.max + 1e-9; f += FREQUENCY_STEP) {
+  for (let f = band.min; f <= band.max + 1e-9; f += FREQUENCY_STEP) {
     const key = Number(f.toFixed(1));
     if (!taken.has(key.toFixed(1))) {
       nextFree = key;
@@ -84,8 +89,8 @@ export async function GET(request: Request) {
 
   return NextResponse.json({
     ecosystem,
-    min: BAND.min,
-    max: BAND.max,
+    min: band.min,
+    max: band.max,
     step: FREQUENCY_STEP,
     stations,
     /* Reserved gaps. A frequency nobody is broadcasting on is not necessarily

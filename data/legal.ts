@@ -80,6 +80,8 @@ export const TERMS: Clause[] = [
     body: [
       "You are identified by your wallet's public key. There is no password and no account to recover: control of the key is control of the identity, and nobody can restore it for you if you lose it.",
       "A username is a label on that key. It is not owned, reserved or unique, and it can be changed.",
+      "A BRC-169 handle is not a username. It is issued by an ecosystem — a domain that is the authority for handles within it — and this service displays one only after that ecosystem's registry confirms it belongs to your key. While you have one it replaces your username and cannot be edited here, because it is not this service's to edit. It is checked again each time you connect, so a handle that is revoked or transferred stops being shown.",
+      "Handles are unique within their ecosystem and nowhere else. `@you@one.example` and `@you@another.example` are different people, which is why the ecosystem is always shown alongside the name. Whether a given ecosystem is trustworthy is not something this service asserts.",
     ],
   },
   {
@@ -102,8 +104,16 @@ export const PRIVACY: Clause[] = [
   {
     heading: "Where it is kept",
     body: [
-      "Your key, username and avatar address are held in cookies in your own browser. They are sent back to the server so it knows who is speaking, and they are not sold, shared or combined with anything.",
+      "Your key, username, handle and avatar address are held in cookies in your own browser. They are sent back to the server so it knows who is speaking, and they are not sold, shared or combined with anything.",
       "Avatars are stored with Vercel. Voice and recordings are carried and stored by Cloudflare RealtimeKit. Both are processors acting on instruction.",
+    ],
+  },
+  {
+    heading: "Handles and the ecosystem you name",
+    body: [
+      "Claiming a BRC-169 handle asks that ecosystem's registry who the handle belongs to. The request is made by this service's server rather than by your browser, so the registry sees the handle being asked about and this service's address — not yours, and nothing about which stations you are in.",
+      "The ecosystem is whichever domain you name, including one this service has never heard of. It is a third party, not a processor acting on instruction, and what it logs is governed by its own terms and not by these.",
+      "The request is repeated each time you connect, because that is the only way to notice a handle that has been revoked or moved to another wallet.",
     ],
   },
   {

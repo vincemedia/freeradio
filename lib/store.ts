@@ -32,6 +32,14 @@ interface Session {
   connected: boolean;
   me: Person | null;
   username: string | null;
+  /**
+   * A verified BRC-169 handle, as `@alice@handcash.io`.
+   *
+   * Set only after an ecosystem's registry confirmed this key owns it. Its
+   * presence is what tells the UI the display name is not editable: a name an
+   * ecosystem attested is not a preference.
+   */
+  handle: string | null;
   coChannelId: string | null;
   muted: boolean;
 }
@@ -80,6 +88,10 @@ interface RadioState {
   connect: () => Promise<{ ok: boolean; error?: string }>;
   /** name this identity; works before a wallet is connected */
   setUsername: (username: string) => Promise<{ ok: boolean; error?: string }>;
+  /** claim a BRC-169 handle, verified against its ecosystem's registry */
+  claimHandle: (handle: string) => Promise<{ ok: boolean; error?: string }>;
+  /** stop displaying the handle; connecting again re-adopts it */
+  releaseHandle: () => Promise<void>;
   disconnect: () => Promise<void>;
   /** remember a station you opened, for "You were in" */
   remember: (room: CoChannelView) => void;
@@ -134,7 +146,9 @@ export const useRadio = create<RadioState>()(
       connect: async () => {
         set({ connecting: true });
         try {
-          const { connectWallet, signChallenge } = await import("@/lib/wallet");
+          const { connectWallet, signChallenge, walletHandle } = await import(
+            "@/lib/wallet"
+          );
           const identity = await connectWallet();
 
           /* A key on its own proves nothing — it is public, and printed in
@@ -146,10 +160,19 @@ export const useRadio = create<RadioState>()(
           );
           const signature = await signChallenge(challenge);
 
+          /* Asked before anybody is: a wallet holding a BRC-169 handle
+             certificate can say so itself, and then nobody has to be shown a
+             field at all. Null for every wallet today — see lib/wallet-handle
+             for exactly why — and it is sent as a claim either way, because a
+             local process saying it is `@satoshi@handcash.io` is still only a
+             process saying so. The server resolves it. */
+          const handle = await walletHandle(identity.publicKey);
+
           const session = await apiPost<Session>("/api/session", {
             publicKey: identity.publicKey,
             challenge,
             signature,
+            handle: handle ?? undefined,
             /* Carried through so a name chosen before connecting sticks to
                the key that arrives. */
             username: get().session?.username ?? undefined,
@@ -184,6 +207,40 @@ export const useRadio = create<RadioState>()(
             error: e instanceof ApiError ? e.message : "That name will not do.",
           };
         }
+      },
+
+      /**
+       * Claim a BRC-169 handle.
+       *
+       * The string goes to the server unexamined beyond being a string. It is
+       * the registry that decides whether this wallet owns it, and the error
+       * that comes back is the registry's own sentence — "belongs to a different
+       * wallet", "is not registered on handcash.io" — because each of those
+       * tells somebody something different about what to do next.
+       */
+      claimHandle: async (handle) => {
+        try {
+          const session = await apiPost<Session>("/api/session/handle", {
+            handle,
+          });
+          set({ session });
+          return { ok: true };
+        } catch (e) {
+          return {
+            ok: false,
+            error:
+              e instanceof ApiError
+                ? e.message
+                : "That handle could not be checked.",
+          };
+        }
+      },
+
+      releaseHandle: async () => {
+        const session = await apiFetch<Session>("/api/session/handle", {
+          method: "DELETE",
+        });
+        set({ session });
       },
 
       disconnect: async () => {

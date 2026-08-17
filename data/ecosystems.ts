@@ -23,6 +23,23 @@ import type { Ecosystem } from "./schema";
  */
 export const BAND = { min: 87.5, max: 108.0 } as const;
 
+/**
+ * Longwave, further down the dial.
+ *
+ * Its own stretch rather than a share of the FM band, because a frequency is
+ * only an address if it belongs to one band — and Longwave is the band anybody
+ * can be on regardless of which wallet they use, so it cannot sit on top of
+ * somebody's ecosystem. Twenty wide and stepped in tenths like every other
+ * band, so the scale, the sweep and the create dialog behave identically on it.
+ *
+ * Real longwave is measured in kilohertz rather than megahertz, and a faithful
+ * 148.5–283.5 kHz band would have meant a second unit running through every
+ * readout in the product. The dial here is one instrument with one unit; what
+ * makes this band longwave is that it is the shared one, low on the dial, that
+ * carries everywhere.
+ */
+export const LONGWAVE_BAND = { min: 160.0, max: 180.0 } as const;
+
 /** The dial moves in tenths, so a band holds 206 addressable frequencies. */
 export const FREQUENCY_STEP = 0.1;
 
@@ -38,6 +55,30 @@ export const FREQUENCY_STEP = 0.1;
 export const MAX_STATIONS_PER_BAND = 25;
 
 export const ecosystems: Ecosystem[] = [
+  /**
+   * Longwave, first in the list.
+   *
+   * Every other band belongs to an ecosystem, and which one you are on is a
+   * consequence of which wallet you use. This one is not: it is the shared
+   * band, and the station on it is always there. That is what longwave was for
+   * — the signal that reached past the local transmitters — so it sits at the
+   * top rather than being filed under whichever ecosystem happened to build it.
+   *
+   * Its domain is this service, because on this band there is no other
+   * authority to name. Handles on Longwave are whatever their own ecosystem
+   * says they are; the band does not issue any of its own.
+   */
+  {
+    id: "longwave",
+    name: "Longwave (Global)",
+    description:
+      "The shared band. One station, always on, open to anybody on any wallet — the frequency that carries when the local ones do not.",
+    alias: "longwave",
+    domain: "freeradio.bsvb.net",
+    icon: "/ecosystems/longwave.svg",
+    iconPlate: "#0b1b2b",
+    band: LONGWAVE_BAND,
+  },
   {
     id: "nexus",
     name: "Nexus",
@@ -121,6 +162,22 @@ export function getEcosystem(id: string): Ecosystem | undefined {
   return ecosystems.find((e) => e.id === id);
 }
 
+/**
+ * The dial limits for a band.
+ *
+ * The schema has said from the beginning that each ecosystem owns its own band,
+ * and until Longwave every one of them was the same 87.5–108.0 — so everything
+ * that needed limits reached for the `BAND` constant instead, and every one of
+ * those places would have refused a station at 169 or offered a frequency on the
+ * wrong band. This is the one question they should all have been asking.
+ *
+ * Falls back to the FM band for an unknown id, which is what the callers did
+ * before and keeps a bad ecosystem a validation failure rather than a crash.
+ */
+export function bandFor(id: string): { min: number; max: number } {
+  return getEcosystem(id)?.band ?? BAND;
+}
+
 /** The band you are on unless you switch it, because you are inside Nexus. */
 export const DEFAULT_ECOSYSTEM = "nexus" as const;
 
@@ -131,5 +188,12 @@ export const DEFAULT_ECOSYSTEM = "nexus" as const;
  * where the stations with real recordings behind them are: a first run that
  * ends on a band with nothing to hear is a worse introduction than one extra
  * checkbox already ticked.
+ *
+ * Longwave because it is the one band with something on it at every hour. The
+ * others depend on whoever happens to be about; a band nobody follows is a band
+ * nobody sees, and an always-on station that nobody can find is not on.
+ *
+ * Only new arrivals get these. Anybody who has already chosen keeps their own
+ * list, because a stored preference that silently grows is not a preference.
  */
-export const DEFAULT_FOLLOWED = ["nexus", "twetch"] as const;
+export const DEFAULT_FOLLOWED = ["longwave", "nexus", "twetch"] as const;

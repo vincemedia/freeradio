@@ -1,6 +1,8 @@
+import { cookies } from "next/headers";
 import { NextResponse, type NextRequest } from "next/server";
 import {
   connectedPerson,
+  handleCookieName,
   identityCookieName,
   isIdentityKey,
   normaliseUsername,
@@ -12,8 +14,12 @@ import { SESSION_PROTOCOL } from "@/lib/session-protocol";
 import {
   challengeIsOurs,
   issueChallenge,
+  sealHandle,
   sealKey,
+  unsealHandle,
 } from "@/lib/server/challenge";
+import { formatHandle, parseFormatted, parseHandle } from "@/lib/handle";
+import { handleBelongsTo } from "@/lib/server/handle-resolve";
 import { leave, sessionFor } from "@/lib/server/store";
 
 export const dynamic = "force-dynamic";
@@ -49,6 +55,14 @@ export async function PUT() {
  * A username may come with it, or later, or never. It is a display name for a
  * key and nothing more — it grants nothing, it is not checked for uniqueness
  * against anybody, and without one the key itself is shown, truncated.
+ *
+ * A BRC-169 handle is the other thing entirely, and connecting is where it is
+ * settled. If the wallet volunteered one, it is resolved against the key that
+ * just proved itself; if a previously verified handle is already sealed into a
+ * cookie, it is resolved again for the same reason. A handle can be revoked or
+ * transferred to somebody else's wallet, and neither event sends us a message —
+ * so connecting is the moment to ask, and a handle that no longer answers to
+ * this key is dropped rather than carried.
  */
 export async function POST(request: NextRequest) {
   let body: {
@@ -56,6 +70,8 @@ export async function POST(request: NextRequest) {
     username?: string;
     challenge?: string;
     signature?: string;
+    /** a handle the wallet produced by itself, still to be verified here */
+    handle?: string;
   } = {};
   try {
     body = await request.json();
@@ -91,19 +107,80 @@ export async function POST(request: NextRequest) {
      connection is the point, and a name can be set again. */
   const username = body.username ? normaliseUsername(body.username) : null;
 
-  const response = NextResponse.json(
-    sessionFor({ person: personFromKey(body.publicKey, username), username }),
-  );
+  const handle = await settleHandle(body.publicKey, body.handle);
+
   const options = {
     httpOnly: true,
     sameSite: "lax" as const,
     path: "/",
     maxAge: YEAR,
   };
+
+  const response = NextResponse.json(
+    sessionFor({
+      /* The handle is the name when there is one, which is what makes the
+         username field disappear rather than quietly lose an argument. */
+      person: personFromKey(body.publicKey, handle ?? username),
+      username,
+      handle,
+    }),
+  );
   /* Sealed, so it cannot be forged by hand. */
   response.cookies.set(identityCookieName(), sealKey(body.publicKey), options);
   if (username) response.cookies.set(usernameCookieName(), username, options);
+  if (handle) {
+    response.cookies.set(
+      handleCookieName(),
+      sealHandle(body.publicKey, handle),
+      options,
+    );
+  } else {
+    /* Explicitly cleared. A handle that has been revoked or moved to another
+       wallet must not survive as a stale cookie, and this is the only moment we
+       ever find out that it has. */
+    response.cookies.delete(handleCookieName());
+  }
   return response;
+}
+
+/**
+ * The handle this connection is entitled to, if any.
+ *
+ * Two sources, both untrusted in the same way. One is whatever the wallet
+ * volunteered, which reaches us as a string in a request body and is therefore
+ * a claim. The other is the sealed cookie from last time, which this server did
+ * issue — but to a binding that may since have been revoked or transferred, so
+ * age makes it a claim again.
+ *
+ * Either way the registry decides, and any failure is silent. Nobody connecting
+ * to listen to the radio should be stopped, or even interrupted, because an
+ * ecosystem's endpoint is down: the cost of a failed check is being called by
+ * your username, which is what everybody without a handle is called anyway.
+ */
+async function settleHandle(
+  publicKey: string,
+  offered: string | undefined,
+): Promise<string | null> {
+  const previous = unsealHandle(
+    publicKey,
+    (await cookies()).get(handleCookieName())?.value,
+  );
+
+  /* What the wallet offered comes first; the cookie is the fallback. A wallet
+     that has since been given a different handle should not be held to the old
+     one just because we remembered it. */
+  const candidate = offered?.trim() || previous;
+  if (!candidate) return null;
+
+  const name = parseFormatted(candidate) ?? parseHandle(candidate);
+  if (!name) return null;
+
+  try {
+    await handleBelongsTo(name, publicKey);
+    return formatHandle(name);
+  } catch {
+    return null;
+  }
 }
 
 /**
@@ -112,6 +189,11 @@ export async function POST(request: NextRequest) {
  * Separate from POST because first run asks for a name *before* the wallet:
  * choosing what to be called should not require having connected, and the
  * name is kept for whichever key connects next.
+ *
+ * Refused outright for anybody holding a verified handle. The UI hides the field
+ * in that case, but a hidden field is a suggestion and this is the rule: a name
+ * an ecosystem attested cannot be overwritten by one somebody typed, or the
+ * attestation means nothing.
  */
 export async function PATCH(request: NextRequest) {
   let body: { username?: string } = {};
@@ -119,6 +201,16 @@ export async function PATCH(request: NextRequest) {
     body = await request.json();
   } catch {
     /* Handled by the validation below. */
+  }
+
+  const connected = await connectedPerson();
+  if (connected?.handle) {
+    return NextResponse.json(
+      {
+        error: `You are ${connected.handle}, which your wallet's ecosystem issued. Release it before choosing a name.`,
+      },
+      { status: 409 },
+    );
   }
 
   const username = normaliseUsername(body.username ?? "");
@@ -132,7 +224,6 @@ export async function PATCH(request: NextRequest) {
     );
   }
 
-  const connected = await connectedPerson();
   const response = NextResponse.json(
     sessionFor(
       connected
@@ -156,6 +247,11 @@ export async function PATCH(request: NextRequest) {
  * of people who are present, and somebody who has disconnected is not. The
  * username survives, because it belongs to the key rather than to the session
  * and reconnecting the same wallet should not ask again.
+ *
+ * The handle does not survive. It is sealed against the key that proved itself,
+ * so it would be inert anyway — but leaving it behind would mean a browser with
+ * nothing connected still holding somebody's attested identity, and the honest
+ * state of a disconnected app is that it knows nothing about you.
  */
 export async function DELETE() {
   const connected = await connectedPerson();
@@ -163,6 +259,7 @@ export async function DELETE() {
 
   const response = NextResponse.json(sessionFor(null));
   response.cookies.delete(identityCookieName());
+  response.cookies.delete(handleCookieName());
   return response;
 }
 

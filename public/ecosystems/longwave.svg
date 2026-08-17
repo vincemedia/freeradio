@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 18 18" fill="none">
+  <!--
+    A mast on a globe.
+
+    Drawn light-on-dark because it sits on the plate the ecosystem declares, the
+    way Twetch's bare glyph does. Two arcs rather than four: at 14px the outer
+    pair of a fuller aerial collapses into the mast and reads as a smudge.
+  -->
+  <circle cx="9" cy="11.6" r="4.6" stroke="#ffffff" stroke-opacity="0.55" stroke-width="1" />
+  <path d="M4.6 10.2h8.8" stroke="#ffffff" stroke-opacity="0.55" stroke-width="1" />
+  <path d="M9 16.2c1.5-1.6 1.5-7.4 0-9.2-1.5 1.8-1.5 7.6 0 9.2z" fill="#ffffff" fill-opacity="0.55" />
+  <path d="M9 7.4V2.2" stroke="#f2b705" stroke-width="1.4" stroke-linecap="round" />
+  <circle cx="9" cy="1.9" r="1.15" fill="#f2b705" />
+  <path d="M5.6 4.5a4.6 4.6 0 0 1 0-3.4" stroke="#f2b705" stroke-width="1.1" stroke-linecap="round" />
+  <path d="M12.4 4.5a4.6 4.6 0 0 0 0-3.4" stroke="#f2b705" stroke-width="1.1" stroke-linecap="round" />
+</svg>

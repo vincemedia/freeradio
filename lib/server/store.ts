@@ -22,7 +22,7 @@ import {
   nestLinks as seedNest,
   occupants as seedOccupants,
 } from "@/data/co-channels";
-import { BAND, FREQUENCY_STEP } from "@/data/ecosystems";
+import { FREQUENCY_STEP, bandFor } from "@/data/ecosystems";
 import { people } from "@/data/people";
 import { heldFrequencies } from "@/data/pricing";
 import { recordings as seedRecordings } from "@/data/recordings";
@@ -62,7 +62,7 @@ interface State {
  * and the first thing to read it throws. Versioning the key makes a shape
  * change reseed instead of half-applying.
  */
-const STATE_VERSION = 6;
+const STATE_VERSION = 7;
 
 const globalRef = globalThis as unknown as {
   __freeRadio?: { version: number; state: State };
@@ -225,7 +225,10 @@ export function nextFreeFrequency(
   ecosystem: EcosystemId,
   forPersonId: string,
 ): number | null {
-  for (let f = BAND.min; f <= BAND.max + 1e-9; f += FREQUENCY_STEP) {
+  /* This band's own limits. Every band was 87.5–108 until Longwave, so this
+     swept the FM range whatever it was asked about. */
+  const band = bandFor(ecosystem);
+  for (let f = band.min; f <= band.max + 1e-9; f += FREQUENCY_STEP) {
     const key = Number(f.toFixed(1));
     if (isFrequencyFree(ecosystem, key, forPersonId)) return key;
   }
@@ -566,12 +569,20 @@ export function getRecording(id: string): Recording | undefined {
  * stations and listening to a live one all work without a wallet, and only
  * the things that put you in a room ask for one.
  */
-export function sessionFor(connected: { person: Person; username: string | null } | null) {
+export function sessionFor(
+  connected: {
+    person: Person;
+    username: string | null;
+    /** verified BRC-169 handle, which the UI uses to know the name is not editable */
+    handle?: string | null;
+  } | null,
+) {
   if (!connected) {
     return {
       connected: false as const,
       me: null,
       username: null,
+      handle: null,
       coChannelId: null,
       muted: true,
     };
@@ -581,6 +592,7 @@ export function sessionFor(connected: { person: Person; username: string | null 
     connected: true as const,
     me: connected.person,
     username: connected.username,
+    handle: connected.handle ?? null,
     coChannelId: occupant?.coChannelId ?? null,
     muted: occupant?.muted ?? true,
   };

@@ -7,11 +7,9 @@ import { CaretLeft, CaretRight, Check, MagnifyingGlass, Plus } from "@phosphor-i
 import useFetch from "@/lib/use-fetch";
 import { EcosystemMark } from "@/components/identity";
 import { NAV } from "@/components/shell/top-bar";
-import type { Ecosystem } from "@/data/schema";
+import { howBusy, type Band } from "@/lib/band-busy";
 import { useRadio } from "@/lib/store";
 import { cn } from "@/lib/utils";
-
-type Band = Ecosystem & { coChannelCount: number; occupantCount: number };
 
 /**
  * Mobile navigation.
@@ -193,9 +191,7 @@ export function MobileMenu({
                     <span className="min-w-0 flex-1">
                       <span className="block font-medium">{b.name}</span>
                       <span className="mt-0.5 block text-xs text-muted-foreground">
-                        {b.coChannelCount === 0
-                          ? "Nothing on air"
-                          : `${b.coChannelCount} on air, ${b.occupantCount} talking`}
+                        {howBusy(b)}
                       </span>
                     </span>
                     {b.id === ecosystem && <Check size={16} className="mt-1" />}

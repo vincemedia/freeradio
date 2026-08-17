@@ -1,7 +1,8 @@
 import "server-only";
 
 import { cookies } from "next/headers";
-import { unsealKey } from "@/lib/server/challenge";
+import { unsealHandle, unsealKey } from "@/lib/server/challenge";
+import { isFormattedHandle } from "@/lib/handle";
 import {
   isIdentityKey as isKey,
   personFromKey as fromKey,
@@ -29,14 +30,25 @@ import type { Person } from "@/data/schema";
  * or if they never do — is the key, truncated. A truncated key is not a
  * friendly name, but it is *theirs*, which a borrowed one never was.
  *
- * Two cookies, both plain: the key that was presented, and the name they
- * picked for it. Neither grants anything. Deleting them is the whole of
- * disconnecting.
+ * Four cookies: the sealed key that was presented, the name they picked for it,
+ * their avatar, and a verified BRC-169 handle if their wallet has one. Only the
+ * first and last are sealed, because only those two make a claim — a username is
+ * a label anybody may set about themselves, and a handle is an assertion that a
+ * registry vouched for you.
+ *
+ * ## Why a handle outranks a username
+ *
+ * A username is typed. A handle is issued by an ecosystem and bound to this key
+ * by a certificate that ecosystem signed, so it is the only one of the two that
+ * means anything to somebody reading it in a room. When both exist the handle is
+ * the name, and the field for editing the other one goes away rather than
+ * sitting there implying it still does something.
  */
 
 const COOKIE = "fr_identity";
 const NAME_COOKIE = "fr_username";
 const AVATAR_COOKIE = "fr_avatar";
+const HANDLE_COOKIE = "fr_handle";
 
 export function identityCookieName() {
   return COOKIE;
@@ -48,6 +60,10 @@ export function usernameCookieName() {
 
 export function avatarCookieName() {
   return AVATAR_COOKIE;
+}
+
+export function handleCookieName() {
+  return HANDLE_COOKIE;
 }
 
 /* Re-exported rather than redefined. The derivation these share is the seed
@@ -90,6 +106,8 @@ export interface Connected {
   publicKey: string;
   username: string | null;
   photo: string | null;
+  /** their verified BRC-169 handle, as `@alice@handcash.io`, if they have one */
+  handle: string | null;
 }
 
 /**
@@ -108,11 +126,22 @@ export async function connectedPerson(): Promise<Connected | null> {
   if (!isIdentityKey(key)) return null;
   const username = store.get(NAME_COOKIE)?.value ?? null;
   const photo = store.get(AVATAR_COOKIE)?.value ?? null;
+
+  /* Unsealed against this key specifically, so a handle sealed for one wallet is
+     worthless in another's session. Anything that does not survive both the seal
+     and the grammar is dropped rather than displayed. */
+  const sealed = unsealHandle(key, store.get(HANDLE_COOKIE)?.value);
+  const handle = isFormattedHandle(sealed) ? sealed : null;
+
   return {
-    person: personFromKey(key, username, photo),
+    /* The handle is the name when there is one. Everything downstream — the
+       occupant list, the facepile, the name RealtimeKit gives other people —
+       reads `person.name`, so this one line is the whole of the display change. */
+    person: personFromKey(key, handle ?? username, photo),
     publicKey: key,
     username,
     photo,
+    handle,
   };
 }
 

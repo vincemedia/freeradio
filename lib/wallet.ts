@@ -132,6 +132,23 @@ export async function signChallenge(challenge: string): Promise<string> {
   return signature.map((b) => b.toString(16).padStart(2, "0")).join("");
 }
 
+/**
+ * The wallet's own BRC-169 handle, if it will say.
+ *
+ * A thin wrapper so the single shared client stays private to this module — the
+ * substrate negotiation is cached on it, and a second instance would re-probe.
+ * Never throws: not having a handle is the normal case, and connecting must not
+ * depend on it.
+ */
+export async function walletHandle(identityKey: string): Promise<string | null> {
+  try {
+    const { discoverHandle } = await import("@/lib/wallet-handle");
+    return await discoverHandle(getClient(), identityKey);
+  } catch {
+    return null;
+  }
+}
+
 export async function connectWallet(): Promise<WalletIdentity> {
   const wallet = getClient();
 

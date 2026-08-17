@@ -100,6 +100,35 @@ export interface LiveRoom {
 /* The SDK's types are broad; these are the parts this product uses. */
 type Meeting = Awaited<ReturnType<typeof RealtimeKitClient.init>>;
 
+/**
+ * What to say once it has genuinely stopped trying.
+ *
+ * The SDK's own words used to go straight to the screen, and for the media
+ * failure — `ERR0014`, "Failed to establish media connection. Check the network
+ * and try again" — that is actively misleading by the time anybody reads it.
+ * The app has already tried again, six times, across about a minute of backoff.
+ * Telling somebody to check their network and retry, after a minute of retrying,
+ * describes a stumble when what has actually happened is that this network will
+ * not carry WebRTC at all.
+ *
+ * Which is a different problem with a different answer, and the answer is worth
+ * naming: voice needs a media path out, and the things that block one are
+ * corporate firewalls, some VPNs, and captive networks — none of which a page
+ * reload fixes. The code is kept in the sentence because it is the one thing
+ * that makes a bug report about this actionable.
+ */
+const explain = (e: unknown): string => {
+  const message = e instanceof Error ? e.message : String(e ?? "");
+
+  /* Media, not signalling: the room was reachable and the audio path was not.
+     Told apart by the SDK's code rather than by matching its prose, which is
+     theirs to change. */
+  if (/ERR0014/.test(message)) {
+    return "This station is reachable but no audio path could be opened, after a minute of trying. A firewall, VPN or captive network is usually what blocks one. (ERR0014)";
+  }
+  return message || "Could not reach the room.";
+};
+
 export function useLiveRoom(coChannelId: string | null): LiveRoom {
   const [status, setStatus] = useState<LiveStatus>("idle");
   const [role, setRole] = useState<LiveRole | null>(null);
@@ -449,11 +478,7 @@ export function useLiveRoom(coChannelId: string | null): LiveRoom {
         reconnect();
         return;
       }
-      setError(
-        e instanceof Error && e.message
-          ? e.message
-          : "Could not reach the room.",
-      );
+      setError(explain(e));
       setStatus("unavailable");
     } finally {
       joining.current = false;

@@ -22,7 +22,15 @@ export type EcosystemId =
   | "yours"
   | "handcash"
   | "commonsource"
-  | "mycelia";
+  | "mycelia"
+  /**
+   * Longwave, which is the one band that belongs to nobody's ecosystem.
+   *
+   * Every other entry here is a wallet authority with its own handle namespace.
+   * This one is the shared band — the thing real longwave actually was, a
+   * frequency that carried across borders when the local stations did not.
+   */
+  | "longwave";
 
 /**
  * A wallet authority, per BRC-169.
