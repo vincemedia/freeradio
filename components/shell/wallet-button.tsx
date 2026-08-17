@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Plug, SignOut } from "@phosphor-icons/react";
+import { Gear, Plug, SignOut } from "@phosphor-icons/react";
 import { toast } from "sonner";
 import { Avatar, Identity } from "@/components/identity";
 import { Button } from "@/components/ui/button";
@@ -86,38 +86,40 @@ export function WalletButton() {
 
         {/* Said out loud rather than implied. A product about signing things
             with your own key should never let somebody believe they are
-            signing with one when they are not. */}
-        <div className="mt-3 space-y-1.5">
+            signing with one when they are not.
+
+            The key itself used to sit under this. It is already the identity
+            line above — truncated, next to the face it belongs to — so
+            printing it again in a second format made the panel look like a
+            diagnostic readout, and gave the longest, least readable string on
+            the screen the most room. What somebody needs from this panel is
+            who they are and how to stop being it. */}
+        <div className="mt-3 flex justify-center">
           <Badge variant="outline">BRC-100 wallet connected</Badge>
-          {/* The key, not a name borrowed from a fixture. Shown in full-ish
-              because it is the only thing that is actually theirs. */}
-          {me.publicKey && (
-            <p className="readout text-[11px] leading-snug text-muted-foreground">
-              {me.publicKey.slice(0, 10)}…{me.publicKey.slice(-6)}
-            </p>
-          )}
         </div>
 
-        <div className="mt-3 border-t border-border pt-3">
-          <Link
-            href="/settings"
-            className="text-[13px] underline underline-offset-2 hover:text-foreground"
+        {/* Two buttons of equal weight, because they are two things you came
+            here to do. Settings was a text link under a rule, which made it
+            read as small print beside a control rather than as the other
+            control. */}
+        <div className="mt-3 grid grid-cols-2 gap-2 border-t border-border pt-3">
+          <Button size="sm" variant="secondary" asChild>
+            <Link href="/settings">
+              <Gear size={15} />
+              Settings
+            </Link>
+          </Button>
+          <Button
+            size="sm"
+            variant="secondary"
+            onClick={() => {
+              void disconnect().then(() => toast("Disconnected"));
+            }}
           >
-            Settings
-          </Link>
+            <SignOut size={15} />
+            Disconnect
+          </Button>
         </div>
-
-        <Button
-          size="sm"
-          variant="secondary"
-          className="mt-3 w-full"
-          onClick={() => {
-            void disconnect().then(() => toast("Disconnected"));
-          }}
-        >
-          <SignOut size={15} />
-          Disconnect
-        </Button>
       </PopoverContent>
     </Popover>
   );
