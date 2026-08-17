@@ -17,12 +17,25 @@ import {
 } from "@/components/instrument/tuning-scale";
 import { Button } from "@/components/ui/button";
 import { Help } from "@/components/ui/overlays";
-import { EmptyState } from "@/components/ui/primitives";
+import { EmptyState, Switch } from "@/components/ui/primitives";
 import { getEcosystem } from "@/data/ecosystems";
 import type { CoChannelView } from "@/data/schema";
 import { formatFrequency } from "@/lib/format";
 import { useRadio } from "@/lib/store";
 import { useTuner } from "@/lib/use-tuner";
+
+/**
+ * One at random, from outside the component.
+ *
+ * Lives at module scope because the compiler will not have `Math.random` inside
+ * a function it might inline into render, and it is right not to: a random
+ * value read during a render is a different value on every pass. Here it is
+ * plainly a thing that happens when called, which is on a click.
+ */
+function pickOne<T>(list: T[]): T | undefined {
+  if (list.length === 0) return undefined;
+  return list[Math.floor(Math.random() * list.length)];
+}
 
 type Hold = {
   id: string;
@@ -61,6 +74,13 @@ export default function ScanPage() {
      answers. `tunedTo` is the override; null means "wherever the busiest
      room is". */
   const [tunedTo, setTunedTo] = useState<number | null>(null);
+
+  /* On by default. A band with the recordings hidden is mostly empty, and an
+     empty dial teaches somebody that this place is dead — when in fact most of
+     what is here is the archive. Turning them off is for the moment you want
+     to know what is actually happening, which is a narrower question than the
+     one the page opens with. */
+  const [showRecordings, setShowRecordings] = useState(true);
   const [lastBand, setLastBand] = useState(ecosystem);
   if (lastBand !== ecosystem) {
     /* Adjusting state during render when a prop changes, which React
@@ -71,7 +91,20 @@ export default function ScanPage() {
 
   const { data: band } = useFetch<BandResponse>(`/api/band?ecosystem=${ecosystem}`);
 
-  const stations = band?.stations ?? [];
+  const all = band?.stations ?? [];
+
+  /* A live station wins its frequency outright. Now that a recording no longer
+     reserves one, somebody can open a station where a broadcast used to be —
+     and then there are two marks on one tick, of which only the top one would
+     ever be tunable. The live one is the one that can be joined. */
+  const liveFrequencies = new Set(
+    all.filter((s) => s.kind === "live").map((s) => s.frequency.toFixed(1)),
+  );
+  const stations = all.filter((s) => {
+    if (s.kind === "live") return true;
+    if (!showRecordings) return false;
+    return !liveFrequencies.has(s.frequency.toFixed(1));
+  });
   const busiest = stations.length
     ? [...stations].sort((a, b) => b.occupantCount - a.occupantCount)[0]
     : null;
@@ -113,7 +146,8 @@ export default function ScanPage() {
    */
   const surpriseMe = () => {
     if (pickable.length === 0) return;
-    const pick = pickable[Math.floor(Math.random() * pickable.length)];
+    const pick = pickOne(pickable);
+    if (!pick) return;
     /* Travels there first, and only then opens the room. Arriving before the
        dial has moved would make the dial decorative — the whole point is that
        the thing on screen is what chose.
@@ -141,7 +175,10 @@ export default function ScanPage() {
         subtitle={`Every station on ${bandInfo?.name ?? "this band"}, at the frequency it holds. Drag the needle, or use the arrow keys.`}
       />
 
-      <Panel className="p-4 sm:p-5">
+      {/* Outdented, and still the colour of the set. It is the instrument on
+          a page about the instrument, so it stands off the surface without
+          becoming a white document. */}
+      <Panel className="panel-proud p-4 sm:p-5">
         <TuningScale
           min={band?.min ?? 87.5}
           max={band?.max ?? 108}
@@ -207,11 +244,22 @@ export default function ScanPage() {
 
           </div>
 
-          <span className="flex items-center gap-1.5 text-xs text-muted-foreground sm:justify-end">
-            <span className="readout">{stations.length}</span> on air
-            <Help>
-              A frequency is released the moment the last person leaves the station
-            </Help>
+          <span className="flex flex-wrap items-center justify-end gap-x-3 gap-y-1.5 text-xs text-muted-foreground">
+            <Switch
+              checked={showRecordings}
+              onCheckedChange={setShowRecordings}
+              label="Recordings"
+            />
+            <span className="flex items-center gap-1.5">
+              <span className="readout">
+                {stations.filter((s) => s.kind === "live").length}
+              </span>{" "}
+              on air
+              <Help>
+                A frequency is released the moment the last person leaves the
+                station, so a recording no longer holds one
+              </Help>
+            </span>
           </span>
         </div>
       </Panel>

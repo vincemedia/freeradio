@@ -112,10 +112,18 @@ export async function POST(request: Request) {
     );
   }
 
+  /* Only what is on air reserves a frequency. A recorded broadcast is the
+     past — its room closed and, as the product has said from the beginning,
+     its frequency went back into the pool. Counting recordings as taken kept
+     dozens of addresses locked up by conversations that had finished, and
+     contradicted the rule out loud on the same page that states it. */
   const taken = new Set(
-    [...(await userStations()), ...listCoChannels({ ecosystem: body.ecosystem })].map(
-      (s) => s.frequency.toFixed(1),
-    ),
+    [
+      ...(await userStations()),
+      ...listCoChannels({ ecosystem: body.ecosystem }).filter(
+        (c) => c.kind === "live",
+      ),
+    ].map((s) => s.frequency.toFixed(1)),
   );
   const frequency = body.frequency ?? firstFree(taken);
   if (frequency === null) {

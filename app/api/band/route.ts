@@ -59,8 +59,13 @@ export async function GET(request: Request) {
   const listeners = await bandListeners(ecosystem).catch(() => []);
 
   const holds = listHolds(ecosystem);
+  /* Live rooms and reserved gaps. A recording is drawn on the dial but does
+     not hold its frequency: the room it came from closed, and the address went
+     back into the pool with it. */
   const taken = new Set([
-    ...stations.map((s) => s.frequency.toFixed(1)),
+    ...stations
+      .filter((s) => s.kind === "live")
+      .map((s) => s.frequency.toFixed(1)),
     ...holds.map((h) => h.frequency.toFixed(1)),
   ]);
 

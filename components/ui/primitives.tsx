@@ -1,5 +1,6 @@
 "use client";
 
+import { Switch as S } from "radix-ui";
 import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "@/lib/utils";
 
@@ -162,5 +163,60 @@ export function Spinner({
       )}
       style={{ width: size, height: size, animationDuration: "700ms" }}
     />
+  );
+}
+
+/**
+ * A switch, with the primary control's material on the handle.
+ *
+ * The track is a recessed slot and the thumb is the same clay as the primary
+ * button — the one thing in this interface that stands proud of the panel and
+ * moves when you press it. That is not decoration: a switch and a call to
+ * action are the same gesture in this product's language, so they are made of
+ * the same stuff, and the thumb reads as a physical object sliding in a
+ * channel rather than as a coloured rectangle changing state.
+ */
+export function Switch({
+  checked,
+  onCheckedChange,
+  label,
+  className,
+}: {
+  checked: boolean;
+  onCheckedChange: (next: boolean) => void;
+  /** the accessible name, and what is written beside it */
+  label: string;
+  className?: string;
+}) {
+  return (
+    <label
+      className={cn(
+        "inline-flex cursor-pointer select-none items-center gap-2",
+        className,
+      )}
+    >
+      <S.Root
+        checked={checked}
+        onCheckedChange={onCheckedChange}
+        aria-label={label}
+        className={cn(
+          "relative h-5 w-9 shrink-0 rounded-full transition-colors duration-150",
+          "shadow-[inset_0_1px_2px_oklch(0_0_0/0.14)]",
+          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+          checked ? "bg-primary/35" : "bg-muted",
+        )}
+      >
+        <S.Thumb
+          className={cn(
+            "block size-4 rounded-full transition-transform duration-150 ease-[var(--ease-out-quint)]",
+            "translate-x-0.5 data-[state=checked]:translate-x-[1.125rem]",
+            checked
+              ? "bg-primary shadow-[var(--shadow-clay-primary)]"
+              : "bg-card shadow-[0_1px_3px_oklch(0_0_0/0.18)]",
+          )}
+        />
+      </S.Root>
+      <span className="text-xs text-muted-foreground">{label}</span>
+    </label>
   );
 }

@@ -305,6 +305,19 @@
     box-shadow: var(--shadow-clay-surface);
   }
 
+  /* Standing proud, but still made of the panel.
+
+     `panel-raised` turns white because the room header is the subject of its
+     page and had to separate from it. The tuning scale is the opposite case:
+     it is the instrument, and the instrument is the same warm grey as the set
+     it is mounted in. Whitening it made a control look like a document. So
+     this is the same clay and the same lift with no change of material — the
+     panel is simply not flush with the page any more. */
+  .panel-proud {
+    border-color: transparent;
+    box-shadow: var(--shadow-clay-surface);
+  }
+
   /* A surface that stands up when you point at it.
 
      One definition rather than a class list repeated on every card, because
