@@ -3,6 +3,7 @@ import { MAX_STATIONS_PER_BAND, getEcosystem } from "@/data/ecosystems";
 import { DEFAULT_BED, isBedId, type BedId } from "@/data/beds";
 import type { EcosystemId, Gates } from "@/data/schema";
 import { connectedPerson } from "@/lib/server/identity";
+import { liveCounts } from "@/lib/server/live-counts";
 import { listCoChannels } from "@/lib/server/store";
 import { createUserStation, userStations } from "@/lib/server/user-stations";
 
@@ -44,7 +45,15 @@ export async function GET(request: Request) {
       primaryGate: "open" as const,
     }));
 
-  return NextResponse.json([...mine, ...seeded]);
+  /* Live rooms are counted from the meeting, because that is where their
+     occupants are. The seeded table is deliberately empty for them and would
+     report every station as abandoned. */
+  const counts = await liveCounts().catch(() => new Map<string, number>());
+  const withCounts = [...mine, ...seeded].map((c) =>
+    c.kind === "live" ? { ...c, occupantCount: counts.get(c.id) ?? 0 } : c,
+  );
+
+  return NextResponse.json(withCounts);
 }
 
 export async function POST(request: Request) {

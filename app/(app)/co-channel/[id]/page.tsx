@@ -64,6 +64,9 @@ export default function CoChannelPage() {
      and the host's to change while it is running. */
   const bed = useBed(live, preview?.bed);
 
+  /* Whether the meeting itself can answer for this room. */
+  const inRoom = isLive && live.stationId === id && live.status === "live";
+
   /* Surprise me leaves the tuning noise running while this page connects, so
      the silence lands on arrival rather than on the sweep ending. Stopped
      here, on any settled outcome — being in the room, or finding out there is
@@ -202,7 +205,15 @@ export default function CoChannelPage() {
                   <span>Open station — whoever is here runs it</span>
                 )}
                 <span className="readout">{formatDuration(elapsed)}</span>
-                <span>{view.occupantCount} in the room</span>
+                {/* The meeting outranks the fetch. Once you are connected the
+                    room in front of you is the truth, and a number that came
+                    back from a request a moment ago is at best a moment
+                    behind — which is how somebody standing in a station was
+                    told nobody was there. */}
+                <span>
+                  {inRoom ? live.participants.length : view.occupantCount} in
+                  the room
+                </span>
               </div>
             </div>
 

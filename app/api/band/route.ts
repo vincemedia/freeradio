@@ -3,6 +3,7 @@ import { BAND, DEFAULT_ECOSYSTEM, FREQUENCY_STEP } from "@/data/ecosystems";
 import type { EcosystemId } from "@/data/schema";
 import { HOLD_PRICE_USD } from "@/data/pricing";
 import { bandListeners } from "@/lib/server/band-listeners";
+import { liveCounts } from "@/lib/server/live-counts";
 import { bandOccupancy, listHolds } from "@/lib/server/store";
 import { userStations } from "@/lib/server/user-stations";
 
@@ -33,14 +34,21 @@ export async function GET(request: Request) {
        route is the backstop that actually refuses a clash. */
   }
 
+  /* A mark's size is its occupancy, so a band whose counts all read nought
+     draws as a row of identical ticks. Live rooms are counted from their
+     meetings. */
+  const counts = await liveCounts().catch(() => new Map<string, number>());
+
   const stations = [
-    ...seeded,
+    ...seeded.map((s) =>
+      s.kind === "live" ? { ...s, occupantCount: counts.get(s.id) ?? 0 } : s,
+    ),
     ...started.map((s) => ({
       id: s.id,
       kind: s.kind,
       frequency: s.frequency,
       title: s.title,
-      occupantCount: 0,
+      occupantCount: counts.get(s.id) ?? 0,
       primaryGate: "open" as const,
       recording: false,
     })),
