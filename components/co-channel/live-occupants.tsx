@@ -50,14 +50,30 @@ export function LiveOccupants({
   const { add, has } = useContacts();
   const levels = useLevels(live);
   if (live.status !== "live") {
+    const connecting = live.status === "joining";
     return (
-      <section className="relative overflow-hidden rounded-lg border border-dashed border-border p-8 text-center">
+      <section
+        className={cn(
+          "relative overflow-hidden rounded-lg p-8 text-center",
+          connecting
+            ? /* Solid, not dashed, and carrying the sheen: a dashed outline
+                 reads as an empty slot, which is the opposite of the message.
+                 Something is happening here. */
+              "sheen border border-border bg-card"
+            : "border border-dashed border-border",
+        )}
+      >
         {/* Connecting to a room takes a second or two of real work — a token,
             then a negotiation — and a line of text alone reads as a page that
             has stopped. Three dots that move say the same thing and say it is
             still happening. */}
-        {live.status === "joining" && <Dots />}
-        <p className="text-sm text-muted-foreground">
+        {connecting && <Dots />}
+        <p
+          className={cn(
+            "relative z-[2] text-sm",
+            connecting ? "font-medium text-foreground" : "text-muted-foreground",
+          )}
+        >
           {live.status === "joining"
             ? "Opening the room…"
             : live.status === "unavailable"
@@ -224,11 +240,11 @@ export function LiveOccupants({
  */
 function Dots() {
   return (
-    <span aria-hidden className="mb-2.5 flex items-center justify-center gap-1.5">
+    <span aria-hidden className="relative z-[2] mb-3 flex items-center justify-center gap-2">
       {[0, 1, 2].map((i) => (
         <span
           key={i}
-          className="size-1.5 rounded-full bg-muted-foreground/70 motion-safe:animate-bounce"
+          className="size-2 rounded-full bg-primary motion-safe:animate-bounce"
           style={{ animationDelay: `${i * 140}ms`, animationDuration: "900ms" }}
         />
       ))}

@@ -22,8 +22,9 @@ import { useRadio } from "@/lib/store";
  * everywhere, and never anybody else's.
  */
 
-/** Matches the server. Checked here only to fail fast and kindly. */
-const MAX_BYTES = 6 * 1024 * 1024;
+/* The original may be large; what leaves the browser never is. Resizing happens
+   before the upload, so this is the limit on what is worth decoding at all. */
+const MAX_BYTES = 12 * 1024 * 1024;
 const ACCEPT = "image/jpeg,image/png,image/webp,image/gif,image/avif";
 
 export function AvatarPicker({ person }: { person: Person }) {
@@ -41,8 +42,14 @@ export function AvatarPicker({ person }: { person: Person }) {
 
     setBusy(true);
     try {
+      /* Resized and re-encoded here, in the decoder that will display it. That
+         is what drops the location and camera data most photographs carry, and
+         it means a six-megabyte original never crosses the network. */
+      const { squareWebp } = await import("@/lib/resize-image");
+      const resized = await squareWebp(file);
+
       const body = new FormData();
-      body.append("file", file);
+      body.append("file", resized, "avatar.webp");
       const response = await fetch("/api/avatar", { method: "POST", body });
       const result = (await response.json()) as { url?: string; error?: string };
       if (!response.ok) {
@@ -51,8 +58,13 @@ export function AvatarPicker({ person }: { person: Person }) {
       }
       await refreshSession();
       toast.success("Avatar updated");
-    } catch {
-      toast.error("That did not work");
+    } catch (e) {
+      toast.error("That did not work", {
+        description:
+          e instanceof Error && e.name === "NotAnImageError"
+            ? "That file is not an image this can read."
+            : undefined,
+      });
     } finally {
       setBusy(false);
       if (input.current) input.current.value = "";
@@ -77,8 +89,8 @@ export function AvatarPicker({ person }: { person: Person }) {
       <div className="min-w-0 flex-1">
         <p className="text-sm font-medium">{person.name}</p>
         <p className="mt-0.5 text-[11px] text-muted-foreground">
-          Square, and shown small. Anything you upload is resized and
-          re-encoded, which also strips its location and camera data.
+          Square, and shown small. It is resized and re-encoded in your browser
+          before it is sent, which also strips its location and camera data.
         </p>
       </div>
 

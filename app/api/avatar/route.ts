@@ -7,47 +7,51 @@ export const maxDuration = 30;
 /**
  * Your avatar.
  *
- * ## The threat model, and why nothing the browser says is believed
+ * ## Where the work happens, and why it moved
  *
- * An avatar endpoint takes a file from a stranger and puts it on a URL other
- * people load. Every part of that is worth distrusting:
+ * The browser resizes and re-encodes; see `lib/resize-image`. It used to happen
+ * here with `sharp`, and it never once worked in production: four deploys chasing
+ * a native binary that was the wrong platform, then missing its shared library,
+ * then pinned to a libvips version I had invented rather than read. Every failure
+ * looked the same from outside — a 500 on upload — and the decoder was both the
+ * only reason for the round trip and the one part that would not run.
  *
- *   The declared type is a claim. A file called `me.png` with
- *   `Content-Type: image/png` can be an SVG full of script, an HTML document,
- *   or a polyglot that is both. So the type is taken from the bytes, by the
- *   decoder, and anything it will not decode as a raster image is refused.
+ * So this endpoint no longer decodes anything. It accepts exactly one shape of
+ * file and refuses everything else, which is a narrower job it can actually do.
  *
- *   SVG is refused outright even though it is an image. It is a document
- *   format with script and external references in it, and there is no version
- *   of "sanitised SVG" worth betting a session on.
+ * ## What is still enforced here, because a client cannot be trusted
  *
- *   The size is a claim too, and reading a body to find out how big it is, is
- *   the attack. The length is checked before the bytes are read, and the read
- *   itself is capped.
+ *   A wallet. The file is keyed by the identity that uploaded it, so nobody can
+ *   write over anybody else's.
  *
- *   A decoder is an attack surface. `sharp` is given hard limits on pixel
- *   count so a 32,000 × 32,000 PNG that unpacks to gigabytes is refused
- *   rather than decoded.
+ *   The length, before the body is read, because reading a body to find out how
+ *   big it is, is the attack.
  *
- * What is stored is never what was uploaded: the image is re-encoded to a
- * fixed size and format, which drops EXIF (including location), any trailing
- * payload after the image data, and anything clever in the original
- * container. The output is a small square WebP and nothing else.
+ *   The magic bytes, not the declared type. `Content-Type` is a claim; `RIFF`
+ *   followed by `WEBP` four bytes later is the file.
  *
- * Uploading requires a connected wallet, and the file is keyed by that
- * identity, so nobody can write over anybody else's.
+ *   The stored type, always `image/webp`, whatever arrived. A blob served as
+ *   `text/html` would be a stored cross-site script; this one has no say in it.
+ *
+ * ## What is honestly weaker than before
+ *
+ * The server no longer proves the image was re-encoded, because it no longer
+ * re-encodes it. Canvas export in the browser does strip EXIF and any appended
+ * payload — that claim still holds for anybody using the app — but a determined
+ * client could hand this a hostile small WebP instead. That is the exposure every
+ * site with user avatars carries, and it is written down rather than forgotten.
  */
 
-/** Refused before reading. Generous for a photo, mean for a payload. */
-const MAX_BYTES = 6 * 1024 * 1024;
+/** A re-encoded 256px WebP is a few tens of kilobytes. This is generous. */
+const MAX_BYTES = 512 * 1024;
 
-/** What an avatar is ever displayed at, doubled for retina, and no more. */
-const SIZE = 256;
-
-/** A decode bomb guard: no image over this many pixels is unpacked. */
-const MAX_PIXELS = 40_000_000;
-
-const ALLOWED = new Set(["jpeg", "png", "webp", "gif", "avif", "tiff"]);
+/** `RIFF` … `WEBP`: twelve bytes that a WebP has and other things do not. */
+function isWebp(bytes: Uint8Array): boolean {
+  if (bytes.length < 12) return false;
+  const tag = (at: number) =>
+    String.fromCharCode(bytes[at], bytes[at + 1], bytes[at + 2], bytes[at + 3]);
+  return tag(0) === "RIFF" && tag(8) === "WEBP";
+}
 
 export async function POST(request: NextRequest) {
   const connected = await connectedPerson();
@@ -67,9 +71,9 @@ export async function POST(request: NextRequest) {
 
   /* Checked before the body is touched. */
   const declared = Number(request.headers.get("content-length") ?? 0);
-  if (declared > MAX_BYTES) {
+  if (declared > MAX_BYTES * 2) {
     return NextResponse.json(
-      { error: "That image is too large. Six megabytes is the limit." },
+      { error: "That image is too large once resized." },
       { status: 413 },
     );
   }
@@ -81,89 +85,40 @@ export async function POST(request: NextRequest) {
   }
   if (file.size > MAX_BYTES) {
     return NextResponse.json(
-      { error: "That image is too large. Six megabytes is the limit." },
+      { error: "That image is too large once resized." },
       { status: 413 },
     );
   }
 
-  const input = Buffer.from(await file.arrayBuffer());
-
-  /* Imported here rather than at the top of the file. sharp is a native binary
-     and @vercel/blob wants its token at construction; loading either at module
-     scope makes an unauthenticated request crash the route before any of its own
-     checks have run, which is how refusing a stranger turned into a 500.
-
-     And the import is reported rather than allowed to become a bare 500. It
-     failed silently in production for a week — the linux binary was missing —
-     while three separate attempts to fix it were "verified" against the
-     unauthenticated path, which returns above this line. An error that says
-     which half broke is the difference between one deploy and four. */
-  let sharp: typeof import("sharp").default;
-  let put: typeof import("@vercel/blob").put;
-  let del: typeof import("@vercel/blob").del;
-  try {
-    const [image, blob] = await Promise.all([
-      import("sharp"),
-      import("@vercel/blob"),
-    ]);
-    sharp = image.default;
-    put = blob.put;
-    del = blob.del;
-  } catch (e) {
+  const bytes = new Uint8Array(await file.arrayBuffer());
+  if (!isWebp(bytes)) {
     return NextResponse.json(
-      {
-        error: "The image processor is not available on this deployment.",
-        detail: e instanceof Error ? e.message : String(e),
-      },
-      { status: 503 },
-    );
-  }
-
-  let output: Buffer;
-  try {
-    const image = sharp(input, {
-      limitInputPixels: MAX_PIXELS,
-      /* One frame. An animated avatar is a way to make a list move. */
-      animated: false,
-    });
-
-    const meta = await image.metadata();
-    if (!meta.format || !ALLOWED.has(meta.format)) {
-      return NextResponse.json(
-        { error: "That is not an image this accepts. JPEG, PNG, WebP or GIF." },
-        { status: 415 },
-      );
-    }
-
-    /* Re-encoded rather than resized: the output shares no bytes with the
-       input, which is what makes the metadata and any appended payload go
-       away rather than being trusted to be harmless. */
-    output = await image
-      .rotate()
-      .resize(SIZE, SIZE, { fit: "cover", position: "attention" })
-      .webp({ quality: 82 })
-      .toBuffer();
-  } catch {
-    return NextResponse.json(
-      { error: "That image could not be read." },
+      { error: "That is not a WebP. The app resizes images before sending them." },
       { status: 415 },
     );
   }
 
+  /* Loaded here rather than at module scope: @vercel/blob wants its token at
+     construction, and a failure to load it must not turn refusing a stranger
+     into a 500 — which is exactly what the old top-level import did. */
+  const { del, put } = await import("@vercel/blob");
+
   /* Keyed by the identity that uploaded it, so one wallet cannot overwrite
-     another's, and suffixed randomly so a replaced avatar is not served from
-     a cache under its old URL. */
+     another's, and suffixed randomly so a replaced avatar is not served from a
+     cache under its old URL. */
   const key = `avatars/${connected.publicKey.slice(0, 16)}.webp`;
 
-  const blob = await put(key, output, {
+  const blob = await put(key, Buffer.from(bytes), {
     access: "public",
+    /* Set here, never taken from the upload: a blob served as text/html would
+       be a stored cross-site script. */
     contentType: "image/webp",
     addRandomSuffix: true,
     cacheControlMaxAge: 60 * 60 * 24 * 365,
   });
 
   /* The previous one, if any, is removed rather than left paid for. */
-  const previous = (await request.cookies.get(avatarCookieName())?.value) ?? null;
+  const previous = request.cookies.get(avatarCookieName())?.value ?? null;
   if (previous && previous !== blob.url) {
     await del(previous).catch(() => {
       /* Already gone, or never ours. Not worth failing the upload over. */

@@ -462,3 +462,58 @@
     scroll-behavior: auto !important;
   }
 }
+
+/* A sheen that crosses a surface every few seconds.
+
+   For the one state in the product that is genuinely a wait: connecting to a
+   room takes a second or two of real negotiation, and three small dots proved
+   too quiet to read as "still working" — a page that looks finished and is not
+   is worse than one that looks busy. The band travels rather than pulsing,
+   because a pulse says "look here" and a sweep says "something is running".
+
+   Diagonal, wide, and mostly gap: it should register at the edge of attention
+   and never compete with the sentence underneath it. Off entirely under
+   reduced-motion, where the words carry it alone. */
+@keyframes sheen {
+  0% {
+    transform: translateX(-120%) rotate(12deg);
+  }
+  /* The sweep itself takes about a fifth of the cycle; the rest is the pause
+     that makes the next one an event rather than a strobe. */
+  22%,
+  100% {
+    transform: translateX(320%) rotate(12deg);
+  }
+}
+
+.sheen {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+}
+
+.sheen::after {
+  content: "";
+  position: absolute;
+  top: -60%;
+  bottom: -60%;
+  left: 0;
+  width: 42%;
+  z-index: 1;
+  pointer-events: none;
+  background: linear-gradient(
+    100deg,
+    transparent 0%,
+    color-mix(in oklab, var(--primary) 22%, transparent) 45%,
+    color-mix(in oklab, var(--primary) 30%, transparent) 55%,
+    transparent 100%
+  );
+  animation: sheen 3.6s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sheen::after {
+    animation: none;
+    opacity: 0;
+  }
+}

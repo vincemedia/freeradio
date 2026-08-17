@@ -117,7 +117,7 @@ export const PRIVACY: Clause[] = [
   {
     heading: "Your avatar",
     body: [
-      "An uploaded image is re-encoded on the server before it is stored. That is what removes the location, camera and timestamp data most photographs carry — the stored file shares no bytes with the one you sent.",
+      "An uploaded image is resized and re-encoded by your own browser before it is sent. That is what removes the location, camera and timestamp data most photographs carry — what reaches us shares no bytes with the file you picked, and the original never leaves your device.",
     ],
   },
   {

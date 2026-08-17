@@ -105,9 +105,9 @@ export function LiveControls({
            so the tooltip would never open on the thing it describes. */
         <Tooltip label="Connect wallet to speak">
           <span tabIndex={0} className="rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
-            <Button variant="secondary" size="sm" disabled className="max-sm:w-9 max-sm:px-0">
+            <Button variant="secondary" size="sm" disabled>
               <MicrophoneSlash size={15} />
-              <span className="max-sm:hidden">Unmute</span>
+              Unmute
             </Button>
           </span>
         </Tooltip>
@@ -118,17 +118,21 @@ export function LiveControls({
           aria-pressed={live.micOn}
           aria-label={live.micOn ? "Mute yourself" : "Unmute yourself"}
           onClick={() => void live.toggleMic()}
-          className="max-sm:w-9 max-sm:px-0"
         >
+          {/* The one button on this row that keeps its words on a phone. Every
+              other control here is something you do occasionally; this is the
+              decision you make over and over, and it is the one where pressing
+              the wrong thing puts you on air by accident. A microphone glyph
+              alone does not say which way it is about to go. */}
           {live.micOn ? (
             <>
               <Microphone size={15} />
-              <span className="max-sm:hidden">Live</span>
+              Live
             </>
           ) : (
             <>
               <MicrophoneSlash size={15} />
-              <span className="max-sm:hidden">Unmute</span>
+              Unmute
             </>
           )}
         </Button>
