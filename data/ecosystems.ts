@@ -45,7 +45,7 @@ export const ecosystems: Ecosystem[] = [
       "The hub the rest of the suite is built around, and the busiest band here.",
     alias: "nexus",
     domain: "nexus.free",
-    icon: "/icons/nexus.png",
+    icon: "/icons/Nexus-logo-solid-BG2.png",
     band: BAND,
   },
   {

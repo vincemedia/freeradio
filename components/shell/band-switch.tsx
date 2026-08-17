@@ -6,6 +6,7 @@ import useSWRLike from "@/lib/use-fetch";
 import { EcosystemMark } from "@/components/identity";
 import type { Ecosystem } from "@/data/schema";
 import { useRadio } from "@/lib/store";
+import { DropdownRoot } from "@/components/ui/overlays";
 import { useOnAir } from "@/lib/use-on-air";
 import { cn } from "@/lib/utils";
 
@@ -38,7 +39,7 @@ export function BandSwitch({ className }: { className?: string }) {
   const current = bands?.find((b) => b.id === ecosystem);
 
   return (
-    <DropdownMenu.Root>
+    <DropdownRoot>
       <DropdownMenu.Trigger
         className={cn(
           "inline-flex h-9 items-center gap-2 rounded-md border border-border bg-card px-2.5 text-sm font-medium transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
@@ -111,6 +112,6 @@ export function BandSwitch({ className }: { className?: string }) {
           )}
         </DropdownMenu.Content>
       </DropdownMenu.Portal>
-    </DropdownMenu.Root>
+    </DropdownRoot>
   );
 }

@@ -4,6 +4,7 @@ import { useSyncExternalStore } from "react";
 import { useTheme } from "next-themes";
 import { Check, Monitor, Moon, Sun } from "@phosphor-icons/react";
 import { EcosystemMark } from "@/components/identity";
+import { SfxToggle } from "@/components/shell/sfx-toggle";
 import { AvatarPicker } from "@/components/shell/avatar-picker";
 import { PageHeader } from "@/components/shell/page-header";
 import { Help } from "@/components/ui/overlays";
@@ -105,6 +106,19 @@ export default function SettingsPage() {
             );
           })}
         </div>
+      </section>
+
+      {/* ---- sound ---- */}
+      <section className="space-y-3">
+        <h2 className="flex items-center gap-1 text-[11px] font-medium uppercase tracking-[0.06em] text-muted-foreground">
+          Sound
+          <Help>Arrivals, departures, and the click a menu makes</Help>
+        </h2>
+        <SfxToggle />
+        <p className="text-xs text-muted-foreground">
+          Voices and recordings are unaffected. This is only the noises the
+          interface itself makes.
+        </p>
       </section>
 
       {/* ---- default band ---- */}

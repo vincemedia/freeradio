@@ -1,6 +1,7 @@
 "use client";
 
 import { Dialog as D } from "radix-ui";
+import { play } from "@/lib/sfx";
 import { X } from "@phosphor-icons/react";
 import { cn } from "@/lib/utils";
 
@@ -12,7 +13,22 @@ import { cn } from "@/lib/utils";
  * page peeking behind, which is what you want when the occupant grid should
  * stay visible while a panel is open over it.
  */
-export const Sheet = D.Root;
+/**
+ * A sheet is a menu that came in from the side, so it clicks like one. The
+ * sound follows `onOpenChange` rather than the trigger, which is what makes a
+ * swipe-away and an escape sound the same as a tap on the close button.
+ */
+export function Sheet(props: React.ComponentProps<typeof D.Root>) {
+  return (
+    <D.Root
+      {...props}
+      onOpenChange={(open) => {
+        play(open ? "open-menu" : "close-menu");
+        props.onOpenChange?.(open);
+      }}
+    />
+  );
+}
 export const SheetTrigger = D.Trigger;
 
 export function SheetContent({

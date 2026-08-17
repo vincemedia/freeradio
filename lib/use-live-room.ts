@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import RealtimeKitClient from "@cloudflare/realtimekit";
 import { apiPost } from "@/lib/api";
+import { play } from "@/lib/sfx";
 
 /**
  * A live station, for real.
@@ -177,6 +178,20 @@ export function useLiveRoom(coChannelId: string | null): LiveRoom {
       ] as const) {
         meeting.participants.joined.on(event, sync);
       }
+
+      /* A set tells you somebody walked in. In a voice room that is a fact you
+         would otherwise have to be watching a grid to learn, and the point of
+         a voice room is that you are not looking at it. Bound here rather than
+         derived from the participant list: a diff over a re-rendered array
+         would also fire for the people who were already there when you
+         arrived, which is a burst of arrivals for events that happened before
+         you did. */
+      meeting.participants.joined.on("participantJoined", () =>
+        play("user-connect"),
+      );
+      meeting.participants.joined.on("participantLeft", () =>
+        play("user-disconnect"),
+      );
       meeting.self.on("audioUpdate", sync);
 
       /* Leaving is not always your idea. The host can remove you, the station

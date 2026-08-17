@@ -1,12 +1,37 @@
 "use client";
 
-import { Dialog as D, Popover as P, Tooltip as T } from "radix-ui";
+import { Dialog as D, DropdownMenu as M, Popover as P, Tooltip as T } from "radix-ui";
 import { Question, X } from "@phosphor-icons/react";
+import { play } from "@/lib/sfx";
 import { cn } from "@/lib/utils";
+
+/**
+ * Every overlay in the product opens and closes through one of the roots
+ * below, which is why the sound is attached here rather than at each call
+ * site. A switch that clicks in one dialog and not another is worse than one
+ * that never clicks at all.
+ *
+ * Wrapped on `onOpenChange` rather than on the trigger, so it follows the
+ * actual state and fires for the ways an overlay closes that are not a click:
+ * escape, the backdrop, a link inside it.
+ */
+function withSound<T extends { onOpenChange?: (open: boolean) => void }>(
+  props: T,
+): T {
+  return {
+    ...props,
+    onOpenChange: (open: boolean) => {
+      play(open ? "open-menu" : "close-menu");
+      props.onOpenChange?.(open);
+    },
+  };
+}
 
 /* ----------------------------------------------------------------- dialog */
 
-export const Dialog = D.Root;
+export function Dialog(props: React.ComponentProps<typeof D.Root>) {
+  return <D.Root {...withSound(props)} />;
+}
 export const DialogTrigger = D.Trigger;
 
 export function DialogContent({
@@ -67,8 +92,21 @@ export const DialogClose = D.Close;
  * behind it, and dismissing it costs one click anywhere. Used for the identity
  * card, which is a thing you glance at rather than a task you complete.
  */
-export const Popover = P.Root;
+export function Popover(props: React.ComponentProps<typeof P.Root>) {
+  return <P.Root {...withSound(props)} />;
+}
 export const PopoverTrigger = P.Trigger;
+
+/* --------------------------------------------------------------- dropdown */
+
+/**
+ * Re-exported here so a dropdown is a menu with the same sound as every other
+ * menu. Radix's own primitive is imported directly in one or two places and
+ * should not be: this is the door.
+ */
+export function DropdownRoot(props: React.ComponentProps<typeof M.Root>) {
+  return <M.Root {...withSound(props)} />;
+}
 
 export function PopoverContent({
   className,
