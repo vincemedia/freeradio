@@ -1,12 +1,12 @@
 "use client";
 
 import { Check, UserPlus } from "@phosphor-icons/react";
-import Avatar from "boring-avatars";
 import { toast } from "sonner";
+import { Avatar } from "@/components/identity";
 import useFetch from "@/lib/use-fetch";
 import { Button } from "@/components/ui/button";
 import { useContacts, MAX_CONTACTS } from "@/lib/contacts";
-import { truncateKey } from "@/lib/identity-key";
+import { personFromKey, truncateKey } from "@/lib/identity-key";
 
 /**
  * People who have been on air lately, offered where the list is empty.
@@ -25,8 +25,6 @@ import { truncateKey } from "@/lib/identity-key";
  * empty state to say so on its own. An offer of nobody is worse than no
  * offer.
  */
-
-const COLORS = ["#eab300", "#cc2e1d", "#4353ff", "#16a34a", "#7c3aed"];
 
 export function RecentPeople() {
   const { data } = useFetch<{ key: string; name: string }[]>(
@@ -57,7 +55,7 @@ export function RecentPeople() {
               key={p.key}
               className="flex items-center gap-3 rounded-lg border border-border bg-card p-3"
             >
-              <Avatar size={36} name={p.key} variant="marble" colors={COLORS} />
+              <Avatar person={personFromKey(p.key, p.name)} size={36} />
               <span className="min-w-0 flex-1">
                 <span className="block truncate text-sm font-medium">
                   {p.name}

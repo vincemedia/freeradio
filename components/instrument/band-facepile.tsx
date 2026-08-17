@@ -1,6 +1,7 @@
 "use client";
 
-import Avatar from "boring-avatars";
+import { Avatar } from "@/components/identity";
+import { isIdentityKey, personFromKey } from "@/lib/identity-key";
 
 /**
  * Everybody on the band, in one row.
@@ -13,14 +14,14 @@ import Avatar from "boring-avatars";
  * Nine faces and then a number. Past nine they stop being people and become
  * texture, and the number is the honest way to say "and more".
  *
- * The avatars are generated from each participant's id rather than fetched.
- * Most people on a band are strangers with no picture, and a row of identical
- * grey circles would say less than nothing; a generated tile is at least
- * consistently theirs.
+ * The avatars are the app's own, derived from each participant's identity, so
+ * a face here is the same face they have in a room and in the top bar. Most
+ * people on a band are strangers with no picture, and a row of identical grey
+ * circles would say less than nothing; a generated tile with a creature on it
+ * is at least consistently theirs.
  */
 
 const SHOWN = 9;
-const COLORS = ["#eab300", "#cc2e1d", "#4353ff", "#16a34a", "#7c3aed"];
 
 export function BandFacepile({
   listeners,
@@ -44,7 +45,7 @@ export function BandFacepile({
         {shown.map((l) => (
           <li key={l.id} className="-mr-1.5 last:mr-0" title={l.name}>
             <span className="block rounded-full ring-2 ring-[var(--panel)]">
-              <Avatar size={24} name={l.id} variant="marble" colors={COLORS} />
+              <Avatar person={faceFor(l)} size={24} />
             </span>
           </li>
         ))}
@@ -61,4 +62,13 @@ export function BandFacepile({
       </span>
     </div>
   );
+}
+
+/** A listener as a person, so the face matches everywhere else it appears. */
+function faceFor(l: { id: string; name: string }) {
+  const person = personFromKey(
+    isIdentityKey(l.id) ? l.id : `02${"0".repeat(64)}`,
+    l.name,
+  );
+  return isIdentityKey(l.id) ? person : { ...person, id: l.id };
 }

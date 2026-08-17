@@ -1,6 +1,11 @@
 import "server-only";
 
 import { cookies } from "next/headers";
+import {
+  isIdentityKey as isKey,
+  personFromKey as fromKey,
+  truncateKey as shorten,
+} from "@/lib/identity-key";
 import type { Person } from "@/data/schema";
 
 /**
@@ -44,20 +49,12 @@ export function avatarCookieName() {
   return AVATAR_COOKIE;
 }
 
-/** A compressed secp256k1 public key: 33 bytes, hex, 02 or 03 prefixed. */
-export function isIdentityKey(value: unknown): value is string {
-  return typeof value === "string" && /^0[23][0-9a-fA-F]{64}$/.test(value);
-}
+/* Re-exported rather than redefined. The derivation these share is the seed
+   for somebody's avatar, so a second copy that drifts by one character gives
+   them a different face on the server's pages than in the room. */
+export const isIdentityKey = isKey;
 
-/**
- * A key, shortened enough to read and long enough to be one person.
- *
- * Both ends, because both ends are what distinguish two keys — the middle of
- * a hex string tells you nothing at a glance.
- */
-export function truncateKey(publicKey: string): string {
-  return `${publicKey.slice(0, 6)}…${publicKey.slice(-4)}`;
-}
+export const truncateKey = shorten;
 
 /**
  * What a username has to be to be usable as a handle.
@@ -84,40 +81,7 @@ export function personFromKey(
   username: string | null,
   photo: string | null = null,
 ): Person {
-  const short = truncateKey(publicKey);
-  return {
-    id: `wallet-${publicKey.slice(0, 16)}`,
-    name: username ?? short,
-    handle: username ?? short,
-    /* The key is its own authority. There is no ecosystem to claim without
-       asking the wallet which one it belongs to, and guessing would put a
-       borrowed suffix on somebody's address. */
-    ecosystem: "nexus",
-    keyIdentity: true,
-    publicKey,
-    role: "",
-    bio: "",
-    organization: null,
-    city: "",
-    photo,
-    /* Derived from the key, so the same person is the same colours every
-       time without storing anything. */
-    avatarColors: colorsFor(publicKey),
-  };
-}
-
-const PALETTE = [
-  "#eab300", "#cc2e1d", "#4353ff", "#16a34a", "#7c3aed",
-  "#0891b2", "#db2777", "#f97316", "#0ea5e9", "#65a30d",
-];
-
-function colorsFor(publicKey: string): string[] {
-  const n = parseInt(publicKey.slice(-6), 16) || 0;
-  return [
-    PALETTE[n % PALETTE.length],
-    PALETTE[(n >> 3) % PALETTE.length],
-    PALETTE[(n >> 6) % PALETTE.length],
-  ];
+  return fromKey(publicKey, username, photo);
 }
 
 export interface Connected {

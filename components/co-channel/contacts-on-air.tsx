@@ -1,9 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import Avatar from "boring-avatars";
+import { Avatar } from "@/components/identity";
 import { Lamp } from "@/components/instrument/parts";
 import { ScrollRail } from "@/components/ui/scroll-rail";
+import { personFromKey } from "@/lib/identity-key";
 import { formatFrequency } from "@/lib/format";
 import { useOnAir } from "@/lib/use-on-air";
 
@@ -18,10 +19,12 @@ import { useOnAir } from "@/lib/use-on-air";
  * permanent apology on the busiest screen in the product, and an invitation to
  * add contacts is no use on a screen with nobody on it to add.
  *
- * The avatars are generated from the identity key rather than fetched. A
- * contact is a key and a name, captured when you added them; there is no
- * directory of wallet identities to ask for a current picture, and inventing
- * one would mean the face in your list could change under you.
+ * The avatars are derived from the identity key rather than fetched, and by
+ * the same function the top bar uses, so a contact looks the same here as
+ * they do standing in a room. A contact is a key and a name captured when you
+ * added them; there is no directory of wallet identities to ask for a current
+ * picture, and inventing one would mean the face in your list changing under
+ * you.
  */
 export function ContactsOnAir() {
   const onAir = useOnAir();
@@ -55,10 +58,8 @@ export function ContactsOnAir() {
                 className="lift flex w-[15rem] items-center gap-2.5 rounded-lg border border-border bg-card p-2.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               >
                 <Avatar
+                  person={personFromKey(contact.key, contact.name, contact.photo)}
                   size={36}
-                  name={contact.key}
-                  variant="marble"
-                  colors={["#eab300", "#cc2e1d", "#4353ff", "#16a34a", "#7c3aed"]}
                 />
                 <span className="min-w-0 flex-1">
                   <span className="block truncate text-[13px] font-medium">

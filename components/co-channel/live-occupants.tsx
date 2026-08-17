@@ -7,14 +7,15 @@ import {
   Prohibit,
   UserPlus,
 } from "@phosphor-icons/react";
-import Avatar from "boring-avatars";
 import { toast } from "sonner";
+import { Avatar } from "@/components/identity";
 import { Grille } from "@/components/instrument/parts";
 import { Button } from "@/components/ui/button";
 import { LevelMeter } from "@/components/instrument/level-meter";
 import { useContacts, MAX_CONTACTS } from "@/lib/contacts";
 import { useLevels } from "@/lib/use-levels";
-import { isIdentityKey } from "@/lib/identity-key";
+import { isIdentityKey, personFromKey } from "@/lib/identity-key";
+import type { Person } from "@/data/schema";
 import type { LiveRoom } from "@/lib/use-live-room";
 import { cn } from "@/lib/utils";
 
@@ -39,6 +40,34 @@ import { cn } from "@/lib/utils";
  * participant id is a seat rather than a person, so there would be nobody to
  * remember.
  */
+/**
+ * A participant as a person the avatar can draw.
+ *
+ * A listener has a seat rather than a key, so there is no identity to derive
+ * one from: they get their participant id as the seed, which is stable for
+ * that browser and belongs to nobody else. Everyone with a wallet gets the
+ * same derivation the top bar uses.
+ */
+function personFor(p: {
+  id: string;
+  name: string;
+  customId: string;
+  picture?: string;
+}): Person {
+  /* The photo rides in on the token, so somebody who uploaded one is that
+     picture in the room as well as in the top bar rather than reverting to a
+     generated tile the moment they join. */
+  if (isIdentityKey(p.customId)) {
+    return personFromKey(p.customId, p.name, p.picture ?? null);
+  }
+  return {
+    ...personFromKey(`02${"0".repeat(64)}`, p.name, p.picture ?? null),
+    /* Seeded on the seat, so two anonymous listeners are two faces. */
+    id: p.customId,
+    publicKey: undefined,
+  };
+}
+
 export function LiveOccupants({
   live,
   canModerate,
@@ -101,12 +130,13 @@ export function LiveOccupants({
                     : { opacity: 0.35 + 0.65 * (levels[p.id] ?? 0) }
                 }
               >
-                <Avatar
-                  size={56}
-                  name={p.customId}
-                  variant="marble"
-                  colors={["#eab300", "#cc2e1d", "#4353ff", "#16a34a", "#7c3aed"]}
-                />
+                {/* The app's own avatar, not a tile drawn here. This used to
+                    call boring-avatars directly, seeded on the full public key
+                    with its own palette and no creature — so your portrait in
+                    a station was a different colour and a different animal
+                    from the one representing you in the top bar, six inches
+                    above it. One person, one face. */}
+                <Avatar person={personFor(p)} size={56} />
               </span>
 
               {/* The badge is the microphone's state, which is a fact; the

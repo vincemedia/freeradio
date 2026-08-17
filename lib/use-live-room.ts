@@ -46,6 +46,8 @@ export interface LiveParticipant {
    * should show that.
    */
   micOpen: boolean;
+  /** their uploaded avatar, if they have one; the token carries it in */
+  picture?: string;
   muted: boolean;
   isSelf: boolean;
 }
@@ -117,6 +119,7 @@ export function useLiveRoom(coChannelId: string | null): LiveRoom {
         id: self.id,
         name: self.name,
         customId: self.customParticipantId ?? self.id,
+        picture: self.picture || undefined,
         micOpen: Boolean(self.audioEnabled),
         muted: !self.audioEnabled,
         isSelf: true,
@@ -125,6 +128,7 @@ export function useLiveRoom(coChannelId: string | null): LiveRoom {
         id: p.id,
         name: p.name,
         customId: p.customParticipantId ?? p.id,
+        picture: p.picture || undefined,
         micOpen: Boolean(p.audioEnabled),
         muted: !p.audioEnabled,
         isSelf: false,

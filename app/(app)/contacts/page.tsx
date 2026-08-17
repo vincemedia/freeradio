@@ -4,8 +4,7 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Suspense, useState } from "react";
 import { MagnifyingGlass, Trash, UsersThree } from "@phosphor-icons/react";
-import Avatar from "boring-avatars";
-import { EcosystemMark } from "@/components/identity";
+import { Avatar, EcosystemMark } from "@/components/identity";
 import { Lamp } from "@/components/instrument/parts";
 import { RecentPeople } from "@/components/co-channel/recent-people";
 import { PageHeader } from "@/components/shell/page-header";
@@ -13,7 +12,7 @@ import { Button } from "@/components/ui/button";
 import { EmptyState, Input, Skeleton } from "@/components/ui/primitives";
 import { useContacts, MAX_CONTACTS } from "@/lib/contacts";
 import { formatFrequency } from "@/lib/format";
-import { truncateKey } from "@/lib/identity-key";
+import { personFromKey, truncateKey } from "@/lib/identity-key";
 import { useOnAir } from "@/lib/use-on-air";
 
 /**
@@ -48,8 +47,6 @@ function ContactsSkeleton() {
     </div>
   );
 }
-
-const COLORS = ["#eab300", "#cc2e1d", "#4353ff", "#16a34a", "#7c3aed"];
 
 function Contacts() {
   /* Arriving from search pre-fills the filter, so picking a handle lands on
@@ -130,12 +127,7 @@ function Contacts() {
                             href={`/co-channel/${room.id}`}
                             className="flex items-center gap-3 rounded-lg border border-border bg-card p-3 transition-colors hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                           >
-                            <Avatar
-                              size={40}
-                              name={c.key}
-                              variant="marble"
-                              colors={COLORS}
-                            />
+                            <Avatar person={personFromKey(c.key, c.name, c.photo)} size={40} />
                             <span className="min-w-0 flex-1">
                               <span className="block truncate text-sm font-medium">
                                 {c.name}
@@ -177,12 +169,7 @@ function Contacts() {
                         key={c.key}
                         className="flex items-center gap-3 rounded-lg border border-border bg-card p-3"
                       >
-                        <Avatar
-                          size={36}
-                          name={c.key}
-                          variant="marble"
-                          colors={COLORS}
-                        />
+                        <Avatar person={personFromKey(c.key, c.name, c.photo)} size={36} />
                         <span className="min-w-0 flex-1">
                           <span className="block truncate text-sm">
                             {c.name}
