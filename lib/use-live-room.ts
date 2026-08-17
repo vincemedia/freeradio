@@ -68,6 +68,15 @@ export interface LiveRoom {
   /** the browser refused the microphone, or you did */
   micDenied: boolean;
   recording: boolean;
+  /**
+   * Recording has been asked for and has not started yet.
+   *
+   * Its own state rather than "not recording": starting a recording is a round
+   * trip to Cloudflare and takes a visible moment, and a button that looks
+   * exactly the same before and during that moment invites a second press —
+   * which is how you get two recordings of one conversation.
+   */
+  recordingPending: boolean;
   error: string | null;
   /**
    * The meeting itself, for the few things that need it directly.
@@ -97,6 +106,7 @@ export function useLiveRoom(coChannelId: string | null): LiveRoom {
   const [micOn, setMicOn] = useState(false);
   const [micDenied, setMicDenied] = useState(false);
   const [recording, setRecording] = useState(false);
+  const [recordingPending, setRecordingPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const meetingRef = useRef<Meeting | null>(null);
@@ -224,7 +234,10 @@ export function useLiveRoom(coChannelId: string | null): LiveRoom {
         void meeting.leave().catch(() => {});
       });
       meeting.recording?.on?.("recordingUpdate", () => {
-        setRecording(meeting.recording?.recordingState === "RECORDING");
+        const state = meeting.recording?.recordingState;
+        setRecording(state === "RECORDING");
+        /* Whatever it settled on, it is no longer on its way there. */
+        if (state === "RECORDING" || state === "IDLE") setRecordingPending(false);
       });
 
       await meeting.join();
@@ -277,10 +290,25 @@ export function useLiveRoom(coChannelId: string | null): LiveRoom {
   const toggleRecording = useCallback(async () => {
     const meeting = meetingRef.current;
     if (!meeting?.recording) return;
+
     if (meeting.recording.recordingState === "RECORDING") {
-      await meeting.recording.stop();
-    } else {
+      setRecordingPending(true);
+      try {
+        await meeting.recording.stop();
+      } finally {
+        /* The event settles this normally; this is the backstop for a stop
+           that fails, so the button cannot be left spinning forever. */
+        setRecordingPending(false);
+      }
+      return;
+    }
+
+    setRecordingPending(true);
+    try {
       await meeting.recording.start();
+    } catch (e) {
+      setRecordingPending(false);
+      throw e;
     }
   }, []);
 
@@ -295,6 +323,7 @@ export function useLiveRoom(coChannelId: string | null): LiveRoom {
     micOn,
     micDenied,
     recording,
+    recordingPending,
     error,
     meeting,
     join,

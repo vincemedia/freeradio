@@ -9,7 +9,11 @@ import {
 } from "@phosphor-icons/react";
 import useFetch from "@/lib/use-fetch";
 import { Nest, OccupantGrid, RoomStatus, Transcript } from "@/components/co-channel/room";
-import { LiveControls, RecordedControls } from "@/components/co-channel/live-controls";
+import {
+  LiveControls,
+  RecordedControls,
+  RecordingWarning,
+} from "@/components/co-channel/live-controls";
 import { LiveOccupants } from "@/components/co-channel/live-occupants";
 import { useLive } from "@/components/live-room-provider";
 import { stopTuning } from "@/lib/tuning-sound";
@@ -148,6 +152,10 @@ export default function CoChannelPage() {
         <CaretLeft size={14} />
         On air
       </Button>
+
+      {/* Everybody who is not the host hears about a recording before it
+          starts, which is what the terms promise. */}
+      {isLive && <RecordingWarning live={live} />}
 
       <div className="flex gap-6">
       <div className="min-w-0 flex-1 space-y-5">

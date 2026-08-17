@@ -1,5 +1,7 @@
 "use client";
 
+import { useEffect, useState } from "react";
+import { toast } from "sonner";
 import {
   Copy,
   Microphone,
@@ -10,6 +12,7 @@ import {
 } from "@phosphor-icons/react";
 import { BedPicker } from "@/components/co-channel/bed-picker";
 import { Button } from "@/components/ui/button";
+import { Spinner } from "@/components/ui/primitives";
 import { Tooltip } from "@/components/ui/overlays";
 import type { BedControl } from "@/lib/use-bed";
 import type { LiveRoom } from "@/lib/use-live-room";
@@ -136,21 +139,7 @@ export function LiveControls({
           room rather than to themselves. */}
       {live.role === "host" && <BedPicker control={bed} />}
 
-      {live.role === "host" && (
-        <Button
-          variant={live.recording ? "destructive" : "secondary"}
-          size="sm"
-          aria-pressed={live.recording}
-          aria-label={live.recording ? "Stop recording" : "Start recording"}
-          onClick={() => void live.toggleRecording()}
-          className="max-sm:w-9 max-sm:px-0"
-        >
-          <Record size={15} weight={live.recording ? "fill" : "regular"} />
-          <span className="max-sm:hidden">
-            {live.recording ? "Stop" : "Record"}
-          </span>
-        </Button>
-      )}
+      {live.role === "host" && <RecordButton live={live} />}
 
       <Button variant="ghost" size="icon-sm" aria-label="Copy link" onClick={onCopy}>
         <Copy />
@@ -192,4 +181,118 @@ export function RecordedControls({
       </Button>
     </>
   );
+}
+
+/**
+ * Start and stop the recording, with the three seconds in between.
+ *
+ * ## The countdown is real
+ *
+ * Not a flourish. The terms promise that recording is announced, and the lamp
+ * in the header does that from the moment it starts — but "from the moment it
+ * starts" is too late for the sentence somebody was already halfway through.
+ * Three seconds is long enough to stop talking and not long enough to be a
+ * ceremony, and everybody in the room is told, not only the host: being
+ * recorded without notice is the exact thing the terms say will not happen,
+ * and the host is the one person who does not need telling.
+ *
+ * ## The spinner
+ *
+ * Starting a recording is a round trip to Cloudflare and takes a visible
+ * moment. A button that looks identical before and during that moment invites
+ * a second press, which is how you get two recordings of one conversation. So
+ * it spins from the click until the state actually settles, and refuses to be
+ * pressed again while it does.
+ */
+function RecordButton({ live }: { live: LiveRoom }) {
+  const [counting, setCounting] = useState(0);
+  const busy = counting > 0 || live.recordingPending;
+
+  const start = () => {
+    const id = toast.loading("Recording starts in 3…", {
+      description: "Everybody in the room has been told.",
+    });
+
+    /* Announced to the room over the same channel the bed uses, so the other
+       people get the warning rather than only the person who caused it. */
+    live.meeting?.participants
+      .broadcastMessage("recording-countdown", { from: 3 })
+      .catch(() => {});
+
+    setCounting(3);
+    let left = 3;
+    const tick = setInterval(() => {
+      left -= 1;
+      if (left > 0) {
+        setCounting(left);
+        toast.loading(`Recording starts in ${left}…`, { id });
+        return;
+      }
+      clearInterval(tick);
+      setCounting(0);
+      toast.success("Recording", {
+        id,
+        description: "The lamp in the header stays on the whole time.",
+      });
+      void live.toggleRecording().catch(() => {
+        toast.error("Recording did not start", { id });
+      });
+    }, 1000);
+  };
+
+  const stop = () => {
+    void live.toggleRecording().then(
+      () => toast("Recording stopped"),
+      () => toast.error("Could not stop the recording"),
+    );
+  };
+
+  return (
+    <Button
+      variant={live.recording ? "destructive" : "secondary"}
+      size="sm"
+      disabled={busy}
+      aria-pressed={live.recording}
+      aria-label={live.recording ? "Stop recording" : "Start recording"}
+      onClick={live.recording ? stop : start}
+      className="max-sm:w-9 max-sm:px-0"
+    >
+      {busy ? (
+        <Spinner size={15} />
+      ) : (
+        <Record size={15} weight={live.recording ? "fill" : "regular"} />
+      )}
+      <span className="max-sm:hidden">
+        {counting > 0 ? counting : live.recordingPending ? "…" : live.recording ? "Stop" : "Record"}
+      </span>
+    </Button>
+  );
+}
+
+/**
+ * The countdown, for everybody who did not press the button.
+ *
+ * Mounted with the room rather than with the control, because the people who
+ * need this warning are precisely the ones with no record button on screen.
+ */
+export function RecordingWarning({ live }: { live: LiveRoom }) {
+  useEffect(() => {
+    const meeting = live.meeting;
+    if (!meeting || live.role === "host") return;
+
+    const onMessage = ({ type }: { type: string }) => {
+      if (type !== "recording-countdown") return;
+      toast.warning("This station is about to be recorded", {
+        description: "Starting in a few seconds. Leave now if you would rather not be.",
+        duration: 6000,
+      });
+    };
+
+    meeting.participants.on("broadcastedMessage", onMessage);
+    return () => {
+      meeting.participants.off("broadcastedMessage", onMessage);
+    };
+  }, [live.meeting, live.role]);
+
+  return null;
 }

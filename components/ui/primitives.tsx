@@ -134,3 +134,33 @@ export function EmptyState({
     </div>
   );
 }
+
+/**
+ * A spinner, for the gap between asking and knowing.
+ *
+ * Borrowed geometry from nothing: a ring with a quarter missing, turning. It
+ * exists because a control that has been pressed and has not finished is a
+ * third state, and leaving it looking like the first invites a second press.
+ *
+ * Still under `prefers-reduced-motion` — a stationary broken ring still reads
+ * as "working" without moving, which is the compromise every other spinner in
+ * this position makes.
+ */
+export function Spinner({
+  size = 15,
+  className,
+}: {
+  size?: number;
+  className?: string;
+}) {
+  return (
+    <span
+      aria-hidden
+      className={cn(
+        "inline-block shrink-0 rounded-full border-2 border-current border-t-transparent motion-safe:animate-spin",
+        className,
+      )}
+      style={{ width: size, height: size, animationDuration: "700ms" }}
+    />
+  );
+}
