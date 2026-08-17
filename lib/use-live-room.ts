@@ -124,7 +124,7 @@ export function useLiveRoom(coChannelId: string | null): LiveRoom {
     const self = meeting.self;
     const others = meeting.participants.joined.toArray();
 
-    setParticipants([
+    const rows: LiveParticipant[] = [
       {
         id: self.id,
         name: self.name,
@@ -143,7 +143,20 @@ export function useLiveRoom(coChannelId: string | null): LiveRoom {
         muted: !p.audioEnabled,
         isSelf: false,
       })),
-    ]);
+    ];
+
+    /* One identity, one row. Two peers can briefly share a key — a second tab,
+       a reconnect that overlapped its own predecessor — and the resolution
+       below removes the loser, but the list must not show somebody twice even
+       for the second it takes. Self is first, so self always wins the slot. */
+    const seen = new Set<string>();
+    setParticipants(
+      rows.filter((row) => {
+        if (seen.has(row.customId)) return false;
+        seen.add(row.customId);
+        return true;
+      }),
+    );
     setMicOn(Boolean(self.audioEnabled));
   }, []);
 
@@ -192,6 +205,36 @@ export function useLiveRoom(coChannelId: string | null): LiveRoom {
       ] as const) {
         meeting.participants.joined.on(event, sync);
       }
+
+      /**
+       * The same identity cannot be in a room twice.
+       *
+       * Opening a station in a second tab, or on a second device with the same
+       * wallet, produced two peers carrying one key: two faces, two meters,
+       * two of you in the occupant count, and both of them able to talk. There
+       * is no server-side kick for a single participant — only kick-all — so
+       * the resolution is here, and the rule is the one every other app uses:
+       * the newest connection is the one the person is actually looking at, so
+       * the older one stands down.
+       *
+       * Which of the two is older is decided by *how* each learned about the
+       * other. The one already in the room sees an arrival; the one arriving
+       * sees somebody already present in its opening roster. So this fires
+       * only on the event, never on the initial read.
+       *
+       * Two connections opened in the same instant can both see an arrival and
+       * both leave. That is rare, recoverable by pressing join, and much the
+       * better failure: two of you talking over each other is worse than none.
+       */
+      meeting.participants.joined.on("participantJoined", (arrived) => {
+        const mine = meeting.self.customParticipantId;
+        if (!mine) return;
+        const list = Array.isArray(arrived) ? arrived : [arrived];
+        if (!list.some((p) => p?.customParticipantId === mine)) return;
+
+        setError("You joined this station somewhere else, so this tab left it.");
+        leave();
+      });
 
       /* A set tells you somebody walked in. In a voice room that is a fact you
          would otherwise have to be watching a grid to learn, and the point of
@@ -249,7 +292,7 @@ export function useLiveRoom(coChannelId: string | null): LiveRoom {
          can act on, so it reads as unavailable rather than as a failure. */
       setStatus("unavailable");
     }
-  }, [coChannelId, sync]);
+  }, [coChannelId, sync, leave]);
 
   /**
    * Your microphone.
