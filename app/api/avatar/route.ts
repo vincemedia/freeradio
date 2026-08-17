@@ -88,15 +88,36 @@ export async function POST(request: NextRequest) {
 
   const input = Buffer.from(await file.arrayBuffer());
 
-  /* Imported here rather than at the top of the file. sharp is a native
-     binary and @vercel/blob wants its token at construction; loading either
-     at module scope makes an unauthenticated request crash the route before
-     any of its own checks have run, which is how refusing a stranger turned
-     into a 500. */
-  const [{ default: sharp }, { del, put }] = await Promise.all([
-    import("sharp"),
-    import("@vercel/blob"),
-  ]);
+  /* Imported here rather than at the top of the file. sharp is a native binary
+     and @vercel/blob wants its token at construction; loading either at module
+     scope makes an unauthenticated request crash the route before any of its own
+     checks have run, which is how refusing a stranger turned into a 500.
+
+     And the import is reported rather than allowed to become a bare 500. It
+     failed silently in production for a week — the linux binary was missing —
+     while three separate attempts to fix it were "verified" against the
+     unauthenticated path, which returns above this line. An error that says
+     which half broke is the difference between one deploy and four. */
+  let sharp: typeof import("sharp").default;
+  let put: typeof import("@vercel/blob").put;
+  let del: typeof import("@vercel/blob").del;
+  try {
+    const [image, blob] = await Promise.all([
+      import("sharp"),
+      import("@vercel/blob"),
+    ]);
+    sharp = image.default;
+    put = blob.put;
+    del = blob.del;
+  } catch (e) {
+    return NextResponse.json(
+      {
+        error: "The image processor is not available on this deployment.",
+        detail: e instanceof Error ? e.message : String(e),
+      },
+      { status: 503 },
+    );
+  }
 
   let output: Buffer;
   try {

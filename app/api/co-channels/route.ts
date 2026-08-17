@@ -95,6 +95,17 @@ export async function POST(request: Request) {
     );
   }
 
+  /* Bands are a closed set. Without this, `ecosystem: "nope"` created a station
+     on a band that does not exist — invisible everywhere the UI filters by
+     band, and holding a frequency on nothing. Whatever the form sends, the
+     server decides what a band is. */
+  if (!getEcosystem(body.ecosystem)) {
+    return NextResponse.json(
+      { error: "There is no such band.", field: "ecosystem" },
+      { status: 400 },
+    );
+  }
+
   const onBand = [
     ...(await userStations()).filter((s) => s.ecosystem === body.ecosystem),
     ...listCoChannels({ ecosystem: body.ecosystem }).filter((s) => s.kind === "live"),
