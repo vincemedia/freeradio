@@ -19,6 +19,13 @@ export async function GET() {
       CLOUDFLARE_ACCOUNT_ID: Boolean(process.env.CLOUDFLARE_ACCOUNT_ID),
       REALTIMEKIT_APP_ID: Boolean(process.env.REALTIMEKIT_APP_ID),
     },
+    push: {
+      configured: Boolean(
+        process.env.VAPID_PRIVATE_KEY &&
+          process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY &&
+          process.env.BLOB_READ_WRITE_TOKEN,
+      ),
+    },
     runtime: process.env.NEXT_RUNTIME ?? "nodejs",
     vercelEnv: process.env.VERCEL_ENV ?? null,
   });

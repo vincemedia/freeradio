@@ -4,6 +4,7 @@ import { DEFAULT_BED, isBedId, type BedId } from "@/data/beds";
 import type { EcosystemId, Gates } from "@/data/schema";
 import { connectedPerson } from "@/lib/server/identity";
 import { liveRosters, type LiveOccupant } from "@/lib/server/live-counts";
+import { notifyWatchers } from "@/lib/server/push";
 import { listCoChannels } from "@/lib/server/store";
 import { createUserStation, userStations } from "@/lib/server/user-stations";
 
@@ -151,6 +152,19 @@ export async function POST(request: Request) {
       { status: 503 },
     );
   }
+  /* Somebody opening a station is the strongest version of the thing contacts
+     want to know about — there is definitely something to listen to, and it
+     definitely just started. Not awaited: the person who pressed the button
+     should not wait on a fan-out to Apple and Google to see their own room. */
+  void notifyWatchers(connected.publicKey, {
+    title: `${connected.person.name} started a station`,
+    body: `${station.frequency.toFixed(1)} MHz — ${station.title}`,
+    url: `/co-channel/${station.id}`,
+    tag: `started:${station.id}`,
+  }).catch(() => {
+    /* Nothing to do and nobody to tell. */
+  });
+
   return NextResponse.json(station, { status: 201 });
 }
 

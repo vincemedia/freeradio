@@ -13,7 +13,7 @@ const nextConfig: NextConfig = {
      something that throws at import time, which turns an avatar upload into a
      500 before any of its own checks have run. Left external, the runtime
      loads the platform build. */
-  serverExternalPackages: ["sharp"],
+  serverExternalPackages: ["sharp", "web-push"],
 };
 
 /* No `experimental.viewTransition` here on purpose. It exists, and it enables

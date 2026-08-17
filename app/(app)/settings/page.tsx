@@ -4,6 +4,7 @@ import { useSyncExternalStore } from "react";
 import { useTheme } from "next-themes";
 import { Check, Monitor, Moon, Sun } from "@phosphor-icons/react";
 import { EcosystemMark } from "@/components/identity";
+import { NotificationToggle } from "@/components/shell/notification-toggle";
 import { SfxToggle } from "@/components/shell/sfx-toggle";
 import { AvatarPicker } from "@/components/shell/avatar-picker";
 import { PageHeader } from "@/components/shell/page-header";
@@ -106,6 +107,15 @@ export default function SettingsPage() {
             );
           })}
         </div>
+      </section>
+
+      {/* ---- notifications ---- */}
+      <section className="space-y-3">
+        <h2 className="flex items-center gap-1 text-[11px] font-medium uppercase tracking-[0.06em] text-muted-foreground">
+          Notifications
+          <Help>Your device tells you when a contact goes on air</Help>
+        </h2>
+        <NotificationToggle />
       </section>
 
       {/* ---- sound ---- */}

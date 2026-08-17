@@ -198,7 +198,7 @@ export function Switch({
       <S.Root
         checked={checked}
         onCheckedChange={onCheckedChange}
-        aria-label={label}
+        aria-label={label || undefined}
         className={cn(
           "relative h-5 w-9 shrink-0 rounded-full transition-colors duration-150",
           "shadow-[inset_0_1px_2px_oklch(0_0_0/0.14)]",
@@ -216,7 +216,12 @@ export function Switch({
           )}
         />
       </S.Root>
-      <span className="text-xs text-muted-foreground">{label}</span>
+      {/* Omitted when empty: some switches are labelled by the block they sit
+          in, and an empty span still takes the gap. The accessible name comes
+          from `aria-label` either way. */}
+      {label !== "" && (
+        <span className="text-xs text-muted-foreground">{label}</span>
+      )}
     </label>
   );
 }

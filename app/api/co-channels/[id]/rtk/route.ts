@@ -9,6 +9,7 @@ import {
   sessionParticipants,
   type SessionParticipant,
 } from "@/lib/server/realtimekit";
+import { notifyWatchers } from "@/lib/server/push";
 import { anyStation } from "@/lib/server/user-stations";
 
 export const dynamic = "force-dynamic";
@@ -148,6 +149,20 @@ export async function POST(
     picture: connected.person.photo ?? undefined,
   });
 
+  /* Anybody who has asked to hear about this person hears about it now. Not
+     awaited: a notification is worth nothing to the person joining, and making
+     them wait on a fan-out to Apple and Google before their own room opens
+     would be charging them for somebody else's benefit.
+
+     Only when the room was empty of them beforehand, so a refresh, a reconnect
+     or a second tab is not three notifications about one arrival. */
+  const alreadyHere = roster?.some(
+    (p) => p.custom_participant_id === identity.id,
+  );
+  if (!alreadyHere) {
+    void announceArrival(connected.publicKey, identity.name, room);
+  }
+
   return NextResponse.json({
     meetingId,
     authToken: participant.token,
@@ -175,5 +190,31 @@ async function presentIn(meetingId: string): Promise<SessionParticipant[] | null
     return seen.filter((p) => !p.left_at);
   } catch {
     return null;
+  }
+}
+
+/**
+ * Tell this person's watchers where they are.
+ *
+ * Fire and forget, and quiet about failing: nothing the person joining does
+ * depends on it, and a push service having a bad minute is not their problem.
+ * The tag is the station, so somebody moving between rooms replaces their own
+ * previous notification rather than stacking a history of their evening on
+ * everybody's lock screen.
+ */
+async function announceArrival(
+  publicKey: string,
+  name: string,
+  room: { id: string; title: string; frequency: number },
+) {
+  try {
+    await notifyWatchers(publicKey, {
+      title: `${name} is on air`,
+      body: `${room.frequency.toFixed(1)} MHz — ${room.title}`,
+      url: `/co-channel/${room.id}`,
+      tag: `arrival:${publicKey.slice(0, 12)}`,
+    });
+  } catch {
+    /* Nothing to do and nobody to tell. */
   }
 }
