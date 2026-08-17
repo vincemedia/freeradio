@@ -80,6 +80,11 @@ export function LiveOccupants({
   if (live.status !== "live") {
     return (
       <section className="relative overflow-hidden rounded-lg border border-dashed border-border p-8 text-center">
+        {/* Connecting to a room takes a second or two of real work — a token,
+            then a negotiation — and a line of text alone reads as a page that
+            has stopped. Three dots that move say the same thing and say it is
+            still happening. */}
+        {live.status === "joining" && <Dots />}
         <p className="text-sm text-muted-foreground">
           {live.status === "joining"
             ? "Opening the room…"
@@ -118,9 +123,13 @@ export function LiveOccupants({
                   wall of identical halos. It never reaches zero while the
                   microphone is open: an open one is a fact worth showing even
                   during a pause. */}
+              {/* `flex`, not `block`. A block wrapper around an inline-block
+                  avatar is as tall as a line box, so the ring it carried was
+                  taller than the circle inside it and hung below — a stretched
+                  pill rather than a halo. A flex box hugs its child. */}
               <span
                 className={cn(
-                  "block rounded-full",
+                  "flex rounded-full",
                   !p.muted &&
                     "ring-2 ring-[var(--ring-speaking)] ring-offset-2 ring-offset-card",
                 )}
@@ -229,5 +238,28 @@ export function LiveOccupants({
         ))}
       </ul>
     </section>
+  );
+}
+
+/**
+ * Three dots, taking turns.
+ *
+ * Staggered by a third of the cycle each so the motion travels rather than
+ * pulsing together — a row that breathes in unison reads as decoration, and a
+ * row that moves left to right reads as progress. Still under
+ * `prefers-reduced-motion`, where the dots stay put and the sentence carries
+ * the message on its own.
+ */
+function Dots() {
+  return (
+    <span aria-hidden className="mb-2.5 flex items-center justify-center gap-1.5">
+      {[0, 1, 2].map((i) => (
+        <span
+          key={i}
+          className="size-1.5 rounded-full bg-muted-foreground/70 motion-safe:animate-bounce"
+          style={{ animationDelay: `${i * 140}ms`, animationDuration: "900ms" }}
+        />
+      ))}
+    </span>
   );
 }

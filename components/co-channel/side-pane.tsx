@@ -18,18 +18,32 @@ import { useLive } from "@/components/live-room-provider";
 import { getToken } from "@/data/tokens";
 import type { CoChannelView } from "@/data/schema";
 import { GATE_HELP, GATE_LABEL } from "@/lib/gates";
+import { facePerson } from "@/lib/face";
 import { formatFrequency } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
 /**
- * Co-Channel settings, and the link that brings somebody in.
+ * Station settings, and the link that brings somebody in.
  *
  * The same pane the suite uses for group-chat settings, carrying the same
  * things in the same order: what this room is, who may get in, and who is
  * already here. It docks beside the content at xl and becomes a sheet below
  * that, which is why it is a plain panel and owns no positioning of its own.
  */
-export function SidePane({ room }: { room: CoChannelView }) {
+export function SidePane({
+  room,
+  /**
+   * Whether the pane's own sections arrive one after another.
+   *
+   * Only the docked one does. In a sheet the pane *is* the thing that just
+   * opened, and staggering the inside of something that is itself animating in
+   * reads as two competing movements.
+   */
+  stagger = false,
+}: {
+  room: CoChannelView;
+  stagger?: boolean;
+}) {
   const live = useLive();
   /* A live room's occupancy is the meeting's, not the fixture's. */
   const isLive = room.kind === "live";
@@ -62,9 +76,14 @@ export function SidePane({ room }: { room: CoChannelView }) {
   return (
     <div className="space-y-6">
       {/* ---- what this room is ---- */}
-      <section className="space-y-3">
+      <section
+        className="space-y-3"
+        {...(stagger
+          ? { "data-settle": "", style: { "--settle-index": 3 } as React.CSSProperties }
+          : {})}
+      >
         <h3 className="text-[11px] font-medium uppercase tracking-[0.06em] text-muted-foreground">
-          Co-Channel
+          Station
         </h3>
         <dl className="space-y-2 text-sm">
           <div className="flex items-baseline justify-between gap-3">
@@ -86,12 +105,17 @@ export function SidePane({ room }: { room: CoChannelView }) {
 
         <Button size="sm" className="w-full" onClick={copyLink}>
           <Copy size={15} />
-          Copy Co-Channel link
+          Copy station link
         </Button>
       </section>
 
       {/* ---- who may get in ---- */}
-      <section className="space-y-3">
+      <section
+        className="space-y-3"
+        {...(stagger
+          ? { "data-settle": "", style: { "--settle-index": 4 } as React.CSSProperties }
+          : {})}
+      >
         <h3 className="flex items-center gap-1 text-[11px] font-medium uppercase tracking-[0.06em] text-muted-foreground">
           Who may join
           <Help>{GATE_HELP[room.primaryGate]}</Help>
@@ -148,7 +172,12 @@ export function SidePane({ room }: { room: CoChannelView }) {
       </section>
 
       {/* ---- who is here ---- */}
-      <section className="space-y-3">
+      <section
+        className="space-y-3"
+        {...(stagger
+          ? { "data-settle": "", style: { "--settle-index": 5 } as React.CSSProperties }
+          : {})}
+      >
         <h3 className="text-[11px] font-medium uppercase tracking-[0.06em] text-muted-foreground">
           In the room
         </h3>
@@ -158,6 +187,11 @@ export function SidePane({ room }: { room: CoChannelView }) {
           {isLive &&
             live.participants.map((p) => (
               <li key={p.id} className="flex items-center gap-2.5 py-1">
+                {/* The face, then the name. A list of names is a list of
+                    strings; a list of faces is a list of people, and half of
+                    these names are shortened keys that only the portrait
+                    tells apart. */}
+                <Avatar person={facePerson(p)} size={26} />
                 <span className="min-w-0 flex-1 text-sm font-medium">
                   {p.isSelf ? "You" : p.name}
                 </span>

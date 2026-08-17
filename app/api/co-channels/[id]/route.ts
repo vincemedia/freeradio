@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getCoChannel } from "@/lib/server/store";
-import { liveCount } from "@/lib/server/live-counts";
+import { liveRosters } from "@/lib/server/live-counts";
 import { userStation } from "@/lib/server/user-stations";
 
 export async function GET(
@@ -36,12 +36,24 @@ export async function GET(
   /* A live room's occupancy is its meeting's. The seeded table has none for
      them on purpose, and reporting that as zero told somebody standing in a
      room that the room was empty. */
-  const occupantCount =
+  const here =
     coChannel.kind === "live"
-      ? await liveCount(id).catch(() => coChannel.occupantCount)
-      : coChannel.occupantCount;
+      ? await liveRosters()
+          .then((r) => r.get(id) ?? [])
+          .catch(() => [])
+      : [];
 
   /* The card and the door use the same verdict, so a room can never offer a
      Join button it will then refuse. */
-  return NextResponse.json({ ...coChannel, occupantCount });
+  return NextResponse.json({
+    ...coChannel,
+    ...(coChannel.kind === "live"
+      ? {
+          occupantCount: here.length,
+          liveOccupants: [...here].sort(
+            (a, b) => Number(b.micOpen) - Number(a.micOpen),
+          ),
+        }
+      : {}),
+  });
 }

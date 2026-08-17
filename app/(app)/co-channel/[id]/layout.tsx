@@ -23,7 +23,7 @@ export async function generateMetadata({
 
   if (!room) {
     return {
-      title: "This Co-Channel has closed",
+      title: "This station has closed",
       description:
         "The last person left, so the room stopped existing and its frequency went back into the pool.",
     };

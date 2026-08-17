@@ -3,7 +3,7 @@ import { MAX_STATIONS_PER_BAND, getEcosystem } from "@/data/ecosystems";
 import { DEFAULT_BED, isBedId, type BedId } from "@/data/beds";
 import type { EcosystemId, Gates } from "@/data/schema";
 import { connectedPerson } from "@/lib/server/identity";
-import { liveCounts } from "@/lib/server/live-counts";
+import { liveRosters, type LiveOccupant } from "@/lib/server/live-counts";
 import { listCoChannels } from "@/lib/server/store";
 import { createUserStation, userStations } from "@/lib/server/user-stations";
 
@@ -48,10 +48,21 @@ export async function GET(request: Request) {
   /* Live rooms are counted from the meeting, because that is where their
      occupants are. The seeded table is deliberately empty for them and would
      report every station as abandoned. */
-  const counts = await liveCounts().catch(() => new Map<string, number>());
-  const withCounts = [...mine, ...seeded].map((c) =>
-    c.kind === "live" ? { ...c, occupantCount: counts.get(c.id) ?? 0 } : c,
-  );
+  const rosters = await liveRosters().catch(() => new Map<string, LiveOccupant[]>());
+
+  const withCounts = [...mine, ...seeded].map((c) => {
+    if (c.kind !== "live") return c;
+    const here = rosters.get(c.id) ?? [];
+    return {
+      ...c,
+      occupantCount: here.length,
+      /* Talkers first: a facepile of three from a room of twenty should be
+         the people it is about, not whoever the API happened to list. */
+      liveOccupants: [...here].sort(
+        (a, b) => Number(b.micOpen) - Number(a.micOpen),
+      ),
+    };
+  });
 
   return NextResponse.json(withCounts);
 }

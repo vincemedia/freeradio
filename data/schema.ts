@@ -303,6 +303,14 @@ export interface CoChannelView extends CoChannel {
   /** null while an open station is unclaimed */
   host: Person | null;
   occupants: (Occupant & { person: Person })[];
+  /**
+   * Who is in a live room right now, read from the meeting.
+   *
+   * Separate from `occupants`, which is the seeded table and describes a
+   * recorded broadcast's past. A live room has no rows there — its people are
+   * in RealtimeKit — so anything drawing faces for one reads this instead.
+   */
+  liveOccupants?: { id: string; name: string; micOpen: boolean }[];
   occupantCount: number;
   nest: (NestLink & { postedBy: Person })[];
   /** the single gate to show as a badge, when several are on */

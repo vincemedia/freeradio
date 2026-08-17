@@ -261,8 +261,20 @@ export function Facepile({
           <Avatar person={p} size={size} />
         </span>
       ))}
+      {/* The remainder as one more circle, overlapped like the rest, rather
+          than as text set beside them. It is the same kind of thing as the
+          faces — a place in the row — and a number floating off the end read
+          as a caption about the pile instead of part of it. */}
       {rest > 0 && (
-        <span className="readout ml-1.5 text-xs text-muted-foreground">
+        <span
+          className="readout relative flex shrink-0 items-center justify-center rounded-full bg-muted text-muted-foreground ring-2 ring-card"
+          style={{
+            width: size,
+            height: size,
+            marginLeft: -size * 0.34,
+            fontSize: Math.max(9, Math.round(size * 0.34)),
+          }}
+        >
           +{rest}
         </span>
       )}

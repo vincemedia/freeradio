@@ -102,7 +102,7 @@ export function MinimisedBar() {
           <button
             type="button"
             onClick={open}
-            aria-label="Open the Co-Channel"
+            aria-label="Open the station"
             className="hidden size-9 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground sm:flex"
           >
             <CornersOut />
@@ -110,7 +110,7 @@ export function MinimisedBar() {
           <button
             type="button"
             onClick={live.leave}
-            aria-label="Leave the Co-Channel"
+            aria-label="Leave the station"
             className="flex size-9 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
           >
             <X />

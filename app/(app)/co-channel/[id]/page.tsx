@@ -134,17 +134,23 @@ export default function CoChannelPage() {
 
 
   return (
-    <div className="flex gap-6">
+    /* The way back sits above both columns rather than inside the left one.
+       It used to push the header card down while the docked pane started at
+       the top of the row, so the two columns began at different heights and
+       the pane floated above the thing it describes. */
+    <>
+      <Button
+        variant="ghost"
+        size="sm"
+        onClick={() => router.push("/")}
+        className="-ml-2 mb-5"
+      >
+        <CaretLeft size={14} />
+        On air
+      </Button>
+
+      <div className="flex gap-6">
       <div className="min-w-0 flex-1 space-y-5">
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => router.push("/")}
-          className="-ml-2"
-        >
-          <CaretLeft size={14} />
-          On air
-        </Button>
 
         {/* ---- header ---- */}
         {/* Claims the same name the card or dock had, so the room does not
@@ -245,7 +251,7 @@ export default function CoChannelPage() {
                   <Button
                     variant="ghost"
                     size="icon-sm"
-                    aria-label="Co-Channel settings"
+                    aria-label="Station settings"
                     className="xl:hidden"
                   >
                     <Sliders />
@@ -306,15 +312,12 @@ export default function CoChannelPage() {
       </div>
 
       {/* Docked sidepane, at xl and above only. */}
-      <aside
-        data-settle
-        style={{ "--settle-index": 3 } as React.CSSProperties}
-        className="hidden w-[20rem] shrink-0 xl:block"
-      >
+      <aside className="hidden w-[20rem] shrink-0 xl:block">
         <div className="sticky top-20 rounded-lg border border-border bg-card p-4">
-          <SidePane room={view} />
+          <SidePane room={view} stagger />
         </div>
       </aside>
-    </div>
+      </div>
+    </>
   );
 }

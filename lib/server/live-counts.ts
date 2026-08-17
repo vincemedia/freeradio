@@ -5,6 +5,7 @@ import { meetingTitle } from "@/lib/server/meetings";
 import {
   listSessions,
   realtimeConfig,
+  sessionParticipants,
   type Session,
 } from "@/lib/server/realtimekit";
 import { stationFromTitle } from "@/lib/server/user-stations";
@@ -21,12 +22,19 @@ import { stationFromTitle } from "@/lib/server/user-stations";
  * Which is the same class of mistake as the silent audio: the number was
  * rendered from the only source that could not possibly know.
  *
- * ## One call, not one per station
+ * ## Faces, not only a number
  *
- * `live_participants` comes back on the session itself, so the whole band
- * costs a single request — no per-room follow-up, unlike the facepile, which
- * needs the actual roster and pays for it. Every page that shows a count uses
- * this, so a quiet band is one call and a busy one is still one call.
+ * `live_participants` comes back on the session itself, so a count alone would
+ * cost one request for the whole band. But the cards want faces, and for the
+ * same reason they want a count: the occupant table is empty for live rooms,
+ * so every card showed an empty facepile beside its wrong number. A pile of
+ * nobody is a stronger claim than a zero — it looks like a room that has been
+ * abandoned rather than one nothing has asked about.
+ *
+ * So the roster is fetched too: one request to list what is on air, then one
+ * per *live session* — not per station. A quiet band costs one call, and a
+ * band with three rooms going costs four. The count is then the roster's
+ * length, so there is one mechanism and the two can never disagree.
  *
  * ## The cache
  *
@@ -45,26 +53,35 @@ import { stationFromTitle } from "@/lib/server/user-stations";
 
 const TTL_MS = 10_000;
 
+/** Somebody in a live room, as much as the sessions API knows about them. */
+export interface LiveOccupant {
+  /** their participant id: an identity key, or a per-browser listener seat */
+  id: string;
+  name: string;
+  /** whether their microphone is open, so a card can rank the talkers first */
+  micOpen: boolean;
+}
+
 interface Cached {
   at: number;
-  counts: Map<string, number>;
+  rosters: Map<string, LiveOccupant[]>;
 }
 
 let cache: Cached | null = null;
 
-export async function liveCounts(): Promise<Map<string, number>> {
+export async function liveRosters(): Promise<Map<string, LiveOccupant[]>> {
   const config = realtimeConfig();
   if (!config) return new Map();
 
-  if (cache && Date.now() - cache.at < TTL_MS) return cache.counts;
+  if (cache && Date.now() - cache.at < TTL_MS) return cache.rosters;
 
   let sessions: Session[];
   try {
     sessions = await listSessions(config, { live: true });
   } catch {
-    /* Unreachable. The last answer is better than zero — zero is a claim, and
-       the wrong one. */
-    return cache?.counts ?? new Map();
+    /* Unreachable. The last answer is better than an empty one — empty is a
+       claim, and the wrong one. */
+    return cache?.rosters ?? new Map();
   }
 
   /* Seeded stations are found by the title their meeting carries. */
@@ -72,24 +89,51 @@ export async function liveCounts(): Promise<Map<string, number>> {
     coChannels.map((c) => [meetingTitle(c.id), c.id] as const),
   );
 
-  const counts = new Map<string, number>();
+  const rosters = new Map<string, LiveOccupant[]>();
 
-  for (const session of sessions) {
-    const title = session.meeting_display_name;
-    if (!title) continue;
+  await Promise.all(
+    sessions.map(async (session) => {
+      const title = session.meeting_display_name;
+      if (!title) return;
 
-    const id = stationFromTitle(title)?.id ?? seeded.get(title);
-    if (!id) continue;
+      const id = stationFromTitle(title)?.id ?? seeded.get(title);
+      if (!id) return;
 
-    const live = session.live_participants ?? 0;
-    counts.set(id, (counts.get(id) ?? 0) + live);
-  }
+      let present;
+      try {
+        present = await sessionParticipants(config, session.id);
+      } catch {
+        return;
+      }
 
-  cache = { at: Date.now(), counts };
-  return counts;
+      const here = present
+        .filter((p) => !p.left_at)
+        .map((p) => ({
+          id: p.custom_participant_id,
+          name: p.display_name || "Listener",
+          /* The sessions API does not report audio state, so this is a guess
+             that is only used for ordering. Anybody who was given a preset
+             that can talk is put in front of the listeners, which is the
+             ranking a facepile wants: the people a room is *about*. */
+          micOpen: p.preset_name !== "free-radio-listener",
+        }));
+
+      /* A station can in principle have two sessions in the window; merge. */
+      rosters.set(id, [...(rosters.get(id) ?? []), ...here]);
+    }),
+  );
+
+  cache = { at: Date.now(), rosters };
+  return rosters;
+}
+
+/** How many are in each, derived so it can never disagree with the faces. */
+export async function liveCounts(): Promise<Map<string, number>> {
+  const rosters = await liveRosters();
+  return new Map([...rosters].map(([id, people]) => [id, people.length]));
 }
 
 /** Just one, for the room's own page. */
 export async function liveCount(id: string): Promise<number> {
-  return (await liveCounts()).get(id) ?? 0;
+  return (await liveRosters()).get(id)?.length ?? 0;
 }

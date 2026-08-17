@@ -2,8 +2,9 @@
 
 import Link from "next/link";
 import useFetch from "@/lib/use-fetch";
-import { EcosystemMark } from "@/components/identity";
+import { EcosystemMark, Facepile } from "@/components/identity";
 import type { CoChannelView } from "@/data/schema";
+import { facePerson } from "@/lib/face";
 import { formatAgo, formatFrequency } from "@/lib/format";
 import { useRadio } from "@/lib/store";
 
@@ -24,6 +25,9 @@ export function RecentCoChannels() {
 
   if (recent.length === 0) return null;
   const liveIds = new Set((live ?? []).map((c) => c.id));
+  /* The same request already carries who is in each room, so a face costs
+     nothing extra here. */
+  const byId = new Map((live ?? []).map((c) => [c.id, c] as const));
 
   return (
     /* No heading of its own: this sits behind a tab now, and the tab is the
@@ -85,7 +89,23 @@ export function RecentCoChannels() {
               </h3>
 
               <div className="mt-auto flex items-center justify-between gap-3 border-t border-border pt-2.5 text-[11px] text-muted-foreground">
-                <span>{isHere ? "You are here" : `Last in ${formatAgo(r.at)}`}</span>
+                {/* Who is in there now, not who was in there when you left.
+                    The reason to look at a room you have already been in is to
+                    find out whether it is worth going back to. */}
+                {(() => {
+                  const here = byId.get(r.id)?.liveOccupants ?? [];
+                  return here.length > 0 ? (
+                    <Facepile
+                      people={here.map((o) => facePerson(o))}
+                      max={9}
+                      size={22}
+                    />
+                  ) : (
+                    <span>
+                      {isHere ? "You are here" : `Last in ${formatAgo(r.at)}`}
+                    </span>
+                  );
+                })()}
                 <span
                   aria-hidden
                   className="inline-flex shrink-0 items-center gap-1 rounded-md bg-primary px-2.5 py-1 font-medium text-primary-foreground shadow-[var(--shadow-clay-primary)] transition-transform duration-150 ease-[var(--ease-out-quint)] group-active:scale-[0.98]"

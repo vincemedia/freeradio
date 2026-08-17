@@ -9,6 +9,7 @@ import { RichTooltip, Tooltip } from "@/components/ui/overlays";
 import { getToken } from "@/data/tokens";
 import type { CoChannelView, GateKind, Gates, Token } from "@/data/schema";
 import { GATE_HELP, GATE_LABEL } from "@/lib/gates";
+import { facePerson } from "@/lib/face";
 import { formatFrequency } from "@/lib/format";
 import { useRadio } from "@/lib/store";
 import { useContactsByRoom } from "@/lib/use-on-air";
@@ -147,7 +148,12 @@ export function CoChannelCard({
   /* Counted here rather than sent by the server, which cannot know: contacts
      live in this browser and are never uploaded. */
   const known = useContactsByRoom()[coChannel.id] ?? 0;
-  const people = coChannel.occupants.map((o) => o.person);
+  /* A live room's people are in the meeting; a recorded one's are the fact of
+     who was there. Both end up as the same shape for the pile. */
+  const people =
+    coChannel.kind === "live"
+      ? (coChannel.liveOccupants ?? []).map((o) => facePerson(o))
+      : coChannel.occupants.map((o) => o.person);
   const inThisRoom = useRadio((s) => s.session?.coChannelId) === coChannel.id;
   const href = `/co-channel/${coChannel.id}`;
 
@@ -220,7 +226,10 @@ export function CoChannelCard({
       </div>
 
       <div className="mt-auto flex items-center justify-between gap-3 pt-1">
-        <Facepile people={people} max={3} size={28} />
+        {/* Nine, then a number. A live room's faces come from its meeting;
+            the seeded occupant table is empty for one and drew a pile of
+            nobody, which reads as abandoned rather than as unasked. */}
+        <Facepile people={people} max={9} size={28} />
         <span className="min-w-0 text-right text-[11px] leading-tight text-muted-foreground">
           <span className="block truncate">
             {coChannel.occupantCount} in the room
