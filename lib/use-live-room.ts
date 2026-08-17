@@ -122,6 +122,26 @@ export function useLiveRoom(coChannelId: string | null): LiveRoom {
   const intent = useRef<string | null>(null);
   /** How many times a drop has been answered, so it cannot loop forever. */
   const attempts = useRef(0);
+
+  /**
+   * When anybody in this room last had a microphone open.
+   *
+   * The meter Cloudflare bills in non-recording mode is participant-minutes,
+   * not bytes: a connection costs the same per minute whether anybody is
+   * talking or not. Which makes a tab left open in a quiet room the most
+   * expensive thing in the product — measured across this app's first day,
+   * forty-three per cent of everything consumed was sessions that never had
+   * two people in them, and the two longest were ninety minutes of one browser
+   * sitting alone in an empty station.
+   *
+   * So a room that nobody is using lets go of you. Not a punishment and not a
+   * timeout on *you* — the test is whether the room has been silent, and your
+   * own open microphone exempts you entirely.
+   */
+  /* Zero until the room is actually joined, because `Date.now()` during render
+     is a different value on every pass and the compiler is right to refuse it.
+     The join sets it; the watchdog treats zero as "not started yet". */
+  const lastVoice = useRef(0);
   /* Mirrored into state as well as held in a ref. The ref is what the
      callbacks use, because they must not be rebuilt every time it changes;
      the state is what the room can render from, because a ref read during
@@ -170,6 +190,10 @@ export function useLiveRoom(coChannelId: string | null): LiveRoom {
       }),
     );
     setMicOn(Boolean(self.audioEnabled));
+
+    /* Anybody producing counts, including you. A room where one person is
+       talking to nobody is still a room in use. */
+    if (rows.some((row) => row.micOpen)) lastVoice.current = Date.now();
   }, []);
 
   const leave = useCallback(() => {
@@ -354,8 +378,11 @@ export function useLiveRoom(coChannelId: string | null): LiveRoom {
 
       await meeting.join();
       sync();
-      /* Back in. Whatever it took to get here is no longer owed. */
+      /* Back in. Whatever it took to get here is no longer owed, and the quiet
+         clock starts from the moment of arrival rather than from whenever this
+         hook happened to be constructed. */
       attempts.current = 0;
+      lastVoice.current = Date.now();
       setStatus("live");
     } catch (e) {
       /* A failed join is usually a network that is not ready — the token
@@ -374,6 +401,49 @@ export function useLiveRoom(coChannelId: string | null): LiveRoom {
       setStatus("unavailable");
     }
   }, [coChannelId, sync, leave, reconnect]);
+
+  /**
+   * Let go of a room nobody is using.
+   *
+   * Two thresholds, because a backgrounded tab and a foregrounded one are
+   * different claims about whether somebody is there. Visible and silent for
+   * fifteen minutes is somebody who wandered off mid-session; hidden and silent
+   * for three is a tab behind other tabs, which nobody is listening to.
+   *
+   * Never while your own microphone is open, and never while a recording is
+   * running: both mean the connection is doing its job, and cutting either
+   * would be the interface deciding it knows better than the person using it.
+   *
+   * The intent is withdrawn, so the reconnect machinery does not treat this as
+   * a drop and immediately undo it. Coming back is one press, and the room says
+   * plainly why it let go.
+   */
+  useEffect(() => {
+    if (status !== "live") return;
+
+    const VISIBLE_MS = 15 * 60 * 1000;
+    const HIDDEN_MS = 3 * 60 * 1000;
+
+    const check = setInterval(() => {
+      if (!meetingRef.current || lastVoice.current === 0) return;
+      /* Talking, or being recorded: in use either way. */
+      if (micOn || recording) {
+        lastVoice.current = Date.now();
+        return;
+      }
+      const quietFor = Date.now() - lastVoice.current;
+      const limit = document.hidden ? HIDDEN_MS : VISIBLE_MS;
+      if (quietFor < limit) return;
+
+      intent.current = null;
+      setError(
+        "Nobody had spoken here for a while, so this tab let the station go. Press join to come back.",
+      );
+      leave();
+    }, 30_000);
+
+    return () => clearInterval(check);
+  }, [status, micOn, recording, leave]);
 
   /* Every retry, whatever asked for it, lands here with the current `join`. */
   useEffect(() => {
