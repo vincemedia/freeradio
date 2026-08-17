@@ -1,6 +1,7 @@
 import "server-only";
 
 import { coChannels } from "@/data/co-channels";
+import type { EcosystemId } from "@/data/schema";
 import { meetingTitle } from "@/lib/server/meetings";
 import {
   listSessions,
@@ -35,6 +36,16 @@ import { stationFromTitle } from "@/lib/server/user-stations";
  * per *live session* — not per station. A quiet band costs one call, and a
  * band with three rooms going costs four. The count is then the roster's
  * length, so there is one mechanism and the two can never disagree.
+ *
+ * ## Everything reads this, and that is the point
+ *
+ * Three other places had each grown their own copy of the same fan-out: the
+ * band's facepile, "which of my contacts is on air", and the room's own count.
+ * The scan page therefore paid for two independent sweeps of identical data on
+ * every load, and the contacts poll paid for a third every forty-five seconds
+ * per open tab — none of them sharing the cache, all of them asking Cloudflare
+ * the same question. They all come through here now, so a hit costs nothing and
+ * a miss is paid once.
  *
  * ## The cache
  *
@@ -136,4 +147,58 @@ export async function liveCounts(): Promise<Map<string, number>> {
 /** Just one, for the room's own page. */
 export async function liveCount(id: string): Promise<number> {
   return (await liveRosters()).get(id)?.length ?? 0;
+}
+
+/**
+ * Everybody on one band, wherever they are on it.
+ *
+ * Was its own module with its own fan-out; it is a filter over the rosters,
+ * which is all it ever was. The station ids carry their band, so no request is
+ * needed to work out which room belongs where.
+ */
+export async function bandOccupants(
+  ecosystem: EcosystemId,
+): Promise<LiveOccupant[]> {
+  const rosters = await liveRosters();
+  const onBand = new Set(
+    coChannels.filter((c) => c.ecosystem === ecosystem).map((c) => c.id),
+  );
+
+  const found = new Map<string, LiveOccupant>();
+  for (const [id, people] of rosters) {
+    /* A seeded station is known; one somebody started encodes its band in the
+       title, which `stationFor` has already resolved into the id. */
+    if (!onBand.has(id) && !startedOnBand(id, ecosystem)) continue;
+    /* Keyed by participant, so somebody who moved rooms during one poll is one
+       person rather than two. */
+    for (const p of people) found.set(p.id, p);
+  }
+  return [...found.values()];
+}
+
+/** A started station's id carries its band: `cc-<band>-<frequency>`. */
+function startedOnBand(id: string, ecosystem: EcosystemId): boolean {
+  return id.startsWith(`cc-${ecosystem}-`);
+}
+
+/**
+ * Which of these identities is in a room, and where.
+ *
+ * The contacts rail polls this. It used to sweep the sessions itself, so a
+ * handful of open tabs meant a handful of independent sweeps a minute; now it is
+ * a lookup in something already in hand.
+ */
+export async function whereTheseAre(
+  keys: Set<string>,
+): Promise<{ key: string; stationId: string }[]> {
+  if (keys.size === 0) return [];
+  const rosters = await liveRosters();
+
+  const rows: { key: string; stationId: string }[] = [];
+  for (const [stationId, people] of rosters) {
+    for (const p of people) {
+      if (keys.has(p.id)) rows.push({ key: p.id, stationId });
+    }
+  }
+  return rows;
 }

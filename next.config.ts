@@ -14,6 +14,39 @@ const nextConfig: NextConfig = {
      500 before any of its own checks have run. Left external, the runtime
      loads the platform build. */
   serverExternalPackages: ["web-push"],
+
+  /**
+   * The audio is immutable, so say so.
+   *
+   * Every one of these files is fetched on a path that repeats: the bed on every
+   * room somebody joins, the tuning sweep on every press of scan, a recorded
+   * broadcast on every replay. None of them ever changes — a different track
+   * would be a different filename — and without a header saying that, the
+   * browser revalidates each one on every visit and re-downloads it whenever the
+   * answer is unclear. Nearly two megabytes of files that need fetching once.
+   */
+  async headers() {
+    return [
+      {
+        source: "/audio/:file*",
+        headers: [
+          {
+            key: "Cache-Control",
+            value: "public, max-age=31536000, immutable",
+          },
+        ],
+      },
+      {
+        source: "/icons/:file*",
+        headers: [
+          {
+            key: "Cache-Control",
+            value: "public, max-age=31536000, immutable",
+          },
+        ],
+      },
+    ];
+  },
 };
 
 /* No `experimental.viewTransition` here on purpose. It exists, and it enables

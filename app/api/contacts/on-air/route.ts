@@ -1,11 +1,7 @@
 import { NextResponse } from "next/server";
-import {
-  listSessions,
-  realtimeConfig,
-  sessionParticipants,
-} from "@/lib/server/realtimekit";
-import { stationFromTitle } from "@/lib/server/user-stations";
-import { getCoChannel } from "@/lib/server/store";
+import { realtimeConfig } from "@/lib/server/realtimekit";
+import { whereTheseAre } from "@/lib/server/live-counts";
+import { anyStation } from "@/lib/server/user-stations";
 import { isIdentityKey } from "@/lib/server/identity";
 
 export const dynamic = "force-dynamic";
@@ -20,19 +16,16 @@ export const dynamic = "force-dynamic";
  * live and public knowledge anyway — the occupant list of a station is on its
  * page.
  *
- * A POST rather than a GET because the keys are the input and there can be
- * two hundred of them. Nothing is created; the method is about the body.
+ * A POST rather than a GET because the keys are the input and there can be two
+ * hundred of them. Nothing is created; the method is about the body.
  *
- * One request per live session rather than per contact, so the cost tracks
- * how busy the band is rather than how many people you know. An empty band
- * costs one request.
+ * The lookup itself is free: it reads the roster every other page already needs
+ * (see `lib/server/live-counts`) rather than sweeping the sessions again, which
+ * is what it used to do on every poll of every open tab.
  */
 
 /** Matches the client's own ceiling; anything past it is ignored, not an error. */
 const MAX_KEYS = 200;
-
-/** How a seeded station's meeting is titled. */
-const PREFIX = "freeradio:";
 
 export interface OnAirRow {
   key: string;
@@ -59,55 +52,25 @@ export async function POST(request: Request) {
   );
   if (keys.size === 0) return NextResponse.json([]);
 
-  let sessions;
-  try {
-    sessions = await listSessions(config, { live: true });
-  } catch {
-    /* The band is unreachable. Nobody is reported on air, which reads as a
-       quiet moment rather than as a broken page. */
-    return NextResponse.json([]);
-  }
+  /* A lookup in the shared roster rather than a sweep of its own. This ran its
+     own fan-out on every poll, so a few open tabs meant a few independent
+     sweeps a minute asking exactly what the cache already held. */
+  const found = await whereTheseAre(keys).catch(() => []);
 
   const rows: OnAirRow[] = [];
-
-  await Promise.all(
-    sessions.map(async (session) => {
-      const title = session.meeting_display_name;
-      if (!title) return;
-
-      /* A station somebody started carries the whole thing in its title; a
-         seeded one is titled after its id and is looked up. A meeting that
-         has been ended is renamed out of both shapes, so it resolves to
-         nothing and is skipped. */
-      const room =
-        stationFromTitle(title) ??
-        (title.startsWith(PREFIX)
-          ? (getCoChannel(title.slice(PREFIX.length)) ?? null)
-          : null);
-      if (!room) return;
-
-      let present;
-      try {
-        present = await sessionParticipants(config, session.id);
-      } catch {
-        return;
-      }
-
-      for (const p of present) {
-        if (p.left_at) continue;
-        if (!keys.has(p.custom_participant_id)) continue;
-        rows.push({
-          key: p.custom_participant_id,
-          coChannel: {
-            id: room.id,
-            title: room.title,
-            frequency: room.frequency,
-            ecosystem: room.ecosystem,
-          },
-        });
-      }
-    }),
-  );
+  for (const { key, stationId } of found) {
+    const room = await anyStation(stationId).catch(() => null);
+    if (!room) continue;
+    rows.push({
+      key,
+      coChannel: {
+        id: room.id,
+        title: room.title,
+        frequency: room.frequency,
+        ecosystem: room.ecosystem,
+      },
+    });
+  }
 
   return NextResponse.json(rows);
 }

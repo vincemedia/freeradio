@@ -43,9 +43,23 @@ const READY = new Set(["UPLOADED", "COMPLETED"]);
  * schedule, and pretending we control that would be worse than saying so. */
 const RETAIN_MS = 30 * 24 * 60 * 60 * 1000;
 
+/**
+ * How long a listing stands.
+ *
+ * A recording appears when a host stops one, which is not a thing that happens
+ * every few seconds — and building this list costs two upstream requests on
+ * every load of the recordings page. Thirty seconds is well inside "a recording
+ * that just finished shows up" and turns repeat views into no work at all.
+ */
+const TTL_MS = 30_000;
+
+let cache: { at: number; rows: Recording[] } | null = null;
+
 export async function liveRecordings(): Promise<Recording[]> {
   const config = realtimeConfig();
   if (!config) return [];
+
+  if (cache && Date.now() - cache.at < TTL_MS) return cache.rows;
 
   const [recordings, meetings] = await Promise.all([
     listRecordings(config),
@@ -94,5 +108,7 @@ export async function liveRecordings(): Promise<Recording[]> {
     });
   }
 
-  return rows.sort((a, b) => b.recordedAt.localeCompare(a.recordedAt));
+  rows.sort((a, b) => b.recordedAt.localeCompare(a.recordedAt));
+  cache = { at: Date.now(), rows };
+  return rows;
 }

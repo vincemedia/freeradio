@@ -2,8 +2,7 @@ import { NextResponse } from "next/server";
 import { BAND, DEFAULT_ECOSYSTEM, FREQUENCY_STEP } from "@/data/ecosystems";
 import type { EcosystemId } from "@/data/schema";
 import { HOLD_PRICE_USD } from "@/data/pricing";
-import { bandListeners } from "@/lib/server/band-listeners";
-import { liveCounts } from "@/lib/server/live-counts";
+import { bandOccupants, liveRosters } from "@/lib/server/live-counts";
 import { bandOccupancy, listHolds } from "@/lib/server/store";
 import { userStations } from "@/lib/server/user-stations";
 
@@ -37,7 +36,10 @@ export async function GET(request: Request) {
   /* A mark's size is its occupancy, so a band whose counts all read nought
      draws as a row of identical ticks. Live rooms are counted from their
      meetings. */
-  const counts = await liveCounts().catch(() => new Map<string, number>());
+  const rosters = await liveRosters().catch(
+    () => new Map<string, { id: string; name: string; micOpen: boolean }[]>(),
+  );
+  const counts = new Map([...rosters].map(([id, p]) => [id, p.length]));
 
   const stations = [
     ...seeded.map((s) =>
@@ -54,9 +56,11 @@ export async function GET(request: Request) {
     })),
   ];
 
-  /* Who is actually on this band, anywhere on it. Failure is an empty band
-     rather than an error: the scale is the page, and it draws either way. */
-  const listeners = await bandListeners(ecosystem).catch(() => []);
+  /* Who is actually on this band, anywhere on it — filtered out of the rosters
+     this route already needs rather than swept again. It used to be a second
+     independent fan-out over identical data, so every load of the scan page
+     asked Cloudflare the same question twice and cached neither answer. */
+  const listeners = await bandOccupants(ecosystem).catch(() => []);
 
   const holds = listHolds(ecosystem);
   /* Live rooms and reserved gaps. A recording is drawn on the dial but does

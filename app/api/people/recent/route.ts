@@ -36,8 +36,28 @@ export const dynamic = "force-dynamic";
  * different and worse product than one that says who is about.
  */
 
-/** Sessions to look back through. Enough for a quiet week, not an archive. */
-const LOOK_BACK = 60;
+/**
+ * Sessions to look back through.
+ *
+ * Twelve, not sixty. Each one costs a request for its participants, and this
+ * walked sixty of them *one at a time* — the endpoint took twenty-one seconds
+ * in production, on a page that opens as soon as somebody presses Contacts. A
+ * dozen recent sessions is easily enough to fill a screenful of names, and the
+ * requests now go out together rather than in a queue.
+ */
+const LOOK_BACK = 12;
+
+/**
+ * How long an answer stands.
+ *
+ * "Who has been on air lately" is a fact about the last few hours; recomputing
+ * it per page load was paying a fan-out for a value that barely moves. A minute
+ * is invisible to anybody reading it and turns the common case into no upstream
+ * work at all.
+ */
+const TTL_MS = 60_000;
+
+let cache: { at: number; rows: RecentPerson[] } | null = null;
 
 /** How many to offer. A screenful; past that it is a directory. */
 const MOST = 12;
@@ -54,6 +74,12 @@ export async function GET() {
   const connected = await connectedPerson();
   const self = connected?.publicKey;
 
+  /* Cached without the viewer in it, then filtered per request: the expensive
+     part is the same for everybody, and only the exclusion is personal. */
+  if (cache && Date.now() - cache.at < TTL_MS) {
+    return NextResponse.json(cache.rows.filter((r) => r.key !== self));
+  }
+
   let sessions;
   try {
     sessions = await listSessions(config, { perPage: LOOK_BACK });
@@ -68,29 +94,28 @@ export async function GET() {
     (s.meeting_display_name ?? "").startsWith("freeradio:"),
   );
 
-  /* Newest first, so the first time a key is seen is the last time they were
-     on air, and insertion order is the order to show them in. */
+  /* All at once. Serially, this was twenty-one seconds of waiting for a list of
+     names — sixty round trips end to end, on a page that opens on a keypress. */
+  const rosters = await Promise.all(
+    ours.map((session) =>
+      sessionParticipants(config, session.id).catch(() => []),
+    ),
+  );
+
+  /* Newest session first, so the first time a key is seen is the last time they
+     were on air, and insertion order is the order to show them in. */
   const found = new Map<string, RecentPerson>();
-
-  for (const session of ours) {
-    if (found.size >= MOST) break;
-
-    let present;
-    try {
-      present = await sessionParticipants(config, session.id);
-    } catch {
-      continue;
-    }
-
+  for (const present of rosters) {
     for (const p of present) {
       const key = p.custom_participant_id;
       if (!isIdentityKey(key)) continue;
-      if (key === self) continue;
       if (found.has(key)) continue;
       found.set(key, { key, name: p.display_name || "Someone" });
-      if (found.size >= MOST) break;
     }
   }
 
-  return NextResponse.json([...found.values()]);
+  const rows = [...found.values()].slice(0, MOST);
+  cache = { at: Date.now(), rows };
+
+  return NextResponse.json(rows.filter((r) => r.key !== self));
 }
