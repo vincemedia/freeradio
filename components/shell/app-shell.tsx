@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useEffect } from "react";
 import { MinimisedBar } from "@/components/co-channel/minimised-bar";
 import { TopBar } from "@/components/shell/top-bar";
@@ -16,19 +16,42 @@ import { useRadio } from "@/lib/store";
  */
 export function AppShell({ children }: { children: React.ReactNode }) {
   const router = useRouter();
+  const pathname = usePathname();
   const refreshSession = useRadio((s) => s.refreshSession);
+  const setOnboarded = useRadio((s) => s.setOnboarded);
 
-  /* First run goes to the welcome flow.
-     The check reads live state rather than a render-scoped value: this runs
-     once, and at first render `onboarded` is still the pre-hydration default,
-     so a captured copy would send a returning user back through onboarding. */
+  /**
+   * First run goes to the welcome flow — unless somebody was handed a room.
+   *
+   * A link to a station is an invitation from a person, and the answer to an
+   * invitation is the room, not a four-screen introduction to the product and
+   * then somebody else's recorded broadcast. Whoever sent the link already did
+   * the explaining; arriving anywhere other than where you were pointed makes
+   * the link look broken and the sender look wrong.
+   *
+   * So the flow is marked done rather than merely skipped. Leaving it pending
+   * would bounce them to `/welcome` the moment they pressed anything — losing
+   * the room they were invited to in order to explain the room they were
+   * invited to.
+   *
+   * The check reads live state rather than a render-scoped value: this runs
+   * once, and at first render `onboarded` is still the pre-hydration default,
+   * so a captured copy would send a returning user back through onboarding.
+   */
   useEffect(() => {
+    const invited = pathname?.startsWith("/co-channel/") ?? false;
+
     const check = () => {
-      if (!useRadio.getState().onboarded) router.replace("/welcome");
+      if (useRadio.getState().onboarded) return;
+      if (invited) {
+        setOnboarded(true);
+        return;
+      }
+      router.replace("/welcome");
     };
     if (useRadio.persist.hasHydrated()) check();
     return useRadio.persist.onFinishHydration(check);
-  }, [router]);
+  }, [router, pathname, setOnboarded]);
 
   useEffect(() => {
     void refreshSession();

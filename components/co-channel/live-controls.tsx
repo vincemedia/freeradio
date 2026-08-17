@@ -95,10 +95,20 @@ export function LiveControls({
   return (
     <>
       {live.role === "listener" ? (
-        <Tooltip label="Connect a wallet to speak here">
-          <span className="inline-flex items-center gap-1.5 rounded-md bg-muted px-2.5 py-1.5 text-[13px] font-medium text-muted-foreground">
-            <MicrophoneSlash size={15} />
-            <span className="max-sm:hidden">Listening</span>
+        /* The control you cannot use yet, rather than a badge describing your
+           situation. "Listening" told somebody what was already true; this shows
+           the thing they are one step away from and names the step. The tooltip
+           goes when the wallet arrives, because by then the button works and an
+           explanation of why it does not would be a lie.
+
+           Wrapped in a span because a disabled button fires no pointer events,
+           so the tooltip would never open on the thing it describes. */
+        <Tooltip label="Connect wallet to speak">
+          <span tabIndex={0} className="rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+            <Button variant="secondary" size="sm" disabled className="max-sm:w-9 max-sm:px-0">
+              <MicrophoneSlash size={15} />
+              <span className="max-sm:hidden">Unmute</span>
+            </Button>
           </span>
         </Tooltip>
       ) : (
