@@ -1,35 +1,21 @@
 "use client";
 
-import Link from "next/link";
 import { useState } from "react";
-import { LockKey, Record } from "@phosphor-icons/react";
+import { Record } from "@phosphor-icons/react";
 import { toast } from "sonner";
 import useFetch from "@/lib/use-fetch";
-import { Facepile, Identity } from "@/components/identity";
-import { PlayButton } from "@/components/co-channel/play-button";
-import { RecordingActions } from "@/components/co-channel/recording-actions";
-import { Price, usePriceLabel } from "@/components/price";
+import { usePriceLabel } from "@/components/price";
+import {
+  RecordingRow,
+  type RecordingRowData,
+} from "@/components/co-channel/recording-row";
 import { PageHeader } from "@/components/shell/page-header";
-import { Button } from "@/components/ui/button";
 import { EmptyState, Skeleton } from "@/components/ui/primitives";
 import { getEcosystem } from "@/data/ecosystems";
-import type { Person, Recording } from "@/data/schema";
-import {
-  formatAgo,
-  formatCount,
-  formatDuration,
-  formatFrequency,
-  formatIdentity,
-} from "@/lib/format";
+import { formatIdentity } from "@/lib/format";
 import { useRadio } from "@/lib/store";
 
-type Row = Recording & {
-  /** null when the station it came from was an open one nobody had claimed */
-  host: Person | null;
-  occupantsResolved: Person[];
-  priceUsd: number;
-  platformFee: number;
-};
+type Row = RecordingRowData;
 
 /**
  * Recordings.
@@ -75,91 +61,17 @@ export default function RecordingsPage() {
           {data!.map((r) => {
             const locked = r.priceUsd > 0 && !bought.has(r.id);
             return (
-              <li
+              <RecordingRow
                 key={r.id}
-                id={r.id}
-                className="flex items-center gap-3 rounded-lg border border-border bg-card p-3 sm:p-4"
-              >
-                {/* Locked rows keep both controls: the lock is the price and
-                    the play button beside it is what the price buys, greyed
-                    until it is paid. Swapping one for the other hid the thing
-                    being sold behind the thing selling it. */}
-                <div className="flex shrink-0 items-center gap-1.5">
-                  {locked && (
-                    <Button
-                      variant="secondary"
-                      size="icon"
-                      aria-label={`Unlock ${r.title} for ${priceLabel(r.priceUsd)}`}
-                      onClick={() => {
-                        setBought((b) => new Set(b).add(r.id));
-                        toast.success("Unlocked", {
-                          description: `${priceLabel(r.priceUsd)} to ${r.host ? formatIdentity(r.host) : "the host"}, less a ${Math.round(r.platformFee * 100)}% platform fee.`,
-                        });
-                      }}
-                    >
-                      <LockKey />
-                    </Button>
-                  )}
-                  <PlayButton
-                    src={locked ? undefined : r.audioSrc}
-                    title={r.title}
-                    lockedReason={locked ? "Unlock this recording to play it" : undefined}
-                  />
-                </div>
-
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-baseline gap-2">
-                    <span className="readout text-xs text-muted-foreground">
-                      {formatFrequency(r.frequency)}
-                    </span>
-                    <h2 className="min-w-0 truncate text-sm font-medium">
-                      {/* Each recording has its own address now, so a row is
-                          somewhere to go rather than a dead end. */}
-                      <Link
-                        href={`/recordings/${r.id}`}
-                        className="rounded-sm hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                      >
-                        {r.title}
-                      </Link>
-                    </h2>
-                  </div>
-                  <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-muted-foreground">
-                    {r.host ? (
-                      <Identity person={r.host} className="text-[11px]" />
-                    ) : (
-                      <span className="text-[11px] text-muted-foreground">
-                        Open station
-                      </span>
-                    )}
-                    <span className="readout">{formatDuration(r.duration)}</span>
-                    <span>{formatAgo(r.recordedAt)}</span>
-                    <span>{formatCount(r.plays)} plays</span>
-                    {r.priceUsd > 0 &&
-                      (locked ? (
-                        <span className="flex items-baseline gap-1 text-foreground">
-                          <Price usd={r.priceUsd} inline />
-                          to unlock
-                        </span>
-                      ) : (
-                        <span>Unlocked</span>
-                      ))}
-                  </div>
-                </div>
-
-                {/* Who was in it, then what you can do with it, both hard
-                    right. The facepile is a fact about the row; the controls
-                    are actions on it, and mixing them into the metadata line
-                    on the left buried them under four other numbers. */}
-                <div className="flex shrink-0 items-center gap-2">
-                  <Facepile
-                    people={r.occupantsResolved}
-                    max={3}
-                    size={24}
-                    className="hidden sm:inline-flex"
-                  />
-                  <RecordingActions recording={r} />
-                </div>
-              </li>
+                recording={r}
+                locked={locked}
+                onUnlock={() => {
+                  setBought((b) => new Set(b).add(r.id));
+                  toast.success("Unlocked", {
+                    description: `${priceLabel(r.priceUsd)} to ${r.host ? formatIdentity(r.host) : "the host"}, less a ${Math.round(r.platformFee * 100)}% platform fee.`,
+                  });
+                }}
+              />
             );
           })}
         </ul>

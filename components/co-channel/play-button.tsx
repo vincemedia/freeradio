@@ -1,9 +1,8 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
 import { Pause, Play, SpeakerSlash } from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
-import * as player from "@/lib/player";
+import { useTrack } from "@/lib/use-track";
 
 /**
  * Play a recording, where there is one to play.
@@ -25,6 +24,10 @@ export function PlayButton({
   lockedReason,
   autoPlay = false,
   className,
+  /* When the row around this owns the playback, the button reflects it rather
+     than keeping a second opinion. */
+  playing: playingProp,
+  onToggle: toggleProp,
 }: {
   src?: string;
   title: string;
@@ -35,66 +38,15 @@ export function PlayButton({
   /** start on mount; used when arriving somewhere meant to be playing */
   autoPlay?: boolean;
   className?: string;
+  playing?: boolean;
+  onToggle?: () => void;
 }) {
-  const [playing, setPlaying] = useState(false);
-  /* Stable across renders so the player can recognise this holder when
-     somebody else claims the element. `setPlaying` is itself stable, so the
-     empty dependency list is the whole story. */
-  const onLost = useCallback(() => setPlaying(false), []);
-
-  /* The element is shared, so it can also end or be paused by something other
-     than this button. Following its events keeps the icon honest. */
-  useEffect(() => {
-    if (!playing) return;
-    const stop = () => setPlaying(false);
-    const offEnd = player.listen("ended", stop);
-    const offPause = player.listen("pause", stop);
-    return () => {
-      offEnd();
-      offPause();
-    };
-  }, [playing]);
-
-  useEffect(() => () => player.release(onLost), [onLost]);
-
-  /* Arriving somewhere meant to be playing. Browsers refuse audio without a
-     gesture, so this is an attempt rather than a promise: if it is refused
-     the button is simply there, unpressed, which is the honest fallback. */
-  useEffect(() => {
-    if (!autoPlay || !src) return;
-    let cancelled = false;
-
-    /* It may already be playing: the gesture that got us here started it,
-       because navigating would otherwise have spent the permission. Adopt
-       that stream rather than restarting it from the top.
-
-       Resolved rather than read synchronously, so this stays an effect that
-       talks to an external system instead of a setState cascade. */
-    void (async () => {
-      if (player.isPlaying()) {
-        player.adopt(onLost);
-        if (!cancelled) setPlaying(true);
-        return;
-      }
-      const started = await player.claim(src, 0, onLost);
-      if (!cancelled) setPlaying(started);
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [autoPlay, src, onLost]);
-
-  const toggle = useCallback(async () => {
-    if (!src) return;
-    if (playing) {
-      player.release(onLost);
-      setPlaying(false);
-      return;
-    }
-    /* A click is a gesture, so this is the one place audio is allowed to
-       start without asking twice. */
-    setPlaying(await player.claim(src, 0, onLost));
-  }, [src, playing, onLost]);
+  /* The playing state and the toggle both live in `lib/use-track` now: a row
+     in the recordings list plays when you click it anywhere, so the button is
+     no longer the only control over one recording. */
+  const own = useTrack(src, autoPlay);
+  const playing = playingProp ?? own.playing;
+  const toggle = toggleProp ?? own.toggle;
 
   if (!src) {
     /* Two different reasons to be inert, and they must not look the same: one

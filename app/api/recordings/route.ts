@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { PLATFORM_FEE, RECORDING_PRICE_USD } from "@/data/pricing";
 import type { EcosystemId } from "@/data/schema";
 import { liveRecordings } from "@/lib/server/live-recordings";
+import { STATION_AUDIO } from "@/data/audio";
 import { getPerson, listRecordings } from "@/lib/server/store";
 
 export const dynamic = "force-dynamic";
@@ -29,8 +30,17 @@ export async function GET(request: Request) {
 
   /* Resolved here rather than in the component: a recording is only useful
      with faces on it, and the UI should not be doing lookups. */
+  /* The amplitude picture, where one exists. Only the three real files have
+     an envelope — it is measured offline with ffmpeg — and a recording made
+     through RealtimeKit has none, because computing one means pulling the
+     whole file into a browser to draw a shape. The UI knows the difference
+     and draws a plain position instead of inventing a waveform. */
+  const envelopeFor = (src?: string) =>
+    Object.values(STATION_AUDIO).find((a) => a.src === src)?.envelope;
+
   const rows = all.map((r) => ({
     ...r,
+    envelope: envelopeFor(r.audioSrc),
     host: getPerson(r.hostId),
     occupantsResolved: r.occupantIds
       .map((id) => getPerson(id))
