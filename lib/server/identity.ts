@@ -1,6 +1,7 @@
 import "server-only";
 
 import { cookies } from "next/headers";
+import { unsealKey } from "@/lib/server/challenge";
 import {
   isIdentityKey as isKey,
   personFromKey as fromKey,
@@ -99,7 +100,11 @@ export interface Connected {
  */
 export async function connectedPerson(): Promise<Connected | null> {
   const store = await cookies();
-  const key = store.get(COOKIE)?.value;
+  /* Unsealed, not merely read. The cookie used to be the public key in plain
+     text, which made it a bearer token anybody could type: keys are public, so
+     "I am holding this key" was never a claim worth believing. The seal is what
+     turns it into "this server issued this to whoever proved that key". */
+  const key = unsealKey(store.get(COOKIE)?.value);
   if (!isIdentityKey(key)) return null;
   const username = store.get(NAME_COOKIE)?.value ?? null;
   const photo = store.get(AVATAR_COOKIE)?.value ?? null;

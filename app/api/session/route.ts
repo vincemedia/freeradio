@@ -8,7 +8,11 @@ import {
   usernameCookieName,
 } from "@/lib/server/identity";
 import { PublicKey, Signature } from "@bsv/sdk";
-import { challengeIsOurs, issueChallenge } from "@/lib/server/challenge";
+import {
+  challengeIsOurs,
+  issueChallenge,
+  sealKey,
+} from "@/lib/server/challenge";
 import { leave, sessionFor } from "@/lib/server/store";
 
 export const dynamic = "force-dynamic";
@@ -95,7 +99,8 @@ export async function POST(request: NextRequest) {
     path: "/",
     maxAge: YEAR,
   };
-  response.cookies.set(identityCookieName(), body.publicKey, options);
+  /* Sealed, so it cannot be forged by hand. */
+  response.cookies.set(identityCookieName(), sealKey(body.publicKey), options);
   if (username) response.cookies.set(usernameCookieName(), username, options);
   return response;
 }

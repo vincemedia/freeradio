@@ -80,3 +80,44 @@ export function challengeIsOurs(challenge: string): boolean {
      should fail closed rather than mint a long-lived challenge. */
   return age >= 0 && age <= WINDOW_MS;
 }
+
+/* ------------------------------------------------------- the session cookie */
+
+/**
+ * The identity cookie, sealed.
+ *
+ * Requiring a signature at `POST /api/session` closed one door and left the
+ * other wide open: the cookie it set was the public key in plain text, so
+ * anybody could skip the endpoint entirely and type `fr_identity=<somebody's
+ * key>` into devtools. Verified at the front and unverified at the back is not
+ * verified.
+ *
+ * So the cookie carries a tag only this server can produce. It is not
+ * encryption and does not need to be — the key inside is public. What it
+ * establishes is that *this server issued this cookie*, which is the only claim
+ * a session cookie ever makes.
+ *
+ * Sealing invalidates every cookie issued before it, so everybody is asked to
+ * connect again once. That is the correct outcome: every one of those cookies
+ * was unauthenticated, and some of them may not have belonged to the person
+ * holding them.
+ */
+export function sealKey(publicKey: string): string {
+  return `${publicKey}.${sign(`identity:${publicKey}`)}`;
+}
+
+/** The key inside a sealed cookie, or null if this server did not seal it. */
+export function unsealKey(value: string | undefined): string | null {
+  if (!value) return null;
+  const cut = value.lastIndexOf(".");
+  if (cut <= 0) return null;
+
+  const publicKey = value.slice(0, cut);
+  const mac = value.slice(cut + 1);
+  const expected = sign(`identity:${publicKey}`);
+
+  const a = Buffer.from(mac);
+  const b = Buffer.from(expected);
+  if (a.length !== b.length || !timingSafeEqual(a, b)) return null;
+  return publicKey;
+}
