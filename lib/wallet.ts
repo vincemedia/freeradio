@@ -100,6 +100,32 @@ export async function probeWallet(): Promise<boolean> {
  * somebody is being asked to make a decision, and cutting that off after two
  * seconds would make a working wallet look broken.
  */
+/**
+ * Sign a challenge, proving the key is this wallet's.
+ *
+ * The counterpart to the server's nonce. `createSignature` is the wallet
+ * operation that requires the private key, and the whole point of asking for it
+ * is that a public key alone proves nothing — anybody can quote one.
+ *
+ * `protocolID` and `keyID` name what the signature is for, so a signature
+ * produced for this purpose cannot be replayed as one for another: the wallet
+ * derives a distinct key per protocol, and this one says "free radio, session".
+ */
+export async function signChallenge(challenge: string): Promise<string> {
+  const wallet = getClient();
+  const { signature } = await withTimeout(
+    wallet.createSignature({
+      data: Array.from(new TextEncoder().encode(challenge)),
+      protocolID: [0, "free radio session"],
+      keyID: "identity",
+      counterparty: "self",
+    }),
+    ACTION_TIMEOUT_MS,
+    () => new NoWalletError(),
+  );
+  return signature.map((b) => b.toString(16).padStart(2, "0")).join("");
+}
+
 export async function connectWallet(): Promise<WalletIdentity> {
   const wallet = getClient();
 

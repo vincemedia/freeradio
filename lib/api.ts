@@ -55,3 +55,10 @@ export const apiPost = <T = unknown>(path: string, body?: unknown) =>
     method: "POST",
     body: body === undefined ? undefined : JSON.stringify(body),
   });
+
+/** PUT, for the one request that asks the server to mint something. */
+export const apiPut = <T = unknown>(path: string, body?: unknown) =>
+  apiFetch<T>(path, {
+    method: "PUT",
+    body: body === undefined ? undefined : JSON.stringify(body),
+  });

@@ -4,7 +4,7 @@ import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { DEFAULT_ECOSYSTEM, DEFAULT_FOLLOWED } from "@/data/ecosystems";
 import type { CoChannelView, EcosystemId, Person } from "@/data/schema";
-import { ApiError, apiFetch, apiPost } from "@/lib/api";
+import { ApiError, apiFetch, apiPost, apiPut } from "@/lib/api";
 
 /**
  * Client state, deliberately thin.
@@ -134,10 +134,22 @@ export const useRadio = create<RadioState>()(
       connect: async () => {
         set({ connecting: true });
         try {
-          const { connectWallet } = await import("@/lib/wallet");
+          const { connectWallet, signChallenge } = await import("@/lib/wallet");
           const identity = await connectWallet();
+
+          /* A key on its own proves nothing — it is public, and printed in
+             every room its owner enters. So the server issues a nonce, the
+             wallet signs it with the private key it never hands over, and the
+             signature is what establishes the session. */
+          const { challenge } = await apiPut<{ challenge: string }>(
+            "/api/session",
+          );
+          const signature = await signChallenge(challenge);
+
           const session = await apiPost<Session>("/api/session", {
             publicKey: identity.publicKey,
+            challenge,
+            signature,
             /* Carried through so a name chosen before connecting sticks to
                the key that arrives. */
             username: get().session?.username ?? undefined,

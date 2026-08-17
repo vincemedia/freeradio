@@ -7,6 +7,8 @@ import {
   personFromKey,
   usernameCookieName,
 } from "@/lib/server/identity";
+import { PublicKey, Signature } from "@bsv/sdk";
+import { challengeIsOurs, issueChallenge } from "@/lib/server/challenge";
 import { leave, sessionFor } from "@/lib/server/store";
 
 export const dynamic = "force-dynamic";
@@ -18,21 +20,38 @@ export async function GET() {
   return NextResponse.json(sessionFor(await connectedPerson()));
 }
 
+/** A challenge to sign. Issued freely; worthless without the private key. */
+export async function PUT() {
+  return NextResponse.json({ challenge: issueChallenge() });
+}
+
 /**
- * Establish a session from a wallet identity.
+ * Establish a session by *proving* a wallet identity.
  *
- * The browser has already asked the wallet for `getPublicKey({ identityKey:
- * true })` and posts the key here. There is nothing to resolve it against and
- * nothing to look up: the key *is* the account. What arrives is who they are.
+ * This used to take a public key and believe it. A public key is public — it is
+ * printed in every room its owner walks into — so anybody who had ever seen
+ * somebody else's could become them by posting it, or by setting one cookie by
+ * hand. That bought their name, their avatar, their notifications, and a host
+ * token on any station they hosted: muting, removing and recording, in their
+ * name. There was no exploit to write, because the impersonation was this code
+ * path with a different string in it.
+ *
+ * So the key now arrives with a signature over a challenge this server issued,
+ * and the signature is checked against the key. Public keys are public;
+ * signatures over a fresh nonce are not, because producing one needs the private
+ * key the wallet holds and never hands over.
  *
  * A username may come with it, or later, or never. It is a display name for a
  * key and nothing more — it grants nothing, it is not checked for uniqueness
- * against anybody, and without one the key itself is shown, truncated. Storing
- * it beside the key is what lets the rest of the app put a name to an identity
- * wherever one is needed, including as the name other people see in a room.
+ * against anybody, and without one the key itself is shown, truncated.
  */
 export async function POST(request: NextRequest) {
-  let body: { publicKey?: string; username?: string } = {};
+  let body: {
+    publicKey?: string;
+    username?: string;
+    challenge?: string;
+    signature?: string;
+  } = {};
   try {
     body = await request.json();
   } catch {
@@ -43,6 +62,23 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(
       { error: "That does not look like a BRC-100 identity key." },
       { status: 400 },
+    );
+  }
+
+  if (typeof body.challenge !== "string" || !challengeIsOurs(body.challenge)) {
+    return NextResponse.json(
+      { error: "That challenge was not issued here, or has expired." },
+      { status: 400 },
+    );
+  }
+
+  if (
+    typeof body.signature !== "string" ||
+    !signedByKey(body.publicKey, body.challenge, body.signature)
+  ) {
+    return NextResponse.json(
+      { error: "That signature does not come from that key." },
+      { status: 401 },
     );
   }
 
@@ -122,4 +158,25 @@ export async function DELETE() {
   const response = NextResponse.json(sessionFor(null));
   response.cookies.delete(identityCookieName());
   return response;
+}
+
+/**
+ * Whether that key made that signature.
+ *
+ * DER, hex, over the challenge as UTF-8 — which is what `createSignature` on a
+ * BRC-100 wallet produces for a `data` argument. A malformed signature is a
+ * failure and not an error: anything this cannot parse is something this will
+ * not accept, which is the only safe way for a check like this to be wrong.
+ */
+function signedByKey(
+  publicKey: string,
+  challenge: string,
+  signature: string,
+): boolean {
+  try {
+    const key = PublicKey.fromString(publicKey);
+    return key.verify(challenge, Signature.fromDER(signature, "hex"), "utf8");
+  } catch {
+    return false;
+  }
 }

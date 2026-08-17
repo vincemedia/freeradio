@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { MAX_STATIONS_PER_BAND, getEcosystem } from "@/data/ecosystems";
+import { BAND, MAX_STATIONS_PER_BAND, getEcosystem } from "@/data/ecosystems";
 import { DEFAULT_BED, isBedId, type BedId } from "@/data/beds";
 import type { EcosystemId, Gates } from "@/data/schema";
 import { connectedPerson } from "@/lib/server/identity";
@@ -129,6 +129,26 @@ export async function POST(request: Request) {
   const frequency = body.frequency ?? firstFree(taken);
   if (frequency === null) {
     return NextResponse.json({ error: "The band is full." }, { status: 409 });
+  }
+
+  /* On the dial, and on a tenth. Neither was checked: 500 MHz produced a
+     station nothing could ever tune to, and 88.35 produced one whose id
+     collided with 88.3's — two different stations claiming one address, which
+     is the one thing a frequency is for. */
+  const onGrid = Math.abs(frequency * 10 - Math.round(frequency * 10)) < 1e-9;
+  if (
+    !Number.isFinite(frequency) ||
+    frequency < BAND.min ||
+    frequency > BAND.max ||
+    !onGrid
+  ) {
+    return NextResponse.json(
+      {
+        error: `A frequency has to be between ${BAND.min.toFixed(1)} and ${BAND.max.toFixed(1)}, in tenths.`,
+        field: "frequency",
+      },
+      { status: 400 },
+    );
   }
   if (taken.has(frequency.toFixed(1))) {
     return NextResponse.json(
