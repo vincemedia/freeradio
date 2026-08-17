@@ -46,12 +46,18 @@ export default function CoChannelPage() {
 
   /* Kept fresh while the page is open. Fetched once, the occupancy was whatever
      it happened to be when the room was opened — so somebody who joined an empty
-     station was told nobody was there, indefinitely. */
+     station was told nobody was there, indefinitely.
+
+     Fifteen seconds against a twenty-second server cache, deliberately that way
+     round: a poll then usually lands on an entry that is still good and costs
+     nothing upstream. At twenty against ten it was the opposite — every single
+     poll arrived just after the entry expired, so each one paid for a full sweep
+     of Cloudflare's sessions. */
   const {
     data: preview,
     loading,
     error,
-  } = useFetch<RoomResponse>(`/api/co-channels/${id}`, 20_000);
+  } = useFetch<RoomResponse>(`/api/co-channels/${id}`, 15_000);
   /* A recorded broadcast's words are a fact about the past, fetched once. */
   const { data: transcriptLines } = useFetch<TranscriptLineView[]>(
     preview && preview.kind === "recorded" && preview.hasAudio

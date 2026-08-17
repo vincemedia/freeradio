@@ -19,6 +19,15 @@ export const maxDuration = 30;
  * So this endpoint no longer decodes anything. It accepts exactly one shape of
  * file and refuses everything else, which is a narrower job it can actually do.
  *
+ * ## Private storage, served through here
+ *
+ * The Blob store this deployment has is configured private, so a publicly
+ * readable blob is refused outright — which is what "the image could not be
+ * stored" was. Rather than ask for the store to be reconfigured, the blob is
+ * written private and read back through `/api/avatar/[...path]`, which streams
+ * it with a year of immutable caching. The CDN then serves it, so the function
+ * runs about once per avatar rather than once per view.
+ *
  * ## What is still enforced here, because a client cannot be trusted
  *
  *   A wallet. The file is keyed by the identity that uploaded it, so nobody can
@@ -134,7 +143,10 @@ export async function POST(request: NextRequest) {
   let blob;
   try {
     blob = await put(key, Buffer.from(bytes), {
-      access: "public",
+      /* Private, because the store is. A public blob on a private store is
+         refused, which is the whole of what "could not be stored" was. It is
+         read back through this route instead. */
+      access: "private",
       /* From the bytes, never from the upload's own claim: a blob served as
          text/html would be a stored cross-site script. */
       contentType: kind === "webp" ? "image/webp" : "image/png",
@@ -153,16 +165,21 @@ export async function POST(request: NextRequest) {
     );
   }
 
+  /* Our own address for it, not the store's: a private blob's own URL needs a
+     credential, and the one thing an avatar has to be is loadable by an
+     ordinary `<img>`. */
+  const url = `/api/avatar/${blob.pathname}`;
+
   /* The previous one, if any, is removed rather than left paid for. */
   const previous = request.cookies.get(avatarCookieName())?.value ?? null;
-  if (previous && previous !== blob.url) {
-    await del(previous).catch(() => {
+  if (previous && previous !== url) {
+    await del(pathnameOf(previous)).catch(() => {
       /* Already gone, or never ours. Not worth failing the upload over. */
     });
   }
 
-  const response = NextResponse.json({ url: blob.url });
-  response.cookies.set(avatarCookieName(), blob.url, {
+  const response = NextResponse.json({ url });
+  response.cookies.set(avatarCookieName(), url, {
     httpOnly: true,
     sameSite: "lax",
     path: "/",
@@ -181,10 +198,23 @@ export async function DELETE(request: NextRequest) {
   const current = request.cookies.get(avatarCookieName())?.value;
   if (current) {
     const { del } = await import("@vercel/blob");
-    await del(current).catch(() => {});
+    await del(pathnameOf(current)).catch(() => {});
   }
 
   const response = NextResponse.json({ url: null });
   response.cookies.delete(avatarCookieName());
   return response;
+}
+
+/**
+ * The stored blob behind one of our avatar URLs.
+ *
+ * Cookies written before avatars moved into private storage hold the store's own
+ * URL, and `del` takes either — so this passes a full URL through untouched and
+ * strips the route prefix off the new shape.
+ */
+function pathnameOf(value: string): string {
+  return value.startsWith("/api/avatar/")
+    ? value.slice("/api/avatar/".length)
+    : value;
 }

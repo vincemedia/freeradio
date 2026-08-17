@@ -97,10 +97,29 @@ function toStation(value: Encoded, createdAt: string | undefined): CoChannel {
   };
 }
 
+/**
+ * How long the meeting search stands.
+ *
+ * Twenty seconds, matching the roster cache, because the two are read together
+ * on every list and there is no sense in one being fresh while the other is
+ * not. This was the slowest remaining path in the app: `/api/co-channels` paid
+ * for a `listMeetings` search on every single call, including the polls, to
+ * rebuild a list that changes only when somebody opens or closes a station.
+ *
+ * A station created in the last ten seconds is the one case this delays, and it
+ * is the case that does not matter: whoever created it is already being
+ * redirected into it by the response that created it.
+ */
+const TTL_MS = 20_000;
+
+let cache: { at: number; stations: CoChannel[] } | null = null;
+
 /** Every station somebody has started, newest first. */
 export async function userStations(): Promise<CoChannel[]> {
   const config = realtimeConfig();
   if (!config) return [];
+
+  if (cache && Date.now() - cache.at < TTL_MS) return cache.stations;
 
   const meetings = await listMeetings(config, {
     search: PREFIX,
@@ -118,7 +137,9 @@ export async function userStations(): Promise<CoChannel[]> {
     if (!withinLifespan(station.startedAt)) continue;
     rows.push(station);
   }
-  return rows.sort((a, b) => b.startedAt.localeCompare(a.startedAt));
+  rows.sort((a, b) => b.startedAt.localeCompare(a.startedAt));
+  cache = { at: Date.now(), stations: rows };
+  return rows;
 }
 
 export async function userStation(id: string): Promise<CoChannel | null> {
@@ -158,6 +179,12 @@ export async function createUserStation(input: {
   };
 
   await createMeeting(config, { title: encodeStation(encoded) });
+
+  /* Dropped rather than waited out. The cache exists to keep the list cheap,
+     not to hide a station from the person who just opened it — and the very next
+     thing that happens is their browser asking for the room. */
+  cache = null;
+
   return toStation(encoded, new Date().toISOString());
 }
 

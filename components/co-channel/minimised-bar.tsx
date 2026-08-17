@@ -33,13 +33,21 @@ export function MinimisedBar() {
   const pathname = usePathname();
   const live = useLive();
 
+  /* Nothing is fetched unless this bar is actually going to be drawn. It used to
+     poll regardless — including while sitting on the station's own page, where it
+     returns null and the page is polling the same endpoint itself. Two requests
+     for one number, one of them for a component nobody can see. */
+  const showing =
+    live.stationId !== null &&
+    live.status === "live" &&
+    pathname !== `/co-channel/${live.stationId}`;
+
   const { data: room } = useFetch<CoChannelView>(
-    live.stationId ? `/api/co-channels/${live.stationId}` : null,
-    20_000,
+    showing ? `/api/co-channels/${live.stationId}` : null,
+    15_000,
   );
 
-  if (!live.stationId || live.status !== "live" || !room) return null;
-  if (pathname === `/co-channel/${room.id}`) return null;
+  if (!showing || !room) return null;
 
   const href = `/co-channel/${room.id}`;
   const open = () => navigateWithTransition(() => router.push(href), href);

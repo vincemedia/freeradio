@@ -49,11 +49,16 @@ import { stationFromTitle } from "@/lib/server/user-stations";
  *
  * ## The cache
  *
- * Ten seconds, per process. Occupancy is the most-read number in the product —
- * the front page, the scan page and every card want it — and it does not need
- * to be accurate to the second to be honest. What it must not be is stale for
- * long enough that a room looks empty after somebody has arrived, which ten
- * seconds is comfortably inside.
+ * Twenty seconds, per process, against clients polling every fifteen — and that
+ * order matters. It was the other way round: a ten-second entry read by a
+ * twenty-second poll had *always* expired by the time the poll arrived, so every
+ * single one paid for a full sweep of Cloudflare's sessions. Nothing was being
+ * cached at all in the case that mattered.
+ *
+ * Now a poll usually lands on an entry that is still good, and the worst-case
+ * staleness went down rather than up: twenty seconds instead of the thirty that
+ * a stale cache plus a slow poll used to allow. Faster and fresher, which is
+ * unusual enough to be worth writing down.
  *
  * Being per-process means two serverless instances hold their own copy and can
  * disagree by a few seconds. That is fine here in a way it was not for the
@@ -62,7 +67,7 @@ import { stationFromTitle } from "@/lib/server/user-stations";
  * people in different rooms. Same technique, different stakes.
  */
 
-const TTL_MS = 10_000;
+const TTL_MS = 20_000;
 
 /** Somebody in a live room, as much as the sessions API knows about them. */
 export interface LiveOccupant {
