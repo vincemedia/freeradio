@@ -66,8 +66,6 @@ interface Rig {
   source: MediaStreamAudioSourceNode;
   analyser: AnalyserNode;
   data: Float32Array<ArrayBuffer>;
-  /** kept alive so remote tracks actually flow in Chromium */
-  sink: HTMLAudioElement | null;
   track: MediaStreamTrack;
 }
 
@@ -152,7 +150,7 @@ export function useLevels(live: LiveRoom): Record<string, number> {
       }
       for (const [id, track] of wanted) {
         if (built.has(id)) continue;
-        const rig = build(ctx, track, id !== self?.id);
+        const rig = build(ctx, track);
         if (rig) built.set(id, rig);
       }
 
@@ -202,27 +200,16 @@ export function useLevels(live: LiveRoom): Record<string, number> {
 /**
  * An analyser over one track.
  *
- * Remote tracks get a muted `<audio>` element as well. Chromium will not pull
- * data through a WebRTC receiver that is not attached to a media element, so
- * without this the analyser reads a flat zero for everybody else in the room
- * while their voice plays perfectly — the element is muted precisely because
- * the SDK is already doing the playing.
+ * Remote tracks used to get a muted `<audio>` element here, because Chromium
+ * will not pull data through a WebRTC receiver that is not attached to a media
+ * element. `RoomAudio` now attaches every remote track to an element that is
+ * actually playing — which is the fix for a much larger problem — so the
+ * workaround is no longer needed and the second element is gone. Two elements
+ * on one remote track is asking for trouble on iOS in particular.
  */
-function build(
-  ctx: AudioContext,
-  track: MediaStreamTrack,
-  remote: boolean,
-): Rig | null {
+function build(ctx: AudioContext, track: MediaStreamTrack): Rig | null {
   try {
     const stream = new MediaStream([track]);
-
-    let sink: HTMLAudioElement | null = null;
-    if (remote) {
-      sink = new Audio();
-      sink.srcObject = stream;
-      sink.muted = true;
-      void sink.play().catch(() => {});
-    }
 
     const source = ctx.createMediaStreamSource(stream);
     const analyser = ctx.createAnalyser();
@@ -236,7 +223,6 @@ function build(
       source,
       analyser,
       data: new Float32Array(new ArrayBuffer(analyser.fftSize * 4)),
-      sink,
       track,
     };
   } catch {
@@ -252,9 +238,5 @@ function teardown(rig: Rig) {
     rig.analyser.disconnect();
   } catch {
     /* Already torn down. */
-  }
-  if (rig.sink) {
-    rig.sink.pause();
-    rig.sink.srcObject = null;
   }
 }

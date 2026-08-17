@@ -1,6 +1,7 @@
 "use client";
 
 import { createContext, useContext, useEffect, useRef, useState } from "react";
+import { RoomAudio } from "@/components/co-channel/room-audio";
 import { useLiveRoom, type LiveRoom } from "@/lib/use-live-room";
 
 /**
@@ -55,6 +56,10 @@ export function LiveRoomProvider({ children }: { children: React.ReactNode }) {
 
   return (
     <Context.Provider value={{ ...room, stationId, enter, leave }}>
+      {/* The room, out loud. Mounted here rather than on the station's page
+          for the same reason the meeting is: audio that stopped when you
+          navigated would break the promise the dock makes. */}
+      <RoomAudio live={room} />
       {children}
     </Context.Provider>
   );
